@@ -1,22 +1,10 @@
 import { motion } from 'framer-motion'
+import { Building2 } from 'lucide-react'
 import { useCityStore } from '@/stores/cityStore'
 import { useSimulationStore } from '@/stores/simulationStore'
 import { useAIStore } from '@/stores/aiStore'
 import { getZoneColor } from '@/utils/colorUtils'
 import type { AgentAction, ZoneExplanation } from '@/types/simulation.types'
-
-const ZONE_ICONS: Record<string, string> = {
-  residential_low: '🏡',
-  residential_high: '🏢',
-  commercial: '🏪',
-  industrial: '🏭',
-  park: '🌳',
-  hospital: '🏥',
-  school: '🏫',
-  transit_hub: '🚉',
-  mixed_use: '🏙',
-  civic: '🏛',
-}
 
 export function RightPanel() {
   const { selectedCity } = useCityStore()
@@ -40,13 +28,13 @@ export function RightPanel() {
           <div>
             <div className="flex items-center gap-2 mb-3">
               <div
-                className="w-8 h-8 rounded-lg flex items-center justify-center text-base"
+                className="w-8 h-8 rounded-lg flex items-center justify-center"
                 style={{
                   background: 'rgba(0,212,255,0.08)',
                   border: '1px solid rgba(0,212,255,0.2)',
                 }}
               >
-                🌆
+                <Building2 size={14} style={{ color: 'var(--color-accent-cyan)' }} />
               </div>
               <div>
                 <div
@@ -86,9 +74,10 @@ export function RightPanel() {
             }}
           >
             <div className="flex items-center gap-1.5 mb-2">
-              <span className="text-sm">
-                {ZONE_ICONS[latestExplanation.zone_type_id] ?? '◈'}
-              </span>
+              <div
+                className="w-2.5 h-2.5 rounded-sm shrink-0"
+                style={{ background: getZoneColor(latestExplanation.zone_type_id) }}
+              />
               <span
                 className="font-display font-medium text-[10px]"
                 style={{ color: 'var(--color-accent-purple)' }}

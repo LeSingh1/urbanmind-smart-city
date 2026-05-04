@@ -1,4 +1,5 @@
 import { motion } from 'framer-motion'
+import { X, Crosshair } from 'lucide-react'
 import { getZoneColor } from '@/utils/colorUtils'
 import { useUIStore } from '@/stores/uiStore'
 import { useSimulationStore } from '@/stores/simulationStore'
@@ -26,20 +27,6 @@ const ZONE_LABELS: Record<string, string> = {
   SMART_TRAFFIC_LIGHT: 'Smart Traffic',
 }
 
-const ZONE_ICONS: Record<string, string> = {
-  RES_LOW_DETACHED: '🏘',
-  RES_MED_APARTMENT: '🏢',
-  RES_HIGH_TOWER: '🏙',
-  COM_SMALL_SHOP: '🏪',
-  COM_OFFICE_PLAZA: '🏦',
-  PARK_SMALL: '🌳',
-  ENV_TREE_CORRIDOR: '🌲',
-  HEALTH_HOSPITAL: '🏥',
-  EDU_HIGH: '🏫',
-  INFRA_POWER_SUBSTATION: '⚡',
-  BUS_STATION: '🚌',
-  SMART_TRAFFIC_LIGHT: '🚦',
-}
 
 export function ZonePalette() {
   const { isOverrideModeActive, selectedOverrideZone, setOverrideZone } = useUIStore()
@@ -89,7 +76,9 @@ export function ZonePalette() {
               }
         }
       >
-        {isOverrideModeActive ? '✕ Exit Override Mode' : '◈ Enter Override Mode'}
+        {isOverrideModeActive
+          ? <><X size={11} className="inline mr-1" /> Exit Override Mode</>
+          : <><Crosshair size={11} className="inline mr-1" /> Enter Override Mode</>}
       </motion.button>
 
       {/* Zone categories */}
@@ -129,7 +118,10 @@ export function ZonePalette() {
                         }
                   }
                 >
-                  <span className="text-sm shrink-0">{ZONE_ICONS[zone] ?? '⬜'}</span>
+                  <div
+                    className="w-3 h-3 rounded-sm shrink-0"
+                    style={{ background: color, boxShadow: `0 0 4px ${color}60` }}
+                  />
                   <span
                     className="font-display text-[10px] truncate"
                     style={{ color: active ? color : 'var(--color-text-secondary)' }}

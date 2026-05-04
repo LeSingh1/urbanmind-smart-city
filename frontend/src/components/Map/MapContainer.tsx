@@ -7,6 +7,7 @@ import { getZoneColor, lightenHex } from '@/utils/colorUtils'
 import { ExplanationTooltip } from './ExplanationTooltip'
 import { MiniMetricsPanel } from './MiniMetricsPanel'
 import { SplitScreenView } from '@/components/Layout/SplitScreenView'
+import { ZoneLegend } from './ZoneLegend'
 import type { Landmark } from '@/types/city.types'
 
 const empty: GeoJSON.FeatureCollection = { type: 'FeatureCollection', features: [] }
@@ -34,14 +35,16 @@ export function MapContainer() {
   const selectedOverrideZone = useUIStore((state) => state.selectedOverrideZone)
   const isSplitScreen = useUIStore((state) => state.isSplitScreen)
   const detailedGrid = useUIStore((state) => state.detailedGrid)
+  const isRunning = useSimulationStore((state) => state.isRunning)
 
   const fallbackFrame = useMemo(() => city ? makeInitialCityFrame(city) : null, [city])
   const visibleFrame = frame ?? fallbackFrame
 
-  // When detailedGrid is off, only show landmarks; when on show everything
+  // When simulation is running OR detailedGrid is on, show all zones.
+  // Otherwise, show only key infrastructure landmarks.
   const filteredFrame = useMemo(() => {
     if (!visibleFrame) return null
-    if (detailedGrid) return visibleFrame
+    if (detailedGrid || isRunning) return visibleFrame
     return {
       ...visibleFrame,
       zones_geojson: {
@@ -51,7 +54,7 @@ export function MapContainer() {
         ),
       },
     }
-  }, [visibleFrame, detailedGrid])
+  }, [visibleFrame, detailedGrid, isRunning])
 
   // Init map once
   useEffect(() => {
@@ -174,6 +177,7 @@ export function MapContainer() {
       )}
       {hovered && <ExplanationTooltip hover={hovered} />}
       <MiniMetricsPanel />
+      <ZoneLegend />
     </main>
   )
 
@@ -317,7 +321,10 @@ function withZonePaint(collection: GeoJSON.FeatureCollection): GeoJSON.FeatureCo
       const fill = getZoneColor(zone)
       const isKey = props.isKeyInfrastructure === true
       const isNew = props.isNewlyAdded === true
-      const opacity = isNew ? 0.88 : isKey ? 0.82 : 0.38
+      // Use lower opacity for large park/forest tiles so the basemap shows through
+      const isPark = zone.startsWith('PARK_') || zone.startsWith('FOREST_') || zone.includes('FOREST') || zone.includes('NATURE') || zone.includes('ENV_')
+      const keyOpacity = isPark ? 0.28 : 0.65
+      const opacity = isNew ? 0.88 : isKey ? keyOpacity : 0.44
       return {
         ...feature,
         properties: {

@@ -1,20 +1,8 @@
 import { motion, AnimatePresence } from 'framer-motion'
 import { useAIStore } from '@/stores/aiStore'
 import { Cpu, Zap } from 'lucide-react'
+import { getZoneColor } from '@/utils/colorUtils'
 import type { ZoneExplanation } from '@/types/simulation.types'
-
-const ZONE_ICONS: Record<string, string> = {
-  residential_low: '🏡',
-  residential_high: '🏢',
-  commercial: '🏪',
-  industrial: '🏭',
-  park: '🌳',
-  hospital: '🏥',
-  school: '🏫',
-  transit_hub: '🚉',
-  mixed_use: '🏙',
-  civic: '🏛',
-}
 
 export function AIPanel() {
   const { lastExplanations, isLoadingExplanation, explanationCache } = useAIStore()
@@ -65,9 +53,10 @@ export function AIPanel() {
         >
           <div className="flex items-center justify-between mb-2">
             <div className="flex items-center gap-1.5">
-              <span className="text-base">
-                {ZONE_ICONS[latestExplanation.zone_type_id] ?? '◈'}
-              </span>
+              <div
+                className="w-2.5 h-2.5 rounded-sm shrink-0"
+                style={{ background: getZoneColor(latestExplanation.zone_type_id) }}
+              />
               <span
                 className="font-display text-xs font-medium"
                 style={{ color: 'var(--color-accent-purple)' }}
@@ -105,7 +94,10 @@ export function AIPanel() {
                 style={{ borderLeft: '2px solid var(--color-border-subtle)' }}
               >
                 <div className="flex items-center gap-1.5 mb-0.5">
-                  <span className="text-xs">{ZONE_ICONS[exp.zone_type_id] ?? '◈'}</span>
+                  <div
+                    className="w-2 h-2 rounded-sm shrink-0"
+                    style={{ background: getZoneColor(exp.zone_type_id) }}
+                  />
                   <span className="font-mono text-[9px]" style={{ color: 'var(--color-text-muted)' }}>
                     {exp.zone_display_name} — Y{exp.year}
                   </span>

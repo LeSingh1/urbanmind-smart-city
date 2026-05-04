@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { motion } from 'framer-motion'
-import { Play, Pause, Download, Settings, RefreshCw, Zap } from 'lucide-react'
+import { Play, Pause, Download, Settings, RefreshCw, Zap, Scale, TrendingUp, Leaf, Users, Landmark } from 'lucide-react'
 import { useSimulationStore } from '@/stores/simulationStore'
 import { useCityStore } from '@/stores/cityStore'
 import { useScenarioStore, scenarioColors, scenarioLabels } from '@/stores/scenarioStore'
@@ -11,12 +11,12 @@ import type { ScenarioId } from '@/types/city.types'
 
 const SCENARIO_IDS: ScenarioId[] = ['balanced', 'max_growth', 'climate_resilient', 'equity_focused', 'historic']
 
-const SCENARIO_ICONS: Record<ScenarioId, string> = {
-  balanced: '⚖',
-  max_growth: '📈',
-  climate_resilient: '🌱',
-  equity_focused: '🤝',
-  historic: '🏛',
+const SCENARIO_ICONS: Record<ScenarioId, React.ElementType> = {
+  balanced: Scale,
+  max_growth: TrendingUp,
+  climate_resilient: Leaf,
+  equity_focused: Users,
+  historic: Landmark,
 }
 
 export function TopBar() {
@@ -110,7 +110,7 @@ export function TopBar() {
               }
               title={scenarioLabels[id]}
             >
-              <span className="mr-1">{SCENARIO_ICONS[id]}</span>
+              {(() => { const Icon = SCENARIO_ICONS[id]; return <Icon size={11} className="mr-1 inline-block" /> })()}
               {scenarioLabels[id]}
             </motion.button>
           )
