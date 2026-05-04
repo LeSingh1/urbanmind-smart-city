@@ -1,0 +1,52 @@
+{
+  "id": "los_angeles",
+  "name": "Los Angeles",
+  "country": "United States",
+  "center_lat": 34.05,
+  "center_lng": -118.24,
+  "default_zoom": 10,
+  "climate_zone": "Mediterranean",
+  "population_current": 3900000,
+  "gdp_per_capita": 72000,
+  "urban_growth_rate": 0.6,
+  "key_planning_challenge": "Polycentric sprawl, housing shortage, wildfire risk, and car dependence require infill near transit and resilient green buffers.",
+  "expansion_constraint": "Mountains, wildfire zones, coastal constraints, freeway congestion",
+  "bbox": [
+    -118.67,
+    33.7,
+    -117.65,
+    34.35
+  ],
+  "historical_snapshots": [
+    {
+      "year": 1950,
+      "population": 1970358,
+      "area_km2": 1214,
+      "key_event": "Post-war suburban boom and freeway expansion"
+    },
+    {
+      "year": 1970,
+      "population": 2811801,
+      "area_km2": 1214,
+      "key_event": "Automobile-oriented growth reshapes the basin"
+    },
+    {
+      "year": 1990,
+      "population": 3485398,
+      "area_km2": 1214,
+      "key_event": "Metro Rail opens as regional density rises"
+    },
+    {
+      "year": 2010,
+      "population": 3792621,
+      "area_km2": 1214,
+      "key_event": "Transit-oriented planning accelerates"
+    },
+    {
+      "year": 2024,
+      "population": 3900000,
+      "area_km2": 1214,
+      "key_event": "Housing element updates and climate adaptation planning expand"
+    }
+  ]
+}

@@ -1,0 +1,101 @@
+/** @type {import('tailwindcss').Config} */
+export default {
+  content: ['./index.html', './src/**/*.{js,ts,jsx,tsx}'],
+  theme: {
+    extend: {
+      colors: {
+        'bg-app': 'var(--color-bg-app)',
+        'bg-sidebar': 'var(--color-bg-sidebar)',
+        'bg-panel': 'var(--color-bg-panel)',
+        'bg-card': 'var(--color-bg-card)',
+        'bg-hover': 'var(--color-bg-hover)',
+        'border-subtle': 'var(--color-border-subtle)',
+        'border-glow': 'var(--color-border-glow)',
+        'border-active': 'var(--color-border-active)',
+        'accent-cyan': 'var(--color-accent-cyan)',
+        'accent-cyan-dim': 'var(--color-accent-cyan-dim)',
+        'accent-purple': 'var(--color-accent-purple)',
+        'accent-purple-dim': 'var(--color-accent-purple-dim)',
+        'accent-green': 'var(--color-accent-green)',
+        'accent-warning': 'var(--color-accent-warning)',
+        'accent-danger': 'var(--color-accent-danger)',
+        'text-primary': 'var(--color-text-primary)',
+        'text-secondary': 'var(--color-text-secondary)',
+        'text-muted': 'var(--color-text-muted)',
+        'text-accent': 'var(--color-text-accent)',
+        zone: {
+          res_low: 'var(--zone-res-low)',
+          res_med: 'var(--zone-res-med)',
+          res_high: 'var(--zone-res-high)',
+          commercial: 'var(--zone-commercial)',
+          industrial: 'var(--zone-industrial)',
+          mixed_use: 'var(--zone-mixed-use)',
+          green: 'var(--zone-green)',
+          transit: 'var(--zone-transit)',
+          health: 'var(--zone-health)',
+          education: 'var(--zone-education)',
+          utility: 'var(--zone-utility)',
+          smart: 'var(--zone-smart)',
+        },
+      },
+      fontFamily: {
+        display: ['Space Grotesk', 'system-ui', 'sans-serif'],
+        sans: ['Space Grotesk', 'system-ui', 'sans-serif'],
+        mono: ['JetBrains Mono', 'monospace'],
+      },
+      animation: {
+        'pulse-slow': 'pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+        'fade-in': 'fadeIn 0.4s ease-out',
+        'slide-up': 'slideUp 0.4s cubic-bezier(0.16,1,0.3,1)',
+        'slide-in-right': 'slideInRight 0.35s cubic-bezier(0.16,1,0.3,1)',
+        'glow-pulse': 'glowPulse 2s ease-in-out infinite',
+        'text-glow-pulse': 'textGlowPulse 2.5s ease-in-out infinite',
+        'grid-pulse': 'gridPulse 4s ease-in-out infinite',
+        'star-twinkle': 'starTwinkle 3s ease-in-out infinite',
+        'scan-down': 'scanDown 4s linear infinite',
+      },
+      keyframes: {
+        fadeIn: {
+          '0%': { opacity: '0' },
+          '100%': { opacity: '1' },
+        },
+        slideUp: {
+          '0%': { transform: 'translateY(16px)', opacity: '0' },
+          '100%': { transform: 'translateY(0)', opacity: '1' },
+        },
+        slideInRight: {
+          '0%': { transform: 'translateX(10px)', opacity: '0' },
+          '100%': { transform: 'translateX(0)', opacity: '1' },
+        },
+        glowPulse: {
+          '0%, 100%': { boxShadow: '0 0 8px rgba(0,212,255,0.3)' },
+          '50%': { boxShadow: '0 0 20px rgba(0,212,255,0.7), 0 0 40px rgba(0,212,255,0.3)' },
+        },
+        textGlowPulse: {
+          '0%, 100%': { textShadow: '0 0 8px rgba(0,212,255,0.5)' },
+          '50%': { textShadow: '0 0 20px rgba(0,212,255,0.9), 0 0 40px rgba(0,212,255,0.4)' },
+        },
+        gridPulse: {
+          '0%, 100%': { opacity: '0.6' },
+          '50%': { opacity: '1' },
+        },
+        starTwinkle: {
+          '0%, 100%': { opacity: '0.3' },
+          '50%': { opacity: '1' },
+        },
+        scanDown: {
+          '0%': { top: '-10%' },
+          '100%': { top: '110%' },
+        },
+      },
+      boxShadow: {
+        'glow-cyan': '0 0 20px rgba(0,212,255,0.25), 0 0 60px rgba(0,212,255,0.08)',
+        'glow-cyan-lg': '0 0 40px rgba(0,212,255,0.4), 0 0 80px rgba(0,212,255,0.15)',
+        'glow-purple': '0 0 20px rgba(124,58,237,0.3), 0 0 60px rgba(124,58,237,0.1)',
+        'panel': '0 0 20px rgba(0,212,255,0.06), inset 0 1px 0 rgba(0,212,255,0.12)',
+        'panel-active': '0 0 24px rgba(0,212,255,0.12), inset 0 1px 0 rgba(0,212,255,0.2)',
+      },
+    },
+  },
+  plugins: [],
+}

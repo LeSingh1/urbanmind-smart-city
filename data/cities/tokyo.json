@@ -1,0 +1,52 @@
+{
+  "id": "tokyo",
+  "name": "Tokyo",
+  "country": "Japan",
+  "center_lat": 35.68,
+  "center_lng": 139.69,
+  "default_zoom": 11,
+  "climate_zone": "Humid subtropical",
+  "population_current": 14000000,
+  "gdp_per_capita": 52000,
+  "urban_growth_rate": -0.1,
+  "key_planning_challenge": "A mature megacity must rebalance aging neighborhoods, rail capacity, heat risk, and selective redevelopment around stations.",
+  "expansion_constraint": "Bay edge, seismic risk, limited vacant land, protected river corridors",
+  "bbox": [
+    139.45,
+    35.52,
+    139.93,
+    35.82
+  ],
+  "historical_snapshots": [
+    {
+      "year": 1950,
+      "population": 6277500,
+      "area_km2": 2194,
+      "key_event": "Post-war reconstruction and rapid metropolitan growth"
+    },
+    {
+      "year": 1970,
+      "population": 8840942,
+      "area_km2": 2194,
+      "key_event": "Rail-led suburban expansion intensifies"
+    },
+    {
+      "year": 1990,
+      "population": 11855563,
+      "area_km2": 2194,
+      "key_event": "Bubble-era redevelopment concentrates around major stations"
+    },
+    {
+      "year": 2010,
+      "population": 13159388,
+      "area_km2": 2194,
+      "key_event": "Compact city and disaster preparedness planning expand"
+    },
+    {
+      "year": 2024,
+      "population": 14000000,
+      "area_km2": 2194,
+      "key_event": "Station-area regeneration and heat resilience become priorities"
+    }
+  ]
+}

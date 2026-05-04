@@ -1,0 +1,52 @@
+{
+  "id": "new_york",
+  "name": "New York City",
+  "country": "United States",
+  "center_lat": 40.71,
+  "center_lng": -74.01,
+  "default_zoom": 11,
+  "climate_zone": "Humid subtropical",
+  "population_current": 8300000,
+  "gdp_per_capita": 85000,
+  "urban_growth_rate": 0.4,
+  "key_planning_challenge": "Island geography limits outward sprawl. AI focuses on vertical densification, infill, and waterfront flood adaptation.",
+  "expansion_constraint": "Water boundaries, coastal flood risk, historic preservation districts",
+  "bbox": [
+    -74.26,
+    40.48,
+    -73.7,
+    40.92
+  ],
+  "historical_snapshots": [
+    {
+      "year": 1950,
+      "population": 7891957,
+      "area_km2": 784,
+      "key_event": "Post-war housing boom, Robert Moses highway era"
+    },
+    {
+      "year": 1970,
+      "population": 7894862,
+      "area_km2": 784,
+      "key_event": "Fiscal crisis looming, white flight to suburbs"
+    },
+    {
+      "year": 1990,
+      "population": 7322564,
+      "area_km2": 784,
+      "key_event": "Recovery begins, Times Square revitalisation"
+    },
+    {
+      "year": 2010,
+      "population": 8175133,
+      "area_km2": 784,
+      "key_event": "Bloomberg PlaNYC, High Line opens"
+    },
+    {
+      "year": 2024,
+      "population": 8300000,
+      "area_km2": 784,
+      "key_event": "Congestion pricing launched, climate resilience investment"
+    }
+  ]
+}

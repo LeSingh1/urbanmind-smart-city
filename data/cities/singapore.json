@@ -1,0 +1,52 @@
+{
+  "id": "singapore",
+  "name": "Singapore",
+  "country": "Singapore",
+  "center_lat": 1.35,
+  "center_lng": 103.82,
+  "default_zoom": 12,
+  "climate_zone": "Tropical rainforest",
+  "population_current": 5920000,
+  "gdp_per_capita": 65000,
+  "urban_growth_rate": 0.8,
+  "key_planning_challenge": "A compact island city-state must balance port, airport, housing, water resilience, and high-quality green networks.",
+  "expansion_constraint": "Island boundary, reclaimed coast, water catchments, strategic port and airport land",
+  "bbox": [
+    103.6,
+    1.15,
+    104.08,
+    1.48
+  ],
+  "historical_snapshots": [
+    {
+      "year": 1950,
+      "population": 1022000,
+      "area_km2": 581,
+      "key_event": "Post-war port city faces housing and sanitation pressure"
+    },
+    {
+      "year": 1970,
+      "population": 2075000,
+      "area_km2": 581,
+      "key_event": "HDB new towns and industrial estates scale rapidly"
+    },
+    {
+      "year": 1990,
+      "population": 3047000,
+      "area_km2": 633,
+      "key_event": "MRT-led regional centers mature"
+    },
+    {
+      "year": 2010,
+      "population": 5076700,
+      "area_km2": 716,
+      "key_event": "Marina Bay and water resilience projects expand"
+    },
+    {
+      "year": 2024,
+      "population": 5920000,
+      "area_km2": 734,
+      "key_event": "Long-term land use plan balances density and liveability"
+    }
+  ]
+}

@@ -1,0 +1,52 @@
+{
+  "id": "mumbai",
+  "name": "Mumbai",
+  "country": "India",
+  "center_lat": 19.08,
+  "center_lng": 72.88,
+  "default_zoom": 11,
+  "climate_zone": "Tropical wet and dry",
+  "population_current": 20700000,
+  "gdp_per_capita": 8500,
+  "urban_growth_rate": 1.8,
+  "key_planning_challenge": "Peninsula constraints, intense density, flood risk, and transport demand require vertical redevelopment and resilient coastal planning.",
+  "expansion_constraint": "Arabian Sea, mangroves, flood-prone lowlands, rail corridor pressure",
+  "bbox": [
+    72.74,
+    18.9,
+    73.05,
+    19.28
+  ],
+  "historical_snapshots": [
+    {
+      "year": 1950,
+      "population": 2966000,
+      "area_km2": 603,
+      "key_event": "Port and textile city expands northward"
+    },
+    {
+      "year": 1970,
+      "population": 5970000,
+      "area_km2": 603,
+      "key_event": "Suburban rail corridors carry rapid growth"
+    },
+    {
+      "year": 1990,
+      "population": 9925891,
+      "area_km2": 603,
+      "key_event": "Service economy and informal settlement pressure intensify"
+    },
+    {
+      "year": 2010,
+      "population": 18414288,
+      "area_km2": 603,
+      "key_event": "Metro and coastal infrastructure planning scale up"
+    },
+    {
+      "year": 2024,
+      "population": 20700000,
+      "area_km2": 603,
+      "key_event": "Redevelopment, flood resilience, and transit expansion dominate"
+    }
+  ]
+}

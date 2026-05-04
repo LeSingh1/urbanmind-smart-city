@@ -1,0 +1,52 @@
+{
+  "id": "lagos",
+  "name": "Lagos",
+  "country": "Nigeria",
+  "center_lat": 6.52,
+  "center_lng": 3.38,
+  "default_zoom": 11,
+  "climate_zone": "Tropical wet",
+  "population_current": 15900000,
+  "gdp_per_capita": 4200,
+  "urban_growth_rate": 5.8,
+  "key_planning_challenge": "Rapid growth, lagoon geography, flooding, and infrastructure gaps require staged serviced expansion and transit-first corridors.",
+  "expansion_constraint": "Lagoon and wetland systems, flood-prone coast, informal settlement pressure",
+  "bbox": [
+    3.1,
+    6.35,
+    3.7,
+    6.7
+  ],
+  "historical_snapshots": [
+    {
+      "year": 1950,
+      "population": 325000,
+      "area_km2": 1171,
+      "key_event": "Port city grows as administrative and commercial hub"
+    },
+    {
+      "year": 1970,
+      "population": 1410000,
+      "area_km2": 1171,
+      "key_event": "Oil-boom urbanization accelerates"
+    },
+    {
+      "year": 1990,
+      "population": 4764000,
+      "area_km2": 1171,
+      "key_event": "Metropolitan expansion pushes north and west"
+    },
+    {
+      "year": 2010,
+      "population": 10441000,
+      "area_km2": 1171,
+      "key_event": "BRT and megacity planning become central"
+    },
+    {
+      "year": 2024,
+      "population": 15900000,
+      "area_km2": 1171,
+      "key_event": "Coastal resilience and infrastructure delivery dominate planning"
+    }
+  ]
+}

@@ -1,0 +1,52 @@
+{
+  "id": "sao_paulo",
+  "name": "São Paulo",
+  "country": "Brazil",
+  "center_lat": -23.55,
+  "center_lng": -46.63,
+  "default_zoom": 11,
+  "climate_zone": "Humid subtropical",
+  "population_current": 12300000,
+  "gdp_per_capita": 18000,
+  "urban_growth_rate": 1.2,
+  "key_planning_challenge": "Dense urban growth must address river corridors, inequality, congestion, and environmental pressure on peripheral reserves.",
+  "expansion_constraint": "Watershed protection areas, steep slopes, congestion, informal peripheral growth",
+  "bbox": [
+    -46.93,
+    -23.8,
+    -46.37,
+    -23.36
+  ],
+  "historical_snapshots": [
+    {
+      "year": 1950,
+      "population": 2198000,
+      "area_km2": 1521,
+      "key_event": "Industrial expansion drives metropolitan migration"
+    },
+    {
+      "year": 1970,
+      "population": 5920000,
+      "area_km2": 1521,
+      "key_event": "Peripheral growth and highway corridors expand"
+    },
+    {
+      "year": 1990,
+      "population": 9646185,
+      "area_km2": 1521,
+      "key_event": "Service economy grows while congestion worsens"
+    },
+    {
+      "year": 2010,
+      "population": 11253503,
+      "area_km2": 1521,
+      "key_event": "Transit and housing plans target inequality"
+    },
+    {
+      "year": 2024,
+      "population": 12300000,
+      "area_km2": 1521,
+      "key_event": "River recovery and compact growth shape planning"
+    }
+  ]
+}
