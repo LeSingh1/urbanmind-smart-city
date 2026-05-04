@@ -1,238 +1,160 @@
-import { useState } from 'react'
 import { motion } from 'framer-motion'
-import { Play, Pause, Download, Settings, RefreshCw, Zap } from 'lucide-react'
+import { Building2, Play, Pause, Square, Zap, Download, Settings, RefreshCw } from 'lucide-react'
 import { useSimulationStore } from '@/stores/simulationStore'
 import { useCityStore } from '@/stores/cityStore'
-import { useScenarioStore, scenarioColors, scenarioLabels } from '@/stores/scenarioStore'
+import { useScenarioStore, SCENARIOS } from '@/stores/scenarioStore'
 import { useSimulation } from '@/hooks/useSimulation'
-import { useWebSocket } from '@/hooks/useWebSocket'
-import { Logo } from '@/components/UI/LandingScreen'
-import type { ScenarioId } from '@/types/city.types'
 
-const SCENARIO_IDS: ScenarioId[] = ['balanced', 'max_growth', 'climate_resilient', 'equity_focused', 'historic']
-
-const SCENARIO_ICONS: Record<ScenarioId, string> = {
-  balanced: '⚖',
-  max_growth: '📈',
-  climate_resilient: '🌱',
-  equity_focused: '🤝',
-  historic: '🏛',
+interface TopBarProps {
+  ws: { connected: boolean; pause: () => void; resume: () => void; changeScenario: (s: string) => void }
 }
 
-export function TopBar() {
-  const { isRunning, isPaused, currentYear, sessionId, metricsHistory, frameHistory } = useSimulationStore()
+export function TopBar({ ws }: TopBarProps) {
+  const { status, currentYear, currentStep, totalSteps, session } = useSimulationStore()
   const { selectedCity } = useCityStore()
-  const { activeScenario, setScenario } = useScenarioStore()
-  const { start, pause, resume } = useSimulation()
-  const ws = useWebSocket(sessionId)
-  const [starting, setStarting] = useState(false)
+  const { currentScenario, scenarioConfig, setScenario } = useScenarioStore()
+  const { startSimulation, loading, exportSimulation } = useSimulation()
 
-  const totalSteps = 50
-  const progress = (currentYear / totalSteps) * 100
-
-  const status = isRunning && !isPaused
-    ? 'running'
-    : isPaused
-    ? 'paused'
-    : sessionId && !isRunning && metricsHistory.length > 0
-    ? 'completed'
-    : 'idle'
+  const progress = totalSteps > 0 ? (currentStep / totalSteps) * 100 : 0
 
   const handleStart = async () => {
-    if (!selectedCity) return
-    setStarting(true)
-    await start(selectedCity.id, activeScenario)
-    setStarting(false)
+    await startSimulation(currentScenario)
   }
 
-  const handleExport = () => {
-    const last = frameHistory.at(-1)
-    if (!last) return
-    const blob = new Blob([JSON.stringify(last, null, 2)], { type: 'application/json' })
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = `urbanmind-${selectedCity?.id ?? 'sim'}-year${currentYear}.json`
-    a.click()
-    URL.revokeObjectURL(url)
+  const handleExport = async () => {
+    if (session) await exportSimulation(session.session_id, 'json')
   }
-
-  const statusColor =
-    status === 'running' ? 'var(--color-accent-cyan)' :
-    status === 'paused' ? 'var(--color-accent-warning)' :
-    status === 'completed' ? 'var(--color-accent-green)' :
-    'var(--color-text-muted)'
-
-  const scenarioColor = scenarioColors[activeScenario]
 
   return (
-    <div
-      className="flex items-center gap-4 px-4 h-14 shrink-0"
-      style={{
-        background: 'var(--color-bg-sidebar)',
-        borderBottom: '1px solid var(--color-border-subtle)',
-        boxShadow: '0 1px 0 rgba(0,212,255,0.06)',
-      }}
-    >
-      {/* Logo + city */}
-      <div className="flex items-center gap-3 shrink-0">
-        <Logo />
-        <div className="w-px h-5 opacity-30" style={{ background: 'var(--color-accent-cyan)' }} />
-        <span
-          className="font-mono text-xs tracking-widest uppercase"
-          style={{ color: 'var(--color-text-muted)', letterSpacing: '0.15em' }}
-        >
-          {selectedCity?.name ?? '——'}
-        </span>
+    <div className="flex items-center gap-4 px-4 py-2 bg-bg-secondary border-b border-border-subtle h-14 shrink-0">
+      {/* Logo */}
+      <div className="flex items-center gap-2 shrink-0">
+        <Building2 size={22} className="text-accent-cyan" />
+        <div>
+          <div className="text-sm font-bold text-text-primary leading-none">UrbanMind AI</div>
+          <div className="text-xs text-text-muted font-mono leading-none mt-0.5">
+            {selectedCity?.name ?? 'No city'}
+          </div>
+        </div>
       </div>
 
-      <div className="w-px h-8" style={{ background: 'var(--color-border-subtle)' }} />
+      <div className="w-px h-8 bg-border-subtle" />
 
       {/* Scenario selector */}
       <div className="flex gap-1">
-        {SCENARIO_IDS.map((id) => {
-          const active = activeScenario === id
-          const color = scenarioColors[id]
-          return (
-            <motion.button
-              key={id}
-              onClick={() => {
-                setScenario(id)
-                if (isRunning) ws.send({ type: 'CHANGE_SCENARIO', scenario_id: id })
-              }}
-              whileHover={{ scale: 1.03 }}
-              whileTap={{ scale: 0.97 }}
-              className="px-2.5 py-1 rounded-md text-xs font-display font-medium transition-all"
-              style={
-                active
-                  ? { background: `${color}20`, color, border: `1px solid ${color}50`, boxShadow: `0 0 8px ${color}30` }
-                  : { color: 'var(--color-text-muted)', border: '1px solid transparent' }
-              }
-              title={scenarioLabels[id]}
-            >
-              <span className="mr-1">{SCENARIO_ICONS[id]}</span>
-              {scenarioLabels[id]}
-            </motion.button>
-          )
-        })}
+        {SCENARIOS.map((s) => (
+          <button
+            key={s.id}
+            onClick={() => {
+              setScenario(s.id)
+              if (status === 'running') ws.changeScenario(s.id)
+            }}
+            className={`px-2 py-1 rounded text-xs font-medium transition-all ${
+              currentScenario === s.id
+                ? 'text-white'
+                : 'text-text-muted hover:text-text-secondary'
+            }`}
+            style={currentScenario === s.id ? { backgroundColor: s.color + '33', color: s.color } : {}}
+            title={s.description}
+          >
+            <span className="font-mono text-[10px] mr-1">{s.icon}</span>
+            {s.name}
+          </button>
+        ))}
       </div>
 
-      <div className="w-px h-8" style={{ background: 'var(--color-border-subtle)' }} />
+      <div className="w-px h-8 bg-border-subtle" />
 
-      {/* Year + Progress */}
-      <div className="flex items-center gap-3">
-        <div className="text-center min-w-[40px]">
-          <motion.div
-            key={currentYear}
-            initial={{ opacity: 0.4, y: -4 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="font-mono font-bold text-lg leading-none"
-            style={{ color: 'var(--color-accent-cyan)' }}
-          >
-            {currentYear}
-          </motion.div>
-          <div className="font-mono text-[9px] tracking-widest uppercase mt-0.5" style={{ color: 'var(--color-text-muted)' }}>
-            YEAR
-          </div>
+      {/* Year / Progress */}
+      <div className="flex items-center gap-3 min-w-[180px]">
+        <div className="text-center">
+          <div className="text-lg font-bold font-mono text-accent-cyan">{currentYear}</div>
+          <div className="text-xs text-text-muted leading-none">Year</div>
         </div>
-        <div className="min-w-[120px]">
-          <div className="flex justify-between mb-1.5">
-            <span className="font-mono text-[9px] tracking-widest uppercase" style={{ color: 'var(--color-text-muted)' }}>PROGRESS</span>
-            <span className="font-mono text-[9px]" style={{ color: 'var(--color-text-muted)' }}>{progress.toFixed(0)}%</span>
+        <div className="flex-1">
+          <div className="flex justify-between text-xs text-text-muted mb-1">
+            <span>Progress</span>
+            <span>{progress.toFixed(0)}%</span>
           </div>
-          <div className="h-1 rounded-full overflow-hidden" style={{ background: 'var(--color-bg-card)' }}>
+          <div className="h-1.5 bg-bg-card rounded-full overflow-hidden w-32">
             <motion.div
               className="h-full rounded-full"
-              style={{ background: 'var(--color-accent-cyan)', boxShadow: '0 0 6px rgba(0,212,255,0.4)' }}
+              style={{ backgroundColor: scenarioConfig.color }}
               animate={{ width: `${progress}%` }}
-              transition={{ duration: 0.4 }}
+              transition={{ duration: 0.3 }}
             />
           </div>
         </div>
       </div>
 
-      {/* Status */}
+      {/* Status indicator */}
       <div className="flex items-center gap-2">
         <motion.div
-          className="w-2 h-2 rounded-full"
-          style={{ background: statusColor, boxShadow: `0 0 6px ${statusColor}` }}
-          animate={status === 'running' ? { opacity: [1, 0.3, 1], scale: [1, 1.3, 1] } : {}}
-          transition={{ duration: 1.4, repeat: Infinity }}
+          className={`w-2 h-2 rounded-full ${
+            status === 'running' ? 'bg-accent-green' :
+            status === 'paused' ? 'bg-accent-amber' :
+            status === 'completed' ? 'bg-accent-blue' :
+            status === 'error' ? 'bg-accent-red' :
+            'bg-text-muted'
+          }`}
+          animate={status === 'running' ? { opacity: [1, 0.4, 1] } : {}}
+          transition={{ duration: 1.5, repeat: Infinity }}
         />
-        <span className="font-mono text-xs tracking-widest uppercase" style={{ color: 'var(--color-text-muted)' }}>{status}</span>
+        <span className="text-xs text-text-secondary capitalize">{status}</span>
       </div>
 
       <div className="flex-1" />
 
       {/* Controls */}
       <div className="flex items-center gap-2">
-        {(status === 'idle' || status === 'completed') ? (
-          <motion.button
+        {status === 'idle' || status === 'completed' ? (
+          <button
             onClick={handleStart}
-            disabled={starting || !selectedCity}
-            whileHover={{ scale: 1.03, boxShadow: '0 0 16px rgba(0,255,156,0.4)' }}
-            whileTap={{ scale: 0.97 }}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold font-display disabled:opacity-40 disabled:cursor-not-allowed"
-            style={{ background: 'rgba(0,255,156,0.08)', color: 'var(--color-accent-green)', border: '1px solid rgba(0,255,156,0.3)' }}
+            disabled={loading || !selectedCity}
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-accent-green/20 text-accent-green border border-accent-green/30 rounded-lg text-sm font-medium hover:bg-accent-green/30 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
           >
-            {starting ? <RefreshCw size={13} className="animate-spin" /> : <Play size={13} />}
-            {starting ? 'Starting…' : 'Start Simulation'}
-          </motion.button>
+            {loading ? <RefreshCw size={14} className="animate-spin" /> : <Play size={14} />}
+            {loading ? 'Starting...' : 'Start Simulation'}
+          </button>
         ) : status === 'running' ? (
-          <motion.button
-            onClick={pause}
-            whileHover={{ scale: 1.03 }}
-            whileTap={{ scale: 0.97 }}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold font-display"
-            style={{ background: 'rgba(255,184,0,0.08)', color: 'var(--color-accent-warning)', border: '1px solid rgba(255,184,0,0.3)' }}
+          <button
+            onClick={ws.pause}
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-accent-amber/20 text-accent-amber border border-accent-amber/30 rounded-lg text-sm font-medium hover:bg-accent-amber/30"
           >
-            <Pause size={13} /> Pause
-          </motion.button>
+            <Pause size={14} /> Pause
+          </button>
         ) : status === 'paused' ? (
-          <motion.button
-            onClick={resume}
-            whileHover={{ scale: 1.03 }}
-            whileTap={{ scale: 0.97 }}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold font-display"
-            style={{ background: 'rgba(0,255,156,0.08)', color: 'var(--color-accent-green)', border: '1px solid rgba(0,255,156,0.3)' }}
+          <button
+            onClick={ws.resume}
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-accent-green/20 text-accent-green border border-accent-green/30 rounded-lg text-sm font-medium hover:bg-accent-green/30"
           >
-            <Play size={13} /> Resume
-          </motion.button>
+            <Play size={14} /> Resume
+          </button>
         ) : null}
 
-        {sessionId && (
-          <motion.button
+        {session && (
+          <button
             onClick={handleExport}
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            className="flex items-center justify-center w-8 h-8 rounded-lg"
-            style={{ border: '1px solid var(--color-border-subtle)', color: 'var(--color-text-muted)', background: 'var(--color-bg-panel)' }}
-            title="Export simulation"
+            className="p-1.5 text-text-muted hover:text-text-primary border border-border-subtle rounded-lg hover:border-border-active transition-all"
+            title="Export simulation data"
           >
-            <Download size={13} />
-          </motion.button>
+            <Download size={14} />
+          </button>
         )}
 
-        <motion.button
-          whileHover={{ scale: 1.05 }}
-          whileTap={{ scale: 0.95 }}
-          className="flex items-center justify-center w-8 h-8 rounded-lg"
-          style={{ border: '1px solid var(--color-border-subtle)', color: 'var(--color-text-muted)', background: 'var(--color-bg-panel)' }}
+        <button
+          className="p-1.5 text-text-muted hover:text-text-primary border border-border-subtle rounded-lg hover:border-border-active transition-all"
           title="Settings"
         >
-          <Settings size={13} />
-        </motion.button>
+          <Settings size={14} />
+        </button>
 
-        <div
-          className="flex items-center gap-1.5 px-2 py-1 rounded-md font-mono text-[10px] tracking-widest uppercase"
-          style={{
-            color: ws.isConnected ? 'var(--color-accent-cyan)' : 'var(--color-accent-danger)',
-            border: `1px solid ${ws.isConnected ? 'rgba(0,212,255,0.2)' : 'rgba(255,51,102,0.2)'}`,
-            background: ws.isConnected ? 'rgba(0,212,255,0.05)' : 'rgba(255,51,102,0.05)',
-          }}
-        >
-          <Zap size={9} />
-          {ws.isConnected ? 'LIVE' : 'OFF'}
+        {/* WebSocket status */}
+        <div className={`flex items-center gap-1 px-2 py-1 rounded text-xs font-mono ${
+          ws.connected ? 'text-accent-green' : 'text-accent-red'
+        }`}>
+          <Zap size={10} />
+          {ws.connected ? 'LIVE' : 'OFF'}
         </div>
       </div>
     </div>

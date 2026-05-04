@@ -1,6 +1,6 @@
-import { useEffect, useRef, useState } from 'react'
+import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { X, Globe, Plus } from 'lucide-react'
+import { Building2, X } from 'lucide-react'
 import { useCityStore } from '@/stores/cityStore'
 import type { CityProfile } from '@/types/city.types'
 import { SandboxBuilder } from './SandboxBuilder'
@@ -14,145 +14,82 @@ export function LandingScreen({ onEnter }: Props) {
   const [sandboxOpen, setSandboxOpen] = useState(false)
 
   return (
-    <div className="relative h-screen overflow-hidden" style={{ background: 'var(--color-bg-app)' }}>
-      <StarField />
-      <HudGrid />
-
-      <div className="absolute inset-0 flex items-center justify-center p-6">
+    <div style={{ position: 'relative', height: '100vh', overflow: 'hidden', background: '#0D1117' }}>
+      <AnimatedCityscape />
+      <div style={{ position: 'absolute', inset: 0, display: 'grid', placeItems: 'center', padding: 24 }}>
         <motion.div
-          initial="hidden"
-          animate="visible"
-          variants={{ hidden: {}, visible: { transition: { staggerChildren: 0.1 } } }}
-          className="w-full max-w-lg"
+          className="glass-panel"
+          initial={{ opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0 }}
+          style={{ width: 'min(520px, 100%)', borderRadius: 16, padding: 36, textAlign: 'center' }}
         >
-          {/* Hero panel */}
-          <motion.div
-            variants={{ hidden: { opacity: 0, y: 24 }, visible: { opacity: 1, y: 0, transition: { duration: 0.6, ease: [0.16, 1, 0.3, 1] } } }}
-            className="scanline relative rounded-2xl p-10 text-center"
-            style={{
-              background: 'rgba(13, 26, 46, 0.82)',
-              backdropFilter: 'blur(20px)',
-              border: '1px solid rgba(0, 212, 255, 0.3)',
-              boxShadow: '0 0 40px rgba(0,212,255,0.08), 0 0 80px rgba(0,212,255,0.04), inset 0 1px 0 rgba(0,212,255,0.15)',
-            }}
-          >
-            {/* Corner accents */}
-            <CornerAccents />
-
-            {/* Logo */}
-            <motion.div
-              variants={{ hidden: { opacity: 0, scale: 0.9 }, visible: { opacity: 1, scale: 1, transition: { duration: 0.5 } } }}
-              className="mb-3"
-            >
-              <CityIcon />
-            </motion.div>
-
-            <motion.h1
-              variants={{ hidden: { opacity: 0, y: 8 }, visible: { opacity: 1, y: 0 } }}
-              className="font-display font-bold tracking-widest uppercase mb-1"
-              style={{
-                fontSize: 42,
-                background: 'linear-gradient(135deg, #00D4FF 0%, #7C3AED 100%)',
-                WebkitBackgroundClip: 'text',
-                WebkitTextFillColor: 'transparent',
-                backgroundClip: 'text',
-                letterSpacing: '0.15em',
-                lineHeight: 1.1,
-              }}
-            >
-              UrbanMind
-            </motion.h1>
-
-            <motion.p
-              variants={{ hidden: { opacity: 0 }, visible: { opacity: 1 } }}
-              className="font-mono text-sm tracking-widest uppercase mb-1"
-              style={{ color: 'var(--color-accent-cyan)', opacity: 0.7, letterSpacing: '0.3em' }}
-            >
-              AI · CITY SIMULATION
-            </motion.p>
-
-            <motion.p
-              variants={{ hidden: { opacity: 0 }, visible: { opacity: 1 } }}
-              className="font-display mb-8 mt-4"
-              style={{ color: 'var(--color-text-secondary)', fontSize: 15, lineHeight: 1.6 }}
-            >
-              Plan how real cities evolve over 50 years.<br />
-              AI-powered. Data-driven. Year by year.
-            </motion.p>
-
-            {/* CTA Buttons */}
-            <motion.div
-              variants={{ hidden: { opacity: 0, y: 8 }, visible: { opacity: 1, y: 0 } }}
-              className="flex flex-col gap-3"
-            >
-              <GlowButton
-                variant="cyan"
-                onClick={() => setGalleryOpen(true)}
-                icon={<Globe size={16} />}
-              >
-                Explore a Real City
-              </GlowButton>
-              <GlowButton
-                variant="purple"
-                onClick={() => setSandboxOpen(true)}
-                icon={<Plus size={16} />}
-              >
-                Build a New City
-              </GlowButton>
-            </motion.div>
-
-            {/* Status line */}
-            <motion.div
-              variants={{ hidden: { opacity: 0 }, visible: { opacity: 1, transition: { delay: 0.5 } } }}
-              className="mt-6 flex items-center justify-center gap-2"
-            >
-              <span className="inline-block w-1.5 h-1.5 rounded-full animate-glow-pulse" style={{ background: 'var(--color-accent-cyan)' }} />
-              <span className="font-mono text-xs" style={{ color: 'var(--color-text-muted)', letterSpacing: '0.2em' }}>
-                9 CITIES · 5 SCENARIOS · 50-YEAR HORIZON
-              </span>
-            </motion.div>
-          </motion.div>
+          <Logo large />
+          <p style={{ margin: '16px 0 28px', color: 'var(--color-text-secondary)', fontSize: 20, fontStyle: 'italic' }}>
+            Plan the cities of tomorrow, today.
+          </p>
+          <button className="primary-cta" onClick={() => setGalleryOpen(true)}>Explore a Real City</button>
+          <button className="secondary-cta" onClick={() => setSandboxOpen(true)}>Build a New City</button>
         </motion.div>
       </div>
-
       <AnimatePresence>
         {galleryOpen && <CityGallery onClose={() => setGalleryOpen(false)} onEnter={onEnter} />}
-        {sandboxOpen && (
-          <SandboxOverlay onClose={() => setSandboxOpen(false)} onGenerated={onEnter} />
-        )}
+        {sandboxOpen && <SandboxOverlay onClose={() => setSandboxOpen(false)} onGenerated={onEnter} />}
       </AnimatePresence>
+      <style>{`
+        .primary-cta, .secondary-cta {
+          width: 100%;
+          height: 46px;
+          border-radius: var(--radius-md);
+          margin-top: 12px;
+          font-weight: 700;
+          font-size: 16px;
+          transition: var(--transition-fast);
+        }
+        .primary-cta {
+          border: 1px solid var(--color-brand-primary);
+          background: var(--color-brand-primary);
+          color: white;
+        }
+        .secondary-cta {
+          border: 1px solid var(--color-brand-accent);
+          background: transparent;
+          color: var(--color-brand-accent);
+        }
+        .city-gallery-card:hover {
+          transform: translateY(-4px);
+          border-color: var(--color-border-active);
+          box-shadow: var(--shadow-lg);
+        }
+      `}</style>
     </div>
   )
 }
 
-function GlowButton({
-  children,
-  onClick,
-  variant,
-  icon,
-}: {
-  children: React.ReactNode
-  onClick: () => void
-  variant: 'cyan' | 'purple'
-  icon?: React.ReactNode
-}) {
-  const isCyan = variant === 'cyan'
+function SandboxOverlay({ onClose, onGenerated }: { onClose: () => void; onGenerated: () => void }) {
   return (
-    <motion.button
-      onClick={onClick}
-      whileHover={{ scale: 1.02, boxShadow: isCyan ? '0 0 24px rgba(0,212,255,0.5)' : '0 0 24px rgba(124,58,237,0.5)' }}
-      whileTap={{ scale: 0.97 }}
-      className="relative w-full flex items-center justify-center gap-2 px-6 py-3 rounded-lg font-display font-semibold text-sm tracking-wide transition-colors"
-      style={{
-        border: `1px solid ${isCyan ? 'var(--color-accent-cyan)' : 'var(--color-accent-purple)'}`,
-        color: isCyan ? 'var(--color-accent-cyan)' : 'var(--color-accent-purple)',
-        background: isCyan ? 'rgba(0,212,255,0.06)' : 'rgba(124,58,237,0.06)',
-        letterSpacing: '0.06em',
-      }}
-    >
-      {icon}
-      {children}
-    </motion.button>
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} style={{ position: 'fixed', inset: 0, zIndex: 110, overflow: 'auto', padding: 32, background: 'rgba(13,17,23,0.9)', backdropFilter: 'blur(8px)' }}>
+      <button className="icon-btn" onClick={onClose} style={{ position: 'fixed', top: 20, right: 20 }} aria-label="Close sandbox builder"><X size={18} /></button>
+      <SandboxBuilder onGenerated={() => { onClose(); onGenerated() }} />
+    </motion.div>
+  )
+}
+
+export function Logo({ large = false }: { large?: boolean }) {
+  return (
+    <div style={{ display: 'inline-flex', alignItems: 'center', gap: 12 }}>
+      <svg width={large ? 64 : 28} height={large ? 48 : 24} viewBox="0 0 64 48" aria-hidden="true">
+        <defs>
+          <linearGradient id="urbanmind-logo" x1="0" x2="1">
+            <stop offset="0%" stopColor="#2E86C1" />
+            <stop offset="100%" stopColor="#17A589" />
+          </linearGradient>
+        </defs>
+        <path d="M5 43V25h8V11h10v32h6V18h9v25h5V6h12v37h4v4H2v-4h3z" fill="url(#urbanmind-logo)" />
+      </svg>
+      <strong style={{ color: 'white', fontSize: large ? 48 : 16, fontWeight: 800, letterSpacing: 0 }}>
+        UrbanMind AI
+      </strong>
+    </div>
   )
 }
 
@@ -171,272 +108,59 @@ function CityGallery({ onClose, onEnter }: { onClose: () => void; onEnter: () =>
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      className="fixed inset-0 z-50 overflow-auto"
-      style={{ background: 'rgba(5,10,20,0.92)', backdropFilter: 'blur(16px)' }}
+      style={{ position: 'fixed', inset: 0, zIndex: 100, overflow: 'auto', padding: 32, background: 'rgba(13,17,23,0.86)', backdropFilter: 'blur(8px)' }}
     >
-      <button
-        onClick={onClose}
-        className="fixed top-5 right-5 flex items-center justify-center w-9 h-9 rounded-lg transition-colors"
-        style={{ border: '1px solid var(--color-border-subtle)', color: 'var(--color-text-secondary)', background: 'var(--color-bg-panel)' }}
-        aria-label="Close city gallery"
-      >
-        <X size={16} />
-      </button>
+      <button className="icon-btn" onClick={onClose} style={{ position: 'fixed', top: 20, right: 20 }} aria-label="Close city gallery"><X size={18} /></button>
+      <div style={{ width: 'min(960px, 100%)', margin: '48px auto', display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 18 }}>
+        <button className="city-gallery-card" onClick={() => { onClose(); }} style={{ width: '100%', textAlign: 'left', border: '1px dashed var(--color-brand-accent)', borderRadius: 8, overflow: 'hidden', background: 'var(--color-bg-panel)', transition: 'var(--transition-med)', color: 'white', padding: 18, minHeight: 260 }}>
+          <Building2 size={28} />
+          <h3>New Sandbox City</h3>
+          <p style={{ color: 'var(--color-text-secondary)', fontSize: 13 }}>Use the Build a New City option on the landing screen to generate procedural terrain.</p>
+        </button>
+        {cities.map((city) => (
+          <button
+            key={city.id}
+            className="city-gallery-card"
+            onClick={() => chooseCity(city)}
+            style={{ width: '100%', textAlign: 'left', border: '1px solid var(--color-border-subtle)', borderRadius: 8, overflow: 'hidden', background: 'var(--color-bg-panel)', transition: 'var(--transition-med)', color: 'white', padding: 0 }}
+          >
+            <img src={thumbnailUrl(city)} alt="" style={{ width: '100%', height: 160, objectFit: 'cover', display: 'block', background: 'var(--color-bg-card)' }} />
+            <div style={{ padding: 14 }}>
+              <h3 style={{ margin: 0, fontSize: 18, fontWeight: 700 }}>{city.name}</h3>
+              <p style={{ margin: '4px 0 8px', fontSize: 13, color: 'var(--color-text-secondary)' }}>{city.country} · {formatPopulation(city.population_current)}</p>
+              <p style={{ minHeight: 36, margin: 0, fontSize: 12, lineHeight: 1.45, color: 'var(--color-text-muted)' }}>{city.key_planning_challenge}</p>
+              <div style={{ marginTop: 12, color: 'var(--color-text-accent)', fontSize: 12, fontWeight: 700 }}>Plan This City</div>
+            </div>
+          </button>
+        ))}
+      </div>
+    </motion.div>
+  )
+}
 
-      <div className="max-w-5xl mx-auto px-6 py-16">
-        <motion.div
-          initial={{ opacity: 0, y: -12 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="mb-10 text-center"
-        >
-          <h2 className="font-display font-bold text-3xl tracking-wide mb-2" style={{ color: 'var(--color-text-primary)' }}>
-            Choose Your City
-          </h2>
-          <p className="font-mono text-xs tracking-widest uppercase" style={{ color: 'var(--color-text-muted)' }}>
-            Select a real city to begin the 50-year simulation
-          </p>
-        </motion.div>
-
-        <motion.div
-          initial="hidden"
-          animate="visible"
-          variants={{ hidden: {}, visible: { transition: { staggerChildren: 0.06 } } }}
-          className="grid grid-cols-3 gap-4"
-        >
-          {cities.map((city) => (
-            <CityCard key={city.id} city={city} onSelect={chooseCity} />
+function AnimatedCityscape() {
+  const buildings = Array.from({ length: 44 }, (_, i) => ({ x: i * 34, h: 80 + ((i * 37) % 180), w: 22 + ((i * 13) % 28) }))
+  return (
+    <svg style={{ position: 'absolute', inset: 'auto 0 0 0', width: '140%', height: '62%', opacity: 0.55, animation: 'skylineDrift 40s linear infinite' }} viewBox="0 0 1500 500" preserveAspectRatio="none">
+      <rect width="1500" height="500" fill="transparent" />
+      {buildings.map((b, i) => (
+        <g key={i}>
+          <rect x={b.x} y={500 - b.h} width={b.w} height={b.h} fill={i % 3 === 0 ? '#111827' : '#1F2937'} />
+          {Array.from({ length: Math.floor(b.h / 24) }, (_, j) => (
+            <rect key={j} x={b.x + 6} y={500 - b.h + 10 + j * 22} width="5" height="8" fill="#2E86C1" style={{ animation: `windowGlow ${2 + (i % 4)}s ease-in-out infinite` }} />
           ))}
-        </motion.div>
-      </div>
-    </motion.div>
-  )
-}
-
-function CityCard({ city, onSelect }: { city: CityProfile; onSelect: (c: CityProfile) => void }) {
-  return (
-    <motion.button
-      variants={{ hidden: { opacity: 0, y: 16 }, visible: { opacity: 1, y: 0, transition: { duration: 0.4, ease: [0.16, 1, 0.3, 1] } } }}
-      onClick={() => onSelect(city)}
-      whileHover={{ scale: 1.02, borderColor: 'rgba(0,212,255,0.5)', boxShadow: '0 0 20px rgba(0,212,255,0.12)' }}
-      whileTap={{ scale: 0.98 }}
-      className="group text-left rounded-xl overflow-hidden transition-all"
-      style={{
-        background: 'var(--color-bg-card)',
-        border: '1px solid var(--color-border-subtle)',
-      }}
-    >
-      {/* City thumbnail / gradient header */}
-      <div
-        className="relative h-36 flex items-end p-4"
-        style={{
-          background: `linear-gradient(135deg, ${cityColor(city.id)} 0%, #050A14 100%)`,
-        }}
-      >
-        <div
-          className="absolute inset-0 opacity-30"
-          style={{
-            backgroundImage: 'linear-gradient(rgba(0,212,255,0.06) 1px, transparent 1px), linear-gradient(90deg, rgba(0,212,255,0.06) 1px, transparent 1px)',
-            backgroundSize: '20px 20px',
-          }}
-        />
-        <h3
-          className="relative font-display font-bold text-xl leading-tight"
-          style={{ color: 'var(--color-text-primary)', textShadow: '0 2px 8px rgba(0,0,0,0.6)' }}
-        >
-          {city.name}
-        </h3>
-      </div>
-
-      {/* City info */}
-      <div className="p-4">
-        <p className="font-mono text-xs mb-2" style={{ color: 'var(--color-text-muted)' }}>
-          {city.country} · {formatPopulation(city.population_current)}
-        </p>
-        <p className="text-xs leading-relaxed line-clamp-2" style={{ color: 'var(--color-text-secondary)', fontSize: 11, lineHeight: 1.5 }}>
-          {city.key_planning_challenge}
-        </p>
-        <div
-          className="mt-3 flex items-center gap-1.5 text-xs font-semibold font-mono tracking-wide opacity-0 group-hover:opacity-100 transition-opacity"
-          style={{ color: 'var(--color-accent-cyan)' }}
-        >
-          <span>SIMULATE</span>
-          <span>→</span>
-        </div>
-      </div>
-    </motion.button>
-  )
-}
-
-function SandboxOverlay({ onClose, onGenerated }: { onClose: () => void; onGenerated: () => void }) {
-  return (
-    <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
-      className="fixed inset-0 z-50 overflow-auto p-8"
-      style={{ background: 'rgba(5,10,20,0.92)', backdropFilter: 'blur(16px)' }}
-    >
-      <button
-        onClick={onClose}
-        className="fixed top-5 right-5 flex items-center justify-center w-9 h-9 rounded-lg"
-        style={{ border: '1px solid var(--color-border-subtle)', color: 'var(--color-text-secondary)', background: 'var(--color-bg-panel)' }}
-        aria-label="Close sandbox builder"
-      >
-        <X size={16} />
-      </button>
-      <SandboxBuilder onGenerated={() => { onClose(); onGenerated() }} />
-    </motion.div>
-  )
-}
-
-export function Logo({ large = false }: { large?: boolean }) {
-  return (
-    <div className="inline-flex items-center gap-3">
-      <span
-        className="font-display font-bold tracking-widest uppercase"
-        style={{
-          fontSize: large ? 32 : 15,
-          background: 'linear-gradient(135deg, #00D4FF 0%, #7C3AED 100%)',
-          WebkitBackgroundClip: 'text',
-          WebkitTextFillColor: 'transparent',
-          backgroundClip: 'text',
-          letterSpacing: '0.12em',
-        }}
-      >
-        UrbanMind
-      </span>
-      {large && (
-        <span className="font-mono text-xs tracking-widest" style={{ color: 'var(--color-accent-cyan)', opacity: 0.6 }}>
-          AI
-        </span>
-      )}
-    </div>
-  )
-}
-
-function CityIcon() {
-  return (
-    <svg width={56} height={44} viewBox="0 0 56 44" aria-hidden="true">
-      <defs>
-        <linearGradient id="city-icon-grad" x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0%" stopColor="#00D4FF" />
-          <stop offset="100%" stopColor="#7C3AED" />
-        </linearGradient>
-        <filter id="city-glow">
-          <feGaussianBlur stdDeviation="1.5" result="blur" />
-          <feMerge><feMergeNode in="blur" /><feMergeNode in="SourceGraphic" /></feMerge>
-        </filter>
-      </defs>
-      <path
-        d="M4 40V22h7V10h9v30h5V16h8v24h5V4h11v36h4v4H1v-4h3z"
-        fill="url(#city-icon-grad)"
-        filter="url(#city-glow)"
-      />
+        </g>
+      ))}
     </svg>
   )
 }
 
-function CornerAccents() {
-  const size = 14
-  const stroke = 'rgba(0,212,255,0.5)'
-  const style: React.CSSProperties = { position: 'absolute', strokeWidth: 1.5, fill: 'none', stroke }
-  return (
-    <>
-      <svg width={size} height={size} style={{ ...style, top: 10, left: 10 }} viewBox="0 0 14 14">
-        <path d="M14,2 L2,2 L2,14" />
-      </svg>
-      <svg width={size} height={size} style={{ ...style, top: 10, right: 10 }} viewBox="0 0 14 14">
-        <path d="M0,2 L12,2 L12,14" />
-      </svg>
-      <svg width={size} height={size} style={{ ...style, bottom: 10, left: 10 }} viewBox="0 0 14 14">
-        <path d="M14,12 L2,12 L2,0" />
-      </svg>
-      <svg width={size} height={size} style={{ ...style, bottom: 10, right: 10 }} viewBox="0 0 14 14">
-        <path d="M0,12 L12,12 L12,0" />
-      </svg>
-    </>
-  )
-}
-
-function StarField() {
-  const canvasRef = useRef<HTMLCanvasElement>(null)
-
-  useEffect(() => {
-    const canvas = canvasRef.current
-    if (!canvas) return
-    const ctx = canvas.getContext('2d')
-    if (!ctx) return
-
-    const resize = () => {
-      canvas.width = window.innerWidth
-      canvas.height = window.innerHeight
-    }
-    resize()
-    window.addEventListener('resize', resize)
-
-    const stars = Array.from({ length: 220 }, () => ({
-      x: Math.random() * window.innerWidth,
-      y: Math.random() * window.innerHeight,
-      r: Math.random() * 1.2 + 0.2,
-      alpha: Math.random() * 0.6 + 0.1,
-      speed: Math.random() * 0.003 + 0.001,
-      phase: Math.random() * Math.PI * 2,
-    }))
-
-    let animId: number
-    let t = 0
-    const draw = () => {
-      ctx.clearRect(0, 0, canvas.width, canvas.height)
-      t += 0.01
-      for (const s of stars) {
-        ctx.globalAlpha = s.alpha * (0.5 + 0.5 * Math.sin(t * s.speed * 100 + s.phase))
-        ctx.fillStyle = Math.random() > 0.98 ? '#7C3AED' : '#00D4FF'
-        ctx.beginPath()
-        ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2)
-        ctx.fill()
-      }
-      ctx.globalAlpha = 1
-      animId = requestAnimationFrame(draw)
-    }
-    draw()
-
-    return () => {
-      cancelAnimationFrame(animId)
-      window.removeEventListener('resize', resize)
-    }
-  }, [])
-
-  return <canvas ref={canvasRef} className="absolute inset-0 pointer-events-none" style={{ opacity: 0.7 }} />
-}
-
-function HudGrid() {
-  return (
-    <div
-      className="absolute inset-0 pointer-events-none animate-grid-pulse"
-      style={{
-        backgroundImage:
-          'linear-gradient(rgba(0,212,255,0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(0,212,255,0.03) 1px, transparent 1px)',
-        backgroundSize: '60px 60px',
-      }}
-    />
-  )
-}
-
-function cityColor(id: string): string {
-  const map: Record<string, string> = {
-    new_york: '#1a2a4a',
-    los_angeles: '#2a1a0a',
-    tokyo: '#0a1a2a',
-    lagos: '#1a2a0a',
-    london: '#0a1a1a',
-    sao_paulo: '#1a0a2a',
-    singapore: '#0a2a1a',
-    dubai: '#2a1a0a',
-    mumbai: '#1a1a0a',
-  }
-  return map[id] ?? '#0F2035'
+function thumbnailUrl(city: CityProfile): string {
+  const token = import.meta.env.VITE_MAPBOX_TOKEN
+  if (!token) return ''
+  return `https://api.mapbox.com/styles/v1/mapbox/satellite-streets-v12/static/${city.center_lng},${city.center_lat},${city.default_zoom}/280x160@2x?access_token=${token}`
 }
 
 function formatPopulation(value: number) {
-  return `${(value / 1_000_000).toFixed(value > 10_000_000 ? 1 : 2)}M`
+  return `${(value / 1_000_000).toFixed(value > 10_000_000 ? 1 : 2)}M residents`
 }

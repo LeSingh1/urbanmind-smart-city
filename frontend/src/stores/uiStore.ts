@@ -35,7 +35,7 @@ export const useUIStore = create<UIStore>((set) => ({
   isSplitScreen: false,
   isOverrideModeActive: false,
   selectedOverrideZone: null,
-  detailedGrid: true,
+  detailedGrid: false,
   activeMapLayer: 'zones',
 
   toggleLayer: (layerId) =>

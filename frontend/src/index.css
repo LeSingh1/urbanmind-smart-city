@@ -14,7 +14,7 @@ body,
   margin: 0;
   background: var(--color-bg-app);
   color: var(--color-text-primary);
-  font-family: var(--font-display);
+  font-family: var(--font-primary);
   overflow: hidden;
 }
 
@@ -31,32 +31,24 @@ button:focus-visible,
 input:focus-visible,
 select:focus-visible,
 [tabindex]:focus-visible {
-  outline: 2px solid var(--color-accent-cyan);
+  outline: 2px solid var(--color-brand-secondary);
   outline-offset: 2px;
-  outline-opacity: 0.7;
 }
 
 ::-webkit-scrollbar {
-  width: 4px;
-  height: 4px;
+  width: 6px;
+  height: 6px;
 }
 
 ::-webkit-scrollbar-track {
-  background: var(--color-bg-app);
+  background: var(--color-bg-sidebar);
 }
 
 ::-webkit-scrollbar-thumb {
-  background: rgba(0, 212, 255, 0.15);
-  border-radius: 2px;
+  background: var(--color-bg-hover);
+  border-radius: 3px;
 }
 
-::-webkit-scrollbar-thumb:hover {
-  background: rgba(0, 212, 255, 0.3);
-}
-
-/* Hide MapLibre attribution */
-.maplibregl-ctrl-logo,
-.maplibregl-ctrl-attrib,
 .mapboxgl-ctrl-logo,
 .mapboxgl-ctrl-attrib {
   display: none !important;
@@ -64,18 +56,35 @@ select:focus-visible,
 
 .icon-btn {
   display: inline-grid;
-  width: 32px;
-  height: 32px;
+  width: 36px;
+  height: 36px;
   place-items: center;
   border: 1px solid var(--color-border-subtle);
   border-radius: var(--radius-md);
-  background: var(--color-bg-panel);
+  background: rgba(31, 41, 55, 0.72);
   color: var(--color-text-secondary);
   transition: var(--transition-fast);
 }
 
 .icon-btn:hover {
-  border-color: var(--color-border-glow);
-  color: var(--color-accent-cyan);
-  box-shadow: 0 0 8px rgba(0,212,255,0.2);
+  border-color: var(--color-border-active);
+  color: var(--color-text-primary);
+  background: var(--color-bg-panel);
+}
+
+.glass-panel {
+  border: 1px solid rgba(96, 165, 250, 0.24);
+  background: rgba(17, 24, 39, 0.86);
+  box-shadow: var(--shadow-lg);
+  backdrop-filter: blur(18px);
+}
+
+@keyframes skylineDrift {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(-180px); }
+}
+
+@keyframes windowGlow {
+  0%, 100% { opacity: 0.38; }
+  50% { opacity: 0.9; }
 }
