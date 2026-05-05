@@ -8,27 +8,38 @@
     <meta name="description" content="AI-powered smart city expansion planning simulation" />
   </head>
   <body>
-    <div id="boot-status" style="position:fixed;top:10px;left:10px;z-index:999999;background:#131929;color:#e2e8f0;border:1px solid #2d4a7a;border-radius:6px;padding:8px 10px;font:12px system-ui,sans-serif">
+    <div id="boot-status" style="position:fixed;top:10px;left:10px;z-index:999999;background:#131929;color:#e2e8f0;border:1px solid #2d4a7a;border-radius:6px;padding:8px 12px;font:12px/1.5 system-ui,sans-serif;max-width:480px;word-break:break-all">
       UrbanMind loading...
     </div>
     <div id="root"></div>
     <script>
-      window.addEventListener('error', function (event) {
-        var el = document.getElementById('boot-status')
-        if (el) {
-          el.style.borderColor = '#ef4444'
-          el.style.color = '#fecaca'
-          el.textContent = 'UrbanMind error: ' + (event.message || 'unknown error')
+      var bootEl = document.getElementById('boot-status')
+      var _crashed = false
+
+      function showError(msg) {
+        _crashed = true
+        if (bootEl) {
+          bootEl.style.borderColor = '#ef4444'
+          bootEl.style.color = '#fecaca'
+          bootEl.style.background = '#1a0a0a'
+          bootEl.style.fontSize = '11px'
+          bootEl.innerHTML = '<b style="font-size:13px">⚠ Startup crash</b><br>' + msg
         }
+      }
+
+      window.addEventListener('error', function (e) {
+        showError((e.message || 'unknown') + (e.filename ? '<br>' + e.filename + ':' + e.lineno : ''))
       })
-      window.addEventListener('unhandledrejection', function (event) {
-        var el = document.getElementById('boot-status')
-        if (el) {
-          el.style.borderColor = '#ef4444'
-          el.style.color = '#fecaca'
-          el.textContent = 'UrbanMind error: ' + ((event.reason && event.reason.message) || event.reason || 'promise failed')
+      window.addEventListener('unhandledrejection', function (e) {
+        showError((e.reason && e.reason.message) || String(e.reason) || 'promise failed')
+      })
+
+      // Only remove the badge if the app actually mounted (React will call this)
+      window.__urbanmind_ready = function () {
+        if (!_crashed && bootEl) {
+          setTimeout(function() { bootEl && bootEl.remove() }, 1500)
         }
-      })
+      }
     </script>
     <script type="module" src="/src/main.tsx"></script>
   </body>

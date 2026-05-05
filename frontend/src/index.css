@@ -88,3 +88,57 @@ select:focus-visible,
   0%, 100% { opacity: 0.38; }
   50% { opacity: 0.9; }
 }
+
+/* ── Skeleton shimmer ─────────────────────────────────────────── */
+@keyframes shimmer {
+  0%   { background-position: -400px 0; }
+  100% { background-position:  400px 0; }
+}
+.skeleton {
+  display: block;
+  background: linear-gradient(90deg, rgba(55,65,81,0.6) 25%, rgba(75,85,99,0.9) 50%, rgba(55,65,81,0.6) 75%);
+  background-size: 800px 100%;
+  animation: shimmer 1.6s infinite linear;
+  border-radius: 4px;
+}
+
+/* ── Scanline overlay for glassmorphism panels ────────────────── */
+.scanline {
+  overflow: hidden;
+}
+.scanline::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 2px,
+    rgba(0, 212, 255, 0.015) 2px,
+    rgba(0, 212, 255, 0.015) 4px
+  );
+  border-radius: inherit;
+}
+
+/* ── Leaflet map — make sure it fills its container ──────────── */
+.leaflet-container {
+  width: 100% !important;
+  height: 100% !important;
+}
+
+/* ── Crisp dot pulsing ring for active zone hover ─────────────── */
+@keyframes dotRing {
+  0%   { transform: scale(1);   opacity: 0.8; }
+  70%  { transform: scale(2.4); opacity: 0; }
+  100% { transform: scale(2.4); opacity: 0; }
+}
+
+/* ── Map attribution — keep it but make it unobtrusive ──────── */
+.leaflet-control-attribution {
+  font-size: 9px !important;
+  opacity: 0.45 !important;
+  background: rgba(0,0,0,0.4) !important;
+  color: rgba(255,255,255,0.5) !important;
+}
+.leaflet-control-attribution a { color: rgba(0,212,255,0.6) !important; }

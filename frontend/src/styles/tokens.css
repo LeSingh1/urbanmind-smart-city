@@ -60,6 +60,13 @@
   --transition-fast: 150ms ease-in-out;
   --transition-med: 200ms ease-in-out;
   --transition-slow: 350ms cubic-bezier(0.16,1,0.3,1);
+
+  /* ── Accent palette (referenced by TopBar, Sidebar, LandingScreen) ── */
+  --color-accent-cyan:    #00D4FF;
+  --color-accent-purple:  #7C3AED;
+  --color-accent-green:   #00FF9C;
+  --color-accent-warning: #FFB800;
+  --color-accent-danger:  #FF3366;
 }
 
 @media (prefers-reduced-motion: reduce) {
