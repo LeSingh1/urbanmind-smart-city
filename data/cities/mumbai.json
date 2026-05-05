@@ -4,6 +4,8 @@
   "country": "India",
   "center_lat": 19.08,
   "center_lng": 72.88,
+  "sim_center_lat": 19.07,
+  "sim_center_lng": 72.895,
   "default_zoom": 11,
   "climate_zone": "Tropical wet and dry",
   "population_current": 20700000,

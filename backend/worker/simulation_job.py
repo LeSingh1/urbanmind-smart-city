@@ -1,5 +1,6 @@
 import asyncio
 import json
+import random
 import uuid
 from datetime import datetime, timezone
 from pathlib import Path
@@ -33,6 +34,16 @@ def _city_bbox(city: City) -> tuple[float, float, float, float]:
     return (city.center_lng - 0.25, city.center_lat - 0.2, city.center_lng + 0.25, city.center_lat + 0.2)
 
 
+def _city_sim_center(city: City) -> tuple[float, float]:
+    """Return the on-land simulation anchor point, falling back to DB center."""
+    path = DATA_DIR / f"{city.slug}.json"
+    if path.exists():
+        profile = json.loads(path.read_text())
+        if "sim_center_lat" in profile and "sim_center_lng" in profile:
+            return profile["sim_center_lat"], profile["sim_center_lng"]
+    return city.center_lat, city.center_lng
+
+
 def _city_boundary_feature(city: City) -> dict:
     path = DATA_DIR / f"{city.slug}.json"
     geometry = None
@@ -58,9 +69,17 @@ def _city_boundary_feature(city: City) -> dict:
 
 def _simulation_geojson(city: City, year: int) -> tuple[dict, dict, list[dict]]:
     west, south, east, north = _city_bbox(city)
-    cols = 18
-    rows = 14
-    growth = 18 + year * 3
+    clat, clng = _city_sim_center(city)
+
+    # City-block scale cells (~270m × 200m). Growing from the actual city
+    # center ensures zones stay on land rather than spreading over water.
+    CELL_W = 0.003
+    CELL_H = 0.002
+    COLS = 60
+    ROWS = 50
+    ccol, crow = COLS // 2, ROWS // 2
+    max_radius = 3 + year // 2  # slowly expand outward each year
+
     zone_ids = [
         "RES_LOW_DETACHED",
         "RES_MED_APARTMENT",
@@ -74,31 +93,42 @@ def _simulation_geojson(city: City, year: int) -> tuple[dict, dict, list[dict]]:
         "EDU_HIGH",
         "SOLAR_FARM",
         "SMART_TRAFFIC_LIGHT",
+        "RES_AFFORDABLE",
+        "IND_WAREHOUSE",
     ]
+
     features = []
     actions = []
-    center_x, center_y = cols // 2, rows // 2
-    for index in range(growth):
-        x = (center_x + ((index * 5) % cols) - cols // 2) % cols
-        y = (center_y + ((index * 7) % rows) - rows // 2) % rows
-        distance = abs(x - center_x) + abs(y - center_y)
-        if distance > 3 + year // 6:
-            continue
-        zone = zone_ids[(index + year) % len(zone_ids)]
-        x0 = west + (east - west) * x / cols
-        x1 = west + (east - west) * (x + 1) / cols
-        y0 = south + (north - south) * y / rows
-        y1 = south + (north - south) * (y + 1) / rows
-        features.append({
-            "type": "Feature",
-            "properties": {
-                "x": x,
-                "y": y,
-                "zone_type_id": zone,
-                "population_density": 2500 + distance * 1800 + year * 220,
-            },
-            "geometry": {"type": "Polygon", "coordinates": [[[x0, y0], [x1, y0], [x1, y1], [x0, y1], [x0, y0]]]},
-        })
+
+    for row in range(ROWS):
+        for col in range(COLS):
+            dc = col - ccol
+            dr = row - crow
+            dist = abs(dc) + abs(dr)
+            if dist > max_radius:
+                continue
+
+            lng = clng + dc * CELL_W
+            lat = clat - dr * CELL_H  # dr positive → south
+
+            # Skip cells outside city bbox
+            if not (west <= lng < east and south <= lat < north):
+                continue
+
+            x0, x1 = lng - CELL_W / 2, lng + CELL_W / 2
+            y0, y1 = lat - CELL_H / 2, lat + CELL_H / 2
+
+            zone = zone_ids[(col * 7 + row * 13 + year) % len(zone_ids)]
+            features.append({
+                "type": "Feature",
+                "properties": {
+                    "x": col,
+                    "y": row,
+                    "zone_type_id": zone,
+                    "population_density": 4000 + dist * 600 + year * 150,
+                },
+                "geometry": {"type": "Polygon", "coordinates": [[[x0, y0], [x1, y0], [x1, y1], [x0, y1], [x0, y0]]]},
+            })
     for action_index, feature in enumerate(features[-3:]):
         props = feature["properties"]
         zone = props["zone_type_id"]
@@ -110,12 +140,14 @@ def _simulation_geojson(city: City, year: int) -> tuple[dict, dict, list[dict]]:
             "sps_score": round(4.2 + (year % 10) * 0.35 + action_index * 0.2, 2),
             "rejection_reason": "Lower connectivity and service leverage than the selected cell." if action_index == 0 else None,
         })
+    span_w = COLS // 2 * CELL_W
+    span_h = ROWS // 2 * CELL_H
     roads = {
         "type": "FeatureCollection",
         "features": [
-            {"type": "Feature", "properties": {"road_type": "HIGHWAY", "congestion_pct": min(100, 35 + year)}, "geometry": {"type": "LineString", "coordinates": [[west, (south + north) / 2], [east, (south + north) / 2]]}},
-            {"type": "Feature", "properties": {"road_type": "ARTERIAL", "congestion_pct": max(10, 52 - year // 2)}, "geometry": {"type": "LineString", "coordinates": [[(west + east) / 2, south], [(west + east) / 2, north]]}},
-            {"type": "Feature", "properties": {"road_type": "COLLECTOR", "congestion_pct": 30}, "geometry": {"type": "LineString", "coordinates": [[west, south + (north - south) * 0.68], [east, south + (north - south) * 0.68]]}},
+            {"type": "Feature", "properties": {"road_type": "HIGHWAY", "congestion_pct": min(100, 35 + year)}, "geometry": {"type": "LineString", "coordinates": [[clng - span_w, clat], [clng + span_w, clat]]}},
+            {"type": "Feature", "properties": {"road_type": "ARTERIAL", "congestion_pct": max(10, 52 - year // 2)}, "geometry": {"type": "LineString", "coordinates": [[clng, clat - span_h], [clng, clat + span_h]]}},
+            {"type": "Feature", "properties": {"road_type": "COLLECTOR", "congestion_pct": 30}, "geometry": {"type": "LineString", "coordinates": [[clng - span_w * 0.6, clat + span_h * 0.3], [clng + span_w * 0.6, clat + span_h * 0.3]]}},
         ],
     }
     return {"type": "FeatureCollection", "features": features}, roads, actions

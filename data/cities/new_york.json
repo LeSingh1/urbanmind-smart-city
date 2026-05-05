@@ -4,6 +4,8 @@
   "country": "United States",
   "center_lat": 40.71,
   "center_lng": -74.01,
+  "sim_center_lat": 40.754,
+  "sim_center_lng": -73.984,
   "default_zoom": 11,
   "climate_zone": "Humid subtropical",
   "population_current": 8300000,
