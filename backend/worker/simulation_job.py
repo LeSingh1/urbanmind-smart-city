@@ -1,6 +1,6 @@
 import asyncio
+import heapq
 import json
-import random
 import uuid
 from datetime import datetime, timezone
 from pathlib import Path
@@ -12,6 +12,31 @@ from models.simulation_session import SimulationSession, SimulationStatus
 from redis_client import get_redis
 
 DATA_DIR = Path(__file__).resolve().parents[2] / "data" / "cities"
+
+# Module-level cache to avoid re-reading JSON on every simulation frame
+_LAND_POLYGON_CACHE: dict[str, list | None] = {}
+
+CELL_W = 0.003
+CELL_H = 0.002
+COLS = 80
+ROWS = 70
+
+ZONE_IDS = [
+    "RES_LOW_DETACHED",
+    "RES_MED_APARTMENT",
+    "RES_HIGH_TOWER",
+    "RES_MIXED",
+    "COM_SMALL_SHOP",
+    "COM_OFFICE_PLAZA",
+    "PARK_SMALL",
+    "BUS_STATION",
+    "HEALTH_HOSPITAL",
+    "EDU_HIGH",
+    "SOLAR_FARM",
+    "SMART_TRAFFIC_LIGHT",
+    "RES_AFFORDABLE",
+    "IND_WAREHOUSE",
+]
 
 
 def run_simulation(session_id: str, city_id: str, scenario_id: str) -> None:
@@ -44,6 +69,47 @@ def _city_sim_center(city: City) -> tuple[float, float]:
     return city.center_lat, city.center_lng
 
 
+def _city_land_polygon(city: City) -> list | None:
+    """Load land polygon rings from city JSON, with module-level caching."""
+    slug = city.slug
+    if slug in _LAND_POLYGON_CACHE:
+        return _LAND_POLYGON_CACHE[slug]
+    path = DATA_DIR / f"{slug}.json"
+    rings = None
+    if path.exists():
+        profile = json.loads(path.read_text())
+        rings = profile.get("land_polygon")
+    _LAND_POLYGON_CACHE[slug] = rings
+    return rings
+
+
+def _ray_cast(lng: float, lat: float, ring: list) -> bool:
+    """Ray-casting point-in-polygon test for a single ring."""
+    inside = False
+    n = len(ring)
+    j = n - 1
+    for i in range(n):
+        xi, yi = ring[i]
+        xj, yj = ring[j]
+        if ((yi > lat) != (yj > lat)) and (
+            lng < (xj - xi) * (lat - yi) / (yj - yi + 1e-12) + xi
+        ):
+            inside = not inside
+        j = i
+    return inside
+
+
+def _valid_land_cell(lng: float, lat: float, rings: list | None) -> bool:
+    """
+    Return True if the point is on land (inside any ring).
+    Fails open: if no land polygon is stored, every cell is accepted so the
+    simulation still runs for cities without polygon data.
+    """
+    if rings is None:
+        return True
+    return any(_ray_cast(lng, lat, ring) for ring in rings)
+
+
 def _city_boundary_feature(city: City) -> dict:
     path = DATA_DIR / f"{city.slug}.json"
     geometry = None
@@ -67,90 +133,169 @@ def _city_boundary_feature(city: City) -> dict:
     }
 
 
-def _simulation_geojson(city: City, year: int) -> tuple[dict, dict, list[dict]]:
-    west, south, east, north = _city_bbox(city)
+def _precompute_bfs(city: City) -> list[list[tuple[int, int]]]:
+    """
+    BFS expansion seeded from the city's sim_center.
+    Returns a list of 51 elements (years 0-50). Each element is the list of
+    (col, row) cells that are newly placed IN THAT YEAR. Year 0 = seed cells.
+
+    The heap key is (manhattan_distance_from_seed, col * ROWS + row) to ensure
+    deterministic tie-breaking across runs.
+    """
     clat, clng = _city_sim_center(city)
+    west, south, east, north = _city_bbox(city)
+    rings = _city_land_polygon(city)
 
-    # City-block scale cells (~270m × 200m). Growing from the actual city
-    # center ensures zones stay on land rather than spreading over water.
-    CELL_W = 0.003
-    CELL_H = 0.002
-    COLS = 60
-    ROWS = 50
-    ccol, crow = COLS // 2, ROWS // 2
-    max_radius = 3 + year // 2  # slowly expand outward each year
+    ccol = COLS // 2
+    crow = ROWS // 2
 
-    zone_ids = [
-        "RES_LOW_DETACHED",
-        "RES_MED_APARTMENT",
-        "RES_HIGH_TOWER",
-        "RES_MIXED",
-        "COM_SMALL_SHOP",
-        "COM_OFFICE_PLAZA",
-        "PARK_SMALL",
-        "BUS_STATION",
-        "HEALTH_HOSPITAL",
-        "EDU_HIGH",
-        "SOLAR_FARM",
-        "SMART_TRAFFIC_LIGHT",
-        "RES_AFFORDABLE",
-        "IND_WAREHOUSE",
-    ]
+    def col_lng(col: int) -> float:
+        return clng + (col - ccol) * CELL_W
 
+    def row_lat(row: int) -> float:
+        return clat - (row - crow) * CELL_H
+
+    def in_bbox(col: int, row: int) -> bool:
+        lng = col_lng(col)
+        lat = row_lat(row)
+        return west <= lng < east and south <= lat < north
+
+    def is_land(col: int, row: int) -> bool:
+        return _valid_land_cell(col_lng(col), row_lat(row), rings)
+
+    # Seed: the center cell and its immediate cardinal neighbours (all land-checked)
+    seeds = [(ccol, crow), (ccol + 1, crow), (ccol - 1, crow), (ccol, crow - 1), (ccol, crow + 1)]
+    seeds = [(c, r) for c, r in seeds if 0 <= c < COLS and 0 <= r < ROWS and in_bbox(c, r) and is_land(c, r)]
+    if not seeds:
+        # Fallback: use center even if it looks like water (edge case for cities
+        # where the polygon hasn't been generated yet)
+        seeds = [(ccol, crow)]
+
+    visited: set[tuple[int, int]] = set()
+    # (manhattan_dist, tiebreak, col, row)
+    heap: list[tuple[int, int, int, int]] = []
+    for c, r in seeds:
+        dist = abs(c - ccol) + abs(r - crow)
+        heapq.heappush(heap, (dist, c * ROWS + r, c, r))
+        visited.add((c, r))
+
+    # Each year admits up to NEW_PER_YEAR new cells from the BFS frontier
+    NEW_PER_YEAR = 12   # ~12 city blocks per simulated year
+    years: list[list[tuple[int, int]]] = []
+
+    # Year 0: place seed cells
+    years.append(list(seeds))
+
+    for _year in range(1, 51):
+        added: list[tuple[int, int]] = []
+        while heap and len(added) < NEW_PER_YEAR:
+            dist, _, col, row = heapq.heappop(heap)
+            # Expand neighbours
+            for dc, dr in [(-1, 0), (1, 0), (0, -1), (0, 1)]:
+                nc, nr = col + dc, row + dr
+                if (nc, nr) in visited:
+                    continue
+                if not (0 <= nc < COLS and 0 <= nr < ROWS):
+                    continue
+                if not in_bbox(nc, nr):
+                    continue
+                if not is_land(nc, nr):
+                    visited.add((nc, nr))  # mark water cells as visited to skip later
+                    continue
+                visited.add((nc, nr))
+                ndist = abs(nc - ccol) + abs(nr - crow)
+                heapq.heappush(heap, (ndist, nc * ROWS + nr, nc, nr))
+                added.append((nc, nr))
+                if len(added) >= NEW_PER_YEAR:
+                    break
+        years.append(added)
+
+    return years
+
+
+def _build_zones_geojson(
+    city: City,
+    placed_cells: set[tuple[int, int]],
+    new_this_year: list[tuple[int, int]],
+    year: int,
+    clng: float,
+    clat: float,
+) -> dict:
+    ccol = COLS // 2
+    crow = ROWS // 2
     features = []
-    actions = []
+    new_set = set(new_this_year)
+    for col, row in placed_cells:
+        lng = clng + (col - ccol) * CELL_W
+        lat = clat - (row - crow) * CELL_H
+        x0, x1 = lng - CELL_W / 2, lng + CELL_W / 2
+        y0, y1 = lat - CELL_H / 2, lat + CELL_H / 2
+        dist = abs(col - ccol) + abs(row - crow)
+        zone = ZONE_IDS[(col * 7 + row * 13 + year) % len(ZONE_IDS)]
+        features.append({
+            "type": "Feature",
+            "properties": {
+                "x": col,
+                "y": row,
+                "zone_type_id": zone,
+                "population_density": 4000 + dist * 600 + year * 150,
+                "isNew": (col, row) in new_set,
+            },
+            "geometry": {
+                "type": "Polygon",
+                "coordinates": [[[x0, y0], [x1, y0], [x1, y1], [x0, y1], [x0, y0]]],
+            },
+        })
+    return {"type": "FeatureCollection", "features": features}
 
-    for row in range(ROWS):
-        for col in range(COLS):
-            dc = col - ccol
-            dr = row - crow
-            dist = abs(dc) + abs(dr)
-            if dist > max_radius:
-                continue
 
-            lng = clng + dc * CELL_W
-            lat = clat - dr * CELL_H  # dr positive → south
-
-            # Skip cells outside city bbox
-            if not (west <= lng < east and south <= lat < north):
-                continue
-
-            x0, x1 = lng - CELL_W / 2, lng + CELL_W / 2
-            y0, y1 = lat - CELL_H / 2, lat + CELL_H / 2
-
-            zone = zone_ids[(col * 7 + row * 13 + year) % len(zone_ids)]
-            features.append({
+def _make_roads(clng: float, clat: float, year: int) -> dict:
+    span_w = COLS // 2 * CELL_W
+    span_h = ROWS // 2 * CELL_H
+    return {
+        "type": "FeatureCollection",
+        "features": [
+            {
                 "type": "Feature",
-                "properties": {
-                    "x": col,
-                    "y": row,
-                    "zone_type_id": zone,
-                    "population_density": 4000 + dist * 600 + year * 150,
+                "properties": {"road_type": "HIGHWAY", "congestion_pct": min(100, 35 + year)},
+                "geometry": {"type": "LineString", "coordinates": [[clng - span_w, clat], [clng + span_w, clat]]},
+            },
+            {
+                "type": "Feature",
+                "properties": {"road_type": "ARTERIAL", "congestion_pct": max(10, 52 - year // 2)},
+                "geometry": {"type": "LineString", "coordinates": [[clng, clat - span_h], [clng, clat + span_h]]},
+            },
+            {
+                "type": "Feature",
+                "properties": {"road_type": "COLLECTOR", "congestion_pct": 30},
+                "geometry": {
+                    "type": "LineString",
+                    "coordinates": [[clng - span_w * 0.6, clat + span_h * 0.3], [clng + span_w * 0.6, clat + span_h * 0.3]],
                 },
-                "geometry": {"type": "Polygon", "coordinates": [[[x0, y0], [x1, y0], [x1, y1], [x0, y1], [x0, y0]]]},
-            })
-    for action_index, feature in enumerate(features[-3:]):
-        props = feature["properties"]
-        zone = props["zone_type_id"]
+            },
+        ],
+    }
+
+
+def _make_actions(new_this_year: list[tuple[int, int]], year: int, clng: float, clat: float) -> list[dict]:
+    ccol = COLS // 2
+    crow = ROWS // 2
+    actions = []
+    for action_index, (col, row) in enumerate(new_this_year[-3:]):
+        zone = ZONE_IDS[(col * 7 + row * 13 + year) % len(ZONE_IDS)]
         actions.append({
-            "x": props["x"],
-            "y": props["y"],
+            "x": col,
+            "y": row,
             "zone_type_id": zone,
             "zone_display_name": zone.replace("_", " ").title(),
             "sps_score": round(4.2 + (year % 10) * 0.35 + action_index * 0.2, 2),
-            "rejection_reason": "Lower connectivity and service leverage than the selected cell." if action_index == 0 else None,
+            "rejection_reason": (
+                "Lower connectivity and service leverage than the selected cell."
+                if action_index == 0
+                else None
+            ),
         })
-    span_w = COLS // 2 * CELL_W
-    span_h = ROWS // 2 * CELL_H
-    roads = {
-        "type": "FeatureCollection",
-        "features": [
-            {"type": "Feature", "properties": {"road_type": "HIGHWAY", "congestion_pct": min(100, 35 + year)}, "geometry": {"type": "LineString", "coordinates": [[clng - span_w, clat], [clng + span_w, clat]]}},
-            {"type": "Feature", "properties": {"road_type": "ARTERIAL", "congestion_pct": max(10, 52 - year // 2)}, "geometry": {"type": "LineString", "coordinates": [[clng, clat - span_h], [clng, clat + span_h]]}},
-            {"type": "Feature", "properties": {"road_type": "COLLECTOR", "congestion_pct": 30}, "geometry": {"type": "LineString", "coordinates": [[clng - span_w * 0.6, clat + span_h * 0.3], [clng + span_w * 0.6, clat + span_h * 0.3]]}},
-        ],
-    }
-    return {"type": "FeatureCollection", "features": features}, roads, actions
+    return actions
 
 
 def _metrics(city: City, year: int) -> dict:
@@ -208,9 +353,20 @@ async def _run_simulation(session_id: str, city_id: str, scenario_id: str) -> No
             },
         )
 
+        # Pre-compute all 51 years of BFS zone expansion once, upfront
+        bfs_years = _precompute_bfs(city)
+        clat, clng = _city_sim_center(city)
+
+        placed_cells: set[tuple[int, int]] = set()
         for year in range(0, 51):
-            zones_geojson, roads_geojson, actions = _simulation_geojson(city, year)
+            new_this_year = bfs_years[year] if year < len(bfs_years) else []
+            placed_cells.update(new_this_year)
+
+            zones_geojson = _build_zones_geojson(city, placed_cells, new_this_year, year, clng, clat)
+            roads_geojson = _make_roads(clng, clat, year)
+            actions = _make_actions(new_this_year, year, clng, clat)
             metrics = _metrics(city, year)
+
             frame = SimulationFrame(
                 session_id=session_uuid,
                 year=year,

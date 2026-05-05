@@ -11,7 +11,7 @@ import { ZoneLegend } from './ZoneLegend'
 import type { Landmark } from '@/types/city.types'
 
 const empty: GeoJSON.FeatureCollection = { type: 'FeatureCollection', features: [] }
-const OPENFREEMAP_STYLE = import.meta.env.VITE_MAP_STYLE_URL || 'https://tiles.openfreemap.org/styles/dark'
+const OPENFREEMAP_STYLE = import.meta.env.VITE_MAP_STYLE_URL || 'https://tiles.openfreemap.org/styles/positron'
 
 // Landmark tile size ~100m × 133m (city-block scale)
 const KEY_TILE_DEG_W = 0.0015
@@ -210,7 +210,7 @@ function addSourcesAndLayers(map: maplibregl.Map) {
     source: 'zones-source',
     paint: {
       'fill-color': ['coalesce', ['get', 'fill'], '#27AE60'],
-      'fill-opacity': ['coalesce', ['get', 'fillOpacity'], 0.46],
+      'fill-opacity': ['coalesce', ['get', 'fillOpacity'], 0.62],
       'fill-opacity-transition': { duration: 500, delay: 0 },
     },
   })
@@ -223,7 +223,7 @@ function addSourcesAndLayers(map: maplibregl.Map) {
         ['==', ['get', 'isKeyInfrastructure'], true], 'rgba(0,212,255,0.8)',
         'rgba(0,212,255,0.2)',
       ],
-      'line-width': ['case', ['==', ['get', 'isKeyInfrastructure'], true], 1.5, 0.5],
+      'line-width': ['case', ['==', ['get', 'isKeyInfrastructure'], true], 1.5, 1.0],
     },
   })
 
