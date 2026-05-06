@@ -7,6 +7,21 @@ import { useSimulationStore } from '@/stores/simulationStore'
 import type { CityProfile, MetricsSnapshot } from '@/types/city.types'
 import type { AgentAction } from '@/types/simulation.types'
 
+const PLACEMENT_REASONS: Record<string, string> = {
+  RES_LOW_DETACHED: 'Population growth pressure and low land-cost index in this sector favour low-density residential expansion.',
+  RES_MED_APARTMENT: 'Transit proximity and affordability gap in surrounding districts drive medium-density infill demand.',
+  RES_HIGH_TOWER: 'Employment hub proximity and elevated land-value index justify high-rise residential consolidation.',
+  COM_SMALL_SHOP: 'Underserved retail catchment identified within a 400 m service radius of this node.',
+  COM_OFFICE_PLAZA: 'Economic growth forecast and knowledge-sector employment concentration support commercial plaza development.',
+  PARK_SMALL: 'Green-coverage deficit flagged in this quadrant; equity index benefits from public open space.',
+  BUS_STATION: 'Transit gap analysis shows a 600 m+ unserved corridor; bus station improves network connectivity score.',
+  EDU_HIGH: 'Student-age population density exceeds threshold; nearest school capacity is at 94% utilisation.',
+  HEALTH_HOSPITAL: 'Healthcare access index below 0.4 in this district; placement reduces average emergency response time.',
+  SMART_TRAFFIC_LIGHT: 'Congestion hotspot detected at this intersection; smart signal cuts average delay by an estimated 12%.',
+  ENV_TREE_CORRIDOR: 'Urban heat island effect and impervious surface ratio above threshold; green corridor mitigates risk.',
+  INFRA_POWER_SUBSTATION: 'Grid load forecast exceeds 85% capacity in this sector; substation prevents brownout risk.',
+}
+
 const ZONE_DISPLAY: Record<string, string> = {
   RES_LOW_DETACHED: 'Low-Density Residential',
   RES_MED_APARTMENT: 'Med-Density Apartment',
@@ -27,40 +42,83 @@ const ZONE_TYPES = Object.keys(ZONE_DISPLAY)
 const ZONE_W_DEG = 0.0014
 const ZONE_H_DEG = 0.0011
 
-// Per-city land polygons: [minLng, minLat, maxLng, maxLat] — land only, no water
-const CITY_LAND_ZONES: Record<string, Array<[number, number, number, number]>> = {
+// Per-city neighborhood anchors [lat, lng] — verified land centres; dots are jittered ±150 m around each
+const CITY_ANCHORS: Record<string, Array<[number, number]>> = {
   new_york: [
-    [-74.020, 40.700, -73.910, 40.882], // Manhattan
-    [-74.042, 40.565, -73.832, 40.740], // Brooklyn
-    [-73.970, 40.630, -73.700, 40.790], // Queens (western)
-    [-73.930, 40.785, -73.760, 40.915], // Bronx
-    [-74.255, 40.495, -74.055, 40.655], // Staten Island
+    // Manhattan
+    [40.7074, -74.0104], [40.7175, -74.0078], [40.7233, -74.0030],
+    [40.7335, -74.0027], [40.7412, -74.0007], [40.7465, -74.0014],
+    [40.7549, -73.9840], [40.7598, -73.9927], [40.7484, -73.9778],
+    [40.7387, -73.9840], [40.7265, -73.9815], [40.7154, -73.9843],
+    [40.7870, -73.9754], [40.7736, -73.9566], [40.7994, -73.9519],
+    [40.8116, -73.9465], [40.8248, -73.9387], [40.8448, -73.9393],
+    [40.8560, -73.9290], [40.8678, -73.9211],
+    // Brooklyn
+    [40.6959, -73.9961], [40.7081, -73.9571], [40.7228, -73.9442],
+    [40.6712, -73.9776], [40.6872, -73.9418], [40.6698, -73.9442],
+    [40.6501, -73.9497], [40.6359, -74.0274], [40.6510, -73.9744],
+    [40.6384, -73.9742], [40.6780, -73.9720],
+    // Queens
+    [40.7721, -73.9301], [40.7447, -73.9453], [40.7557, -73.8831],
+    [40.7675, -73.8330], [40.7196, -73.8499], [40.7031, -73.8323],
+    [40.7282, -73.9020], [40.7489, -73.9215],
+    // Bronx
+    [40.8151, -73.8937], [40.8484, -73.9042], [40.8877, -73.9082],
+    [40.8303, -73.8688], [40.8571, -73.8821],
+    // Staten Island
+    [40.6437, -74.0740], [40.5901, -74.1501], [40.6284, -74.1023],
   ],
   los_angeles: [
-    [-118.550, 33.950, -118.100, 34.350],
-    [-118.670, 34.120, -118.450, 34.340],
-    [-118.480, 33.800, -118.180, 33.975],
+    [34.0522, -118.2437], [34.0928, -118.3287], [34.0195, -118.4912],
+    [34.0211, -118.3965], [34.1478, -118.1445], [34.0639, -118.4430],
+    [34.0736, -118.4004], [34.0505, -118.2578], [33.9850, -118.4723],
+    [34.1811, -118.3090], [34.1425, -118.2551], [34.0689, -118.1553],
+    [34.0250, -118.1716], [33.9542, -118.2012], [34.0453, -118.2616],
+    [34.0234, -118.4069], [34.1688, -118.3759],
   ],
   tokyo: [
-    [139.550, 35.550, 139.850, 35.850],
+    [35.6762, 139.6503], [35.6581, 139.7018], [35.6659, 139.7318],
+    [35.7090, 139.7319], [35.7281, 139.7186], [35.7447, 139.7488],
+    [35.7112, 139.8031], [35.6762, 139.7707], [35.7202, 139.8633],
+    [35.6895, 139.6917], [35.6636, 139.6553], [35.7044, 139.6509],
+    [35.7340, 139.6478], [35.7511, 139.6714], [35.7648, 139.6948],
+    [35.7809, 139.7430], [35.6938, 139.7034],
   ],
   lagos: [
-    [3.200, 6.400, 3.600, 6.650],
+    [6.4550, 3.3841], [6.4281, 3.4219], [6.4698, 3.5852],
+    [6.5244, 3.3792], [6.5355, 3.3521], [6.5650, 3.3482],
+    [6.5854, 3.3515], [6.6018, 3.3515], [6.6353, 3.3082],
   ],
   london: [
-    [-0.400, 51.350, 0.250, 51.650],
+    [51.5074, -0.1278], [51.5010, -0.1418], [51.5165, -0.0756],
+    [51.4816, -0.1955], [51.5588, -0.1035], [51.4613, -0.0729],
+    [51.4836,  0.0098], [51.5305, -0.2905], [51.5123, -0.1345],
+    [51.5648, -0.0557], [51.5549, -0.2798], [51.4048, -0.0954],
+    [51.4613, -0.1156], [51.5290, -0.1255], [51.4879, -0.0438],
   ],
   sao_paulo: [
-    [-46.780, -23.720, -46.400, -23.420],
+    [-23.5505, -46.6333], [-23.5629, -46.6544], [-23.5454, -46.6917],
+    [-23.5900, -46.6640], [-23.5179, -46.6140], [-23.5380, -46.7231],
+    [-23.6320, -46.5870], [-23.5070, -46.5700], [-23.5484, -46.5948],
+    [-23.5268, -46.6573], [-23.5900, -46.7242],
   ],
   singapore: [
-    [103.620, 1.240, 104.020, 1.460],
+    [1.3521, 103.8198], [1.3048, 103.8318], [1.3590, 103.8887],
+    [1.3753, 103.9494], [1.3236, 103.9273], [1.3496, 103.7191],
+    [1.4197, 103.8330], [1.3868, 103.7471], [1.3000, 103.7940],
+    [1.3502, 103.8489],
   ],
   dubai: [
-    [55.080, 24.820, 55.550, 25.320],
+    [25.2048, 55.2708], [25.1972, 55.2744], [25.2285, 55.3273],
+    [25.2157, 55.2900], [25.1124, 55.1390], [25.0657, 55.1713],
+    [25.1891, 55.3600], [25.2631, 55.3133], [25.0950, 55.2485],
+    [25.1835, 55.2544], [25.2372, 55.3762],
   ],
   mumbai: [
-    [72.770, 18.920, 73.000, 19.260],
+    [18.9388, 72.8354], [18.9667, 72.8237], [19.0176, 72.8562],
+    [19.1136, 72.8697], [19.2183, 72.9781], [19.1740, 72.9559],
+    [19.0895, 72.8656], [18.9548, 72.8338], [19.0544, 72.8319],
+    [19.1580, 72.9891],
   ],
 }
 
@@ -81,10 +139,13 @@ function makeOfflineZoneFeatures(
         x: action.x,
         y: action.y,
         zone_type_id: action.zone_type_id,
+        zone_display_name: action.zone_display_name,
         isKeyInfrastructure: false,
         isNewlyAdded: true,
         fillOpacity: 0.9,
         population_density: 15000,
+        sps_score: action.sps_score,
+        placement_reason: action.placement_reason,
       },
       geometry: {
         type: 'Polygon' as const,
@@ -121,15 +182,21 @@ function offlineMetrics(city: CityProfile, year: number): MetricsSnapshot {
   }
 }
 
+// Max jitter in degrees — keeps dots within ~150 m of each anchor
+const JITTER_LNG = 0.0018
+const JITTER_LAT = 0.0013
+
 function offlineActions(year: number, city: CityProfile): AgentAction[] {
-  const count = 4 + (year % 4)
-  const landZones = CITY_LAND_ZONES[city.id] ?? [[city.bbox[0], city.bbox[1], city.bbox[2], city.bbox[3]] as [number, number, number, number]]
+  const count = 10 + (year % 8)
+  const anchors = CITY_ANCHORS[city.id] ?? [[city.center_lat, city.center_lng] as [number, number]]
   return Array.from({ length: count }, (_, i) => {
     const seed = year * 97 + i * 53
-    const zone = landZones[seed % landZones.length]
-    const [minLng, minLat, maxLng, maxLat] = zone
-    const lng = minLng + ((seed * 7919 + i * 3571) % 10000) / 10000 * (maxLng - minLng)
-    const lat = minLat + ((seed * 6271 + i * 4919) % 10000) / 10000 * (maxLat - minLat)
+    const [anchorLat, anchorLng] = anchors[seed % anchors.length]
+    // Deterministic sub-block jitter — never enough to cross a river
+    const lngJitter = (((seed * 7919 + i * 3571) % 10000) / 10000 - 0.5) * 2 * JITTER_LNG
+    const latJitter = (((seed * 6271 + i * 4919) % 10000) / 10000 - 0.5) * 2 * JITTER_LAT
+    const lng = anchorLng + lngJitter
+    const lat = anchorLat + latJitter
     const zoneId = ZONE_TYPES[seed % ZONE_TYPES.length]
     return {
       x: 0,
@@ -139,6 +206,7 @@ function offlineActions(year: number, city: CityProfile): AgentAction[] {
       zone_type_id: zoneId,
       zone_display_name: ZONE_DISPLAY[zoneId],
       sps_score: 0.45 + ((seed % 55) / 100),
+      placement_reason: PLACEMENT_REASONS[zoneId] ?? 'Zone placement optimises service coverage and land-use efficiency in this sector.',
     }
   })
 }

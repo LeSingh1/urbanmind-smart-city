@@ -30,10 +30,9 @@ export function LandingScreen({ onEnter }: Props) {
             variants={{ hidden: { opacity: 0, y: 24 }, visible: { opacity: 1, y: 0, transition: { duration: 0.6, ease: [0.16, 1, 0.3, 1] } } }}
             className="scanline relative rounded-2xl p-10 text-center"
             style={{
-              background: 'rgba(13, 26, 46, 0.82)',
-              backdropFilter: 'blur(20px)',
-              border: '1px solid rgba(0, 212, 255, 0.3)',
-              boxShadow: '0 0 40px rgba(0,212,255,0.08), 0 0 80px rgba(0,212,255,0.04), inset 0 1px 0 rgba(0,212,255,0.15)',
+              background: 'var(--color-bg-sidebar)',
+              border: '1px solid var(--color-border-subtle)',
+              boxShadow: '0 8px 32px rgba(0,0,0,0.5)',
             }}
           >
             {/* Corner accents */}
@@ -52,10 +51,7 @@ export function LandingScreen({ onEnter }: Props) {
               className="font-display font-bold tracking-widest uppercase mb-1"
               style={{
                 fontSize: 42,
-                background: 'linear-gradient(135deg, #00D4FF 0%, #7C3AED 100%)',
-                WebkitBackgroundClip: 'text',
-                WebkitTextFillColor: 'transparent',
-                backgroundClip: 'text',
+                color: 'var(--color-text-primary)',
                 letterSpacing: '0.15em',
                 lineHeight: 1.1,
               }}
@@ -140,7 +136,7 @@ function GlowButton({
   return (
     <motion.button
       onClick={onClick}
-      whileHover={{ scale: 1.02, boxShadow: isCyan ? '0 0 24px rgba(0,212,255,0.5)' : '0 0 24px rgba(124,58,237,0.5)' }}
+      whileHover={{ scale: 1.02 }}
       whileTap={{ scale: 0.97 }}
       className="relative w-full flex items-center justify-center gap-2 px-6 py-3 rounded-lg font-display font-semibold text-sm tracking-wide transition-colors"
       style={{
@@ -172,7 +168,7 @@ function CityGallery({ onClose, onEnter }: { onClose: () => void; onEnter: () =>
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
       className="fixed inset-0 z-50 overflow-auto"
-      style={{ background: 'rgba(5,10,20,0.92)', backdropFilter: 'blur(16px)' }}
+      style={{ background: 'rgba(13,17,23,0.97)' }}
     >
       <button
         onClick={onClose}
@@ -274,7 +270,7 @@ function SandboxOverlay({ onClose, onGenerated }: { onClose: () => void; onGener
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
       className="fixed inset-0 z-50 overflow-auto p-8"
-      style={{ background: 'rgba(5,10,20,0.92)', backdropFilter: 'blur(16px)' }}
+      style={{ background: 'rgba(13,17,23,0.97)' }}
     >
       <button
         onClick={onClose}
@@ -296,10 +292,7 @@ export function Logo({ large = false }: { large?: boolean }) {
         className="font-display font-bold tracking-widest uppercase"
         style={{
           fontSize: large ? 32 : 15,
-          background: 'linear-gradient(135deg, #00D4FF 0%, #7C3AED 100%)',
-          WebkitBackgroundClip: 'text',
-          WebkitTextFillColor: 'transparent',
-          backgroundClip: 'text',
+          color: 'var(--color-accent-cyan)',
           letterSpacing: '0.12em',
         }}
       >

@@ -1,11 +1,12 @@
 import { useState } from 'react'
 import { motion } from 'framer-motion'
-import { Play, Pause, Download, Settings, RefreshCw, Zap, Scale, TrendingUp, Leaf, Users, Landmark } from 'lucide-react'
+import { Play, Pause, Download, Settings, RefreshCw, Zap, Scale, TrendingUp, Leaf, Users, Landmark, RotateCcw } from 'lucide-react'
 import { useSimulationStore } from '@/stores/simulationStore'
 import { useCityStore } from '@/stores/cityStore'
 import { useScenarioStore, scenarioColors, scenarioLabels } from '@/stores/scenarioStore'
 import { useSimulation } from '@/hooks/useSimulation'
 import { useWebSocket } from '@/hooks/useWebSocket'
+import { useNotification } from '@/hooks/useNotification'
 import { Logo } from '@/components/UI/LandingScreen'
 import type { ScenarioId } from '@/types/city.types'
 
@@ -24,7 +25,9 @@ export function TopBar() {
   const { selectedCity } = useCityStore()
   const { activeScenario, setScenario } = useScenarioStore()
   const { start, pause, resume } = useSimulation()
+  const reset = useSimulationStore((s) => s.reset)
   const ws = useWebSocket(sessionId)
+  const notify = useNotification((s) => s.notify)
   const [starting, setStarting] = useState(false)
 
   const totalSteps = 50
@@ -71,7 +74,7 @@ export function TopBar() {
       style={{
         background: 'var(--color-bg-sidebar)',
         borderBottom: '1px solid var(--color-border-subtle)',
-        boxShadow: '0 1px 0 rgba(0,212,255,0.06)',
+        boxShadow: 'none',
       }}
     >
       {/* Logo + city */}
@@ -105,7 +108,7 @@ export function TopBar() {
               className="px-2.5 py-1 rounded-md text-xs font-display font-medium transition-all"
               style={
                 active
-                  ? { background: `${color}20`, color, border: `1px solid ${color}50`, boxShadow: `0 0 8px ${color}30` }
+                  ? { background: `${color}18`, color, border: `1px solid ${color}45` }
                   : { color: 'var(--color-text-muted)', border: '1px solid transparent' }
               }
               title={scenarioLabels[id]}
@@ -143,7 +146,7 @@ export function TopBar() {
           <div className="h-1 rounded-full overflow-hidden" style={{ background: 'var(--color-bg-card)' }}>
             <motion.div
               className="h-full rounded-full"
-              style={{ background: 'var(--color-accent-cyan)', boxShadow: '0 0 6px rgba(0,212,255,0.4)' }}
+              style={{ background: 'var(--color-accent-cyan)' }}
               animate={{ width: `${progress}%` }}
               transition={{ duration: 0.4 }}
             />
@@ -155,7 +158,7 @@ export function TopBar() {
       <div className="flex items-center gap-2">
         <motion.div
           className="w-2 h-2 rounded-full"
-          style={{ background: statusColor, boxShadow: `0 0 6px ${statusColor}` }}
+          style={{ background: statusColor }}
           animate={status === 'running' ? { opacity: [1, 0.3, 1], scale: [1, 1.3, 1] } : {}}
           transition={{ duration: 1.4, repeat: Infinity }}
         />
@@ -170,7 +173,7 @@ export function TopBar() {
           <motion.button
             onClick={handleStart}
             disabled={starting || !selectedCity}
-            whileHover={{ scale: 1.03, boxShadow: '0 0 16px rgba(0,255,156,0.4)' }}
+            whileHover={{ scale: 1.03 }}
             whileTap={{ scale: 0.97 }}
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold font-display disabled:opacity-40 disabled:cursor-not-allowed"
             style={{ background: 'rgba(0,255,156,0.08)', color: 'var(--color-accent-green)', border: '1px solid rgba(0,255,156,0.3)' }}
@@ -200,6 +203,17 @@ export function TopBar() {
           </motion.button>
         ) : null}
 
+        <motion.button
+          onClick={reset}
+          whileHover={{ scale: 1.05 }}
+          whileTap={{ scale: 0.95 }}
+          className="flex items-center justify-center w-8 h-8 rounded-lg"
+          style={{ border: '1px solid var(--color-border-subtle)', color: 'var(--color-text-muted)', background: 'var(--color-bg-panel)' }}
+          title="Reset simulation"
+        >
+          <RotateCcw size={13} />
+        </motion.button>
+
         {sessionId && (
           <motion.button
             onClick={handleExport}
@@ -207,13 +221,14 @@ export function TopBar() {
             whileTap={{ scale: 0.95 }}
             className="flex items-center justify-center w-8 h-8 rounded-lg"
             style={{ border: '1px solid var(--color-border-subtle)', color: 'var(--color-text-muted)', background: 'var(--color-bg-panel)' }}
-            title="Export simulation"
+            title="Export simulation data as JSON"
           >
             <Download size={13} />
           </motion.button>
         )}
 
         <motion.button
+          onClick={() => notify('info', 'Settings panel coming soon.', 2500)}
           whileHover={{ scale: 1.05 }}
           whileTap={{ scale: 0.95 }}
           className="flex items-center justify-center w-8 h-8 rounded-lg"

@@ -6,6 +6,7 @@ import { useScenarioStore } from '@/stores/scenarioStore'
 import { useSimulationStore } from '@/stores/simulationStore'
 import { useSimulation } from '@/hooks/useSimulation'
 import { useUIStore } from '@/stores/uiStore'
+import { useNotification } from '@/hooks/useNotification'
 
 export function ControlBar({ connectionState }: { connectionState: string }) {
   const selectedCity = useCityStore((state) => state.selectedCity)
@@ -21,6 +22,7 @@ export function ControlBar({ connectionState }: { connectionState: string }) {
   const { start, pause, resume } = useSimulation()
   const isSplitScreen = useUIStore((state) => state.isSplitScreen)
   const setSplitScreen = useUIStore((state) => state.setSplitScreen)
+  const notify = useNotification((s) => s.notify)
 
   const play = () => {
     if (!selectedCity) return
@@ -79,13 +81,13 @@ export function ControlBar({ connectionState }: { connectionState: string }) {
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 160, justifyContent: 'flex-end' }}>
           <span style={{ color: 'var(--color-text-muted)', fontSize: 11, textTransform: 'uppercase' }}>{connectionState}</span>
-          <button className="icon-btn" aria-label="Share"><Share2 size={17} /></button>
+          <button className="icon-btn" aria-label="Share" onClick={() => { navigator.clipboard.writeText(window.location.href); notify('success', 'Link copied to clipboard.', 2500) }}><Share2 size={17} /></button>
           <button className="icon-btn" aria-label="Compare scenarios" onClick={() => setSplitScreen(!isSplitScreen)}><Columns2 size={17} /></button>
           <button className="icon-btn" aria-label="Export PDF" onClick={() => {
             const session = useSimulationStore.getState().sessionId
             if (session) window.open(`/api/simulation/${session}/export`, '_blank')
           }}><Download size={17} /></button>
-          <button className="icon-btn" aria-label="Settings"><Settings size={17} /></button>
+          <button className="icon-btn" aria-label="Settings" onClick={() => notify('info', 'Settings panel coming soon.', 2500)}><Settings size={17} /></button>
         </div>
       </div>
       <div style={{ position: 'absolute', bottom: 0, left: 0, height: 2, width: `${Math.min(100, (currentYear / 50) * 100)}%`, background: 'var(--color-brand-accent)', transition: 'width 400ms ease' }} />
