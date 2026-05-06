@@ -1,4 +1,5 @@
 import { create } from 'zustand'
+import { STATIC_CITIES } from '@/data/staticCities'
 import {
   calculatePlanningScores,
   DEFAULT_GROWTH_PERCENT,
@@ -145,8 +146,10 @@ export const useSimulationStore = create<SimulationStore>((set, get) => ({
   removeUserZone: (id) => set((state) => ({ userZones: state.userZones.filter((z) => z.id !== id) })),
 
   analyzeDemo: (cityId, scenarioId) => {
-    const infrastructure = FREMONT_EXISTING_INFRASTRUCTURE.map((item) => ({ ...item }))
-    const underservedZones = FREMONT_UNDERSERVED_ZONES.map((zone) => ({ ...zone, isImproved: false }))
+    const shift = cityShift(cityId)
+    const infrastructure = shiftInfrastructure(FREMONT_EXISTING_INFRASTRUCTURE, shift)
+    const underservedZones = shiftZones(FREMONT_UNDERSERVED_ZONES, shift).map((zone) => ({ ...zone, isImproved: false, improved: false }))
+    const growthPressureZones = shiftGrowthZones(FREMONT_GROWTH_PRESSURE_ZONES, shift)
     const scenario = normalizeScenario(scenarioId)
     const beforeScores = calculatePlanningScores(infrastructure, underservedZones, DEFAULT_GROWTH_PERCENT, scenario)
     const frame = scoresToFrame(beforeScores, 10, infrastructure, underservedZones)
@@ -177,8 +180,8 @@ export const useSimulationStore = create<SimulationStore>((set, get) => ({
         horizonYears: DEFAULT_HORIZON_YEARS,
         infrastructure,
         underservedZones,
-        growthPressureZones: FREMONT_GROWTH_PRESSURE_ZONES,
-        aiRecommendations: FREMONT_AI_RECOMMENDATIONS.map((item) => ({ ...item })),
+        growthPressureZones,
+        aiRecommendations: shiftInfrastructure(FREMONT_AI_RECOMMENDATIONS, shift),
         beforeScores,
         afterScores: null,
         hasAnalyzed: true,
@@ -365,6 +368,49 @@ function createInitialPlanningState(): PlanningState {
     climatePriority: 50,
     equityPriority: 50,
   }
+}
+
+const FREMONT_CENTER = { lat: 37.5485, lng: -121.9886 }
+
+function cityShift(cityId: string) {
+  const city = STATIC_CITIES.find((item) => item.id === cityId) ?? STATIC_CITIES.find((item) => item.id === 'fremont')
+  return {
+    lat: (city?.center_lat ?? FREMONT_CENTER.lat) - FREMONT_CENTER.lat,
+    lng: (city?.center_lng ?? FREMONT_CENTER.lng) - FREMONT_CENTER.lng,
+  }
+}
+
+function shiftPosition(position: GeoJSON.Position, shift: { lat: number; lng: number }): GeoJSON.Position {
+  return [position[0] + shift.lng, position[1] + shift.lat]
+}
+
+function shiftInfrastructure(items: InfrastructureItem[], shift: { lat: number; lng: number }): InfrastructureItem[] {
+  return items.map((item) => {
+    const coordinates = item.geometryType === 'Point'
+      ? shiftPosition(item.coordinates as GeoJSON.Position, shift)
+      : (item.coordinates as GeoJSON.Position[]).map((position) => shiftPosition(position, shift))
+    return {
+      ...item,
+      coordinates,
+      geometry: item.geometryType === 'Point'
+        ? { type: 'Point', coordinates: coordinates as GeoJSON.Position }
+        : { type: 'LineString', coordinates: coordinates as GeoJSON.Position[] },
+    }
+  })
+}
+
+function shiftZones(zones: UnderservedZone[], shift: { lat: number; lng: number }): UnderservedZone[] {
+  return zones.map((zone) => ({
+    ...zone,
+    center: [zone.center[0] + shift.lat, zone.center[1] + shift.lng],
+  }))
+}
+
+function shiftGrowthZones(zones: GrowthPressureZone[], shift: { lat: number; lng: number }): GrowthPressureZone[] {
+  return zones.map((zone) => ({
+    ...zone,
+    center: [zone.center[0] + shift.lat, zone.center[1] + shift.lng],
+  }))
 }
 
 function normalizeScenario(scenarioId: string): ScenarioId {

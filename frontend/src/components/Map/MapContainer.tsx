@@ -176,24 +176,24 @@ const CATEGORY_COLOR: Record<InfrastructureCategory, string> = {
 }
 
 const CATEGORY_ICON: Record<InfrastructureCategory, string> = {
-  hospital: '+',
-  clinic: '+',
-  school: 'S',
-  park: 'T',
-  transit_stop: 'B',
-  transit_line: 'T',
-  fire_station: 'F',
-  police_station: 'P',
-  housing_zone: 'H',
-  commercial_zone: 'C',
-  industrial_zone: 'I',
-  road: 'R',
-  bike_lane: 'B',
-  utility: 'U',
-  water: 'W',
-  power: 'P',
-  mixed_use: 'M',
-  community_center: 'C',
+  hospital: '&#10010;',
+  clinic: '&#10010;',
+  school: '&#8962;',
+  park: '&#9827;',
+  transit_stop: '&#9636;',
+  transit_line: '&#9636;',
+  fire_station: '&#9650;',
+  police_station: '&#9670;',
+  housing_zone: '&#8962;',
+  commercial_zone: '&#9632;',
+  industrial_zone: '&#9635;',
+  road: '&#9473;',
+  bike_lane: '&#9675;',
+  utility: '&#9889;',
+  water: '&#9679;',
+  power: '&#9889;',
+  mixed_use: '&#8962;',
+  community_center: '&#9671;',
 }
 
 const TOOL_ZONE_TO_CATEGORY: Record<string, InfrastructureCategory> = {
@@ -292,12 +292,13 @@ function PlanningLegend() {
 
 function infraIcon(item: InfrastructureItem) {
   const color = item.status === 'proposed' ? '#00D4FF' : CATEGORY_COLOR[item.category]
-  const glow = item.status === 'proposed' ? 'box-shadow:0 0 14px rgba(0,212,255,0.85);border-color:#00D4FF;' : ''
+  const isAi = item.status === 'ai_recommended'
+  const glow = item.status === 'proposed' || isAi ? 'box-shadow:0 0 18px rgba(0,212,255,0.85);border-color:#00D4FF;' : ''
   return L.divIcon({
     className: 'urbanmind-infra-icon',
-    html: `<div style="width:25px;height:25px;border-radius:7px;background:rgba(11,17,28,0.92);border:1px solid ${color};${glow}display:grid;place-items:center;color:${color};font:800 12px JetBrains Mono,monospace;">${CATEGORY_ICON[item.category]}</div>`,
-    iconSize: [25, 25],
-    iconAnchor: [12, 12],
+    html: `<div style="width:30px;height:30px;border-radius:10px;background:linear-gradient(135deg,rgba(11,17,28,0.96),rgba(31,41,55,0.9));border:${item.status === 'proposed' ? '1px dashed' : '1px solid'} ${color};${glow}display:grid;place-items:center;color:${color};font:800 15px Inter,system-ui;backdrop-filter:blur(8px);">${isAi ? '&#10022;' : CATEGORY_ICON[item.category]}</div>`,
+    iconSize: [30, 30],
+    iconAnchor: [15, 15],
   })
 }
 
@@ -565,7 +566,7 @@ export function MapContainer() {
 
   const showDots = activeLayers.has('Zones')
   const isLive = (isRunning || isPaused || detailedGrid) && !!frame
-  const showPlanning = city?.id === 'fremont'
+  const showPlanning = Boolean(city)
   const visibleInfrastructure = useMemo(() => {
     if (!showPlanning) return []
     const aiPreview = planning.hasAnalyzed && !planning.hasAppliedAIPlan ? planning.aiRecommendations : []
@@ -591,11 +592,19 @@ export function MapContainer() {
         flex: 1,
         position: 'relative',
         minWidth: 0,
-        height: '100%',
+        height: 'calc(100% - 24px)',
+        margin: 12,
         overflow: 'hidden',
-        background: '#0d1117',
+        background: 'linear-gradient(135deg,#0d1117,#080D16)',
+        border: '1px solid rgba(0,212,255,0.18)',
+        borderRadius: 22,
+        boxShadow: '0 22px 70px rgba(0,0,0,0.45), 0 0 42px rgba(0,212,255,0.08)',
       }}
     >
+      <div style={{ position: 'absolute', top: 14, left: 16, zIndex: 16, pointerEvents: 'none' }}>
+        <div className="font-mono text-[10px] uppercase tracking-widest" style={{ color: 'rgba(0,212,255,0.72)' }}>Live Planning Canvas</div>
+        <div className="mt-1 text-xs" style={{ color: 'rgba(255,255,255,0.55)' }}>Service gaps, growth pressure, and proposed infrastructure</div>
+      </div>
       {/* 2D / 3D toggle */}
       <motion.button
         onClick={toggle3D}
@@ -631,7 +640,7 @@ export function MapContainer() {
         <Map3DView />
       ) : (
         // Absolute wrapper ensures the map fills the entire <main>
-        <div style={{ position: 'absolute', inset: 0 }}>
+        <div style={{ position: 'absolute', inset: 0, borderRadius: 22, overflow: 'hidden' }}>
           <LeafletMap
             key={city?.id ?? 'default'}          // remount when city changes
             center={initialCenter}

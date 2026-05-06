@@ -98,6 +98,29 @@ button, select, input, a, [role="button"] {
   box-shadow: var(--shadow-lg);
 }
 
+.premium-input {
+  width: 100%;
+  border: 1px solid rgba(0, 212, 255, 0.14);
+  border-radius: 10px;
+  background: rgba(8, 13, 22, 0.72);
+  color: var(--color-text-primary);
+  padding: 9px 10px;
+  font-size: 13px;
+}
+
+.panel-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  border: 1px solid rgba(0, 212, 255, 0.2);
+  border-radius: 999px;
+  background: rgba(0, 212, 255, 0.06);
+  color: var(--color-accent-cyan);
+  padding: 4px 8px;
+  font-size: 10px;
+  font-weight: 600;
+}
+
 @keyframes skylineDrift {
   0% { transform: translateX(0); }
   100% { transform: translateX(-180px); }

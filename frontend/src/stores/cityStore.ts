@@ -10,6 +10,7 @@ interface CityStore {
   isLoading: boolean
   fetchCities: () => Promise<void>
   setCities: (cities: CityProfile[]) => void
+  addCity: (city: CityProfile) => void
   selectCity: (city: CityProfile | null) => void
 }
 
@@ -31,6 +32,13 @@ export const useCityStore = create<CityStore>((set) => ({
   },
 
   setCities: (cities) => set({ cities: cities.map(normalizeCity) }),
+  addCity: (city) => set((state) => {
+    const normalized = normalizeCity(city)
+    return {
+      cities: [normalized, ...state.cities.filter((item) => item.id !== normalized.id)],
+      selectedCity: normalized,
+    }
+  }),
   selectCity: (city) => set({ selectedCity: city }),
 }))
 

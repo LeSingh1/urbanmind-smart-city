@@ -69,7 +69,7 @@ const ZONE_CATEGORIES: { label: string; zones: { id: string; label: string }[] }
   },
 ]
 
-export function ZonePalette() {
+export function ZonePalette({ compact = false }: { compact?: boolean }) {
   const { isOverrideModeActive, selectedOverrideZone, setOverrideZone } = useUIStore()
   const { sessionId, planning, deleteInfrastructure, undoInfrastructure, saveScenario } = useSimulationStore()
 
@@ -78,7 +78,7 @@ export function ZonePalette() {
   }
 
   return (
-    <div className="p-3 space-y-3">
+    <div className={compact ? 'space-y-3' : 'p-3 space-y-3'}>
       {/* Instructions */}
       <div
         className="rounded-lg p-3 text-xs leading-relaxed"
@@ -165,7 +165,7 @@ export function ZonePalette() {
       </motion.button>
 
       {/* Zone categories */}
-      {ZONE_CATEGORIES.map(({ label, zones }) => (
+      {!compact && ZONE_CATEGORIES.map(({ label, zones }) => (
         <div key={label}>
           <div
             className="font-mono text-[9px] tracking-widest uppercase mb-1.5 flex items-center gap-1.5"
