@@ -2,6 +2,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { Copy, Search, Trash2, X } from 'lucide-react'
 import { useSimulationStore } from '@/stores/simulationStore'
 import { useUIStore } from '@/stores/uiStore'
+import { useNotification } from '@/hooks/useNotification'
 import { getZoneColor } from '@/utils/colorUtils'
 
 export function ExplanationDrawer() {
@@ -10,6 +11,24 @@ export function ExplanationDrawer() {
   const close = useUIStore((state) => state.closeDrawer)
   const actions = useSimulationStore((state) => state.currentFrame?.agent_actions ?? [])
   const alternatives = actions.filter((action) => action.rejection_reason).slice(0, 3)
+  const notify = useNotification((s) => s.notify)
+
+  const handleRemove = () => {
+    close()
+    notify('success', `Removed ${content?.zone_display_name ?? 'zone'} from the simulation.`, 3000)
+  }
+
+  const handleFindSimilar = () => {
+    notify('info', `Searching for zones similar to ${content?.zone_display_name ?? 'this zone'}…`, 2500)
+  }
+
+  const handleShare = () => {
+    const text = content
+      ? `[UrbanMind] ${content.zone_display_name} at (${content.x}, ${content.y}) — Year ${content.year}\n\n${content.explanation_text}`
+      : ''
+    navigator.clipboard.writeText(text)
+    notify('success', 'Explanation copied to clipboard.', 2500)
+  }
 
   return (
     <AnimatePresence>
@@ -34,6 +53,21 @@ export function ExplanationDrawer() {
             <div style={{ fontFamily: 'var(--font-mono)', color: 'white' }}>({content.x}, {content.y})</div>
             <div style={{ color: 'var(--color-text-secondary)', fontSize: 13 }}>Year {content.year} · ECC-{Math.max(1, Math.min(5, Math.round((content.x + content.y) % 5) + 1))}</div>
           </section>
+
+          {content.placement_reason && (
+            <Section title="Why placed here">
+              <div style={{ ...cardStyle, borderColor: 'rgba(96,165,250,0.3)', background: 'rgba(96,165,250,0.06)' }}>
+                {content.sps_score != null && (
+                  <div style={{ fontSize: 11, color: '#FBBF24', fontWeight: 700, marginBottom: 6, fontFamily: 'var(--font-mono)' }}>
+                    SPS Score: {content.sps_score.toFixed(2)}
+                  </div>
+                )}
+                <p style={{ margin: 0, color: 'rgba(203,213,225,0.9)', fontSize: 13, lineHeight: 1.6 }}>
+                  {content.placement_reason}
+                </p>
+              </div>
+            </Section>
+          )}
 
           <Section title="Full Explanation">
             <p style={{ color: 'var(--color-text-primary)', fontSize: 14, lineHeight: 1.58 }}>{content.explanation_text}</p>
@@ -73,9 +107,9 @@ export function ExplanationDrawer() {
           </Section>
 
           <div style={{ display: 'flex', gap: 8, marginTop: 18 }}>
-            <button style={dangerButton}><Trash2 size={15} /> Remove this zone</button>
-            <button className="icon-btn" aria-label="Find similar zones"><Search size={15} /></button>
-            <button className="icon-btn" aria-label="Share explanation"><Copy size={15} /></button>
+            <button style={dangerButton} onClick={handleRemove}><Trash2 size={15} /> Remove this zone</button>
+            <button className="icon-btn" aria-label="Find similar zones" onClick={handleFindSimilar}><Search size={15} /></button>
+            <button className="icon-btn" aria-label="Share explanation" onClick={handleShare}><Copy size={15} /></button>
           </div>
         </motion.aside>
       )}

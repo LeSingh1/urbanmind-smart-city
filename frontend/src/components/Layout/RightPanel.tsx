@@ -243,7 +243,7 @@ function VitalBar({ label, value, max, color }: { label: string; value: number; 
       <div className="h-0.5 rounded-full overflow-hidden" style={{ background: 'var(--color-bg-card)' }}>
         <motion.div
           className="h-full rounded-full"
-          style={{ background: color, boxShadow: `0 0 4px ${color}` }}
+          style={{ background: color }}
           animate={{ width: `${pct}%` }}
           transition={{ duration: 0.5, ease: 'easeOut' }}
         />

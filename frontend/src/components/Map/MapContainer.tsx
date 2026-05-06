@@ -5,6 +5,8 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { useCityStore } from '@/stores/cityStore'
 import { useSimulationStore } from '@/stores/simulationStore'
 import { useUIStore } from '@/stores/uiStore'
+import { useScenarioStore } from '@/stores/scenarioStore'
+import { useAIStore } from '@/stores/aiStore'
 import { getZoneColor } from '@/utils/colorUtils'
 import { ExplanationTooltip } from './ExplanationTooltip'
 import { MiniMetricsPanel } from './MiniMetricsPanel'
@@ -37,9 +39,10 @@ interface DotFeature {
 interface DotLayerProps {
   dots: DotFeature[]
   onHover: (d: DotFeature | null, x: number, y: number) => void
+  onClick: (d: DotFeature, x: number, y: number) => void
 }
 
-function DotLayer({ dots, onHover }: DotLayerProps) {
+function DotLayer({ dots, onHover, onClick }: DotLayerProps) {
   return (
     <>
       {dots.map((dot) => (
@@ -61,7 +64,6 @@ function DotLayer({ dots, onHover }: DotLayerProps) {
               ;(e.target as L.CircleMarker).setStyle({
                 fillOpacity: 1,
                 weight: 3,
-                radius: dot.radius + 3,
               } as any)
             },
             mouseout(e) {
@@ -69,8 +71,12 @@ function DotLayer({ dots, onHover }: DotLayerProps) {
               ;(e.target as L.CircleMarker).setStyle({
                 fillOpacity: 0.85,
                 weight: 1.5,
-                radius: dot.radius,
               } as any)
+            },
+            click(e) {
+              const p = e.containerPoint
+              onHover(null, 0, 0)
+              onClick(dot, p.x, p.y)
             },
           }}
         />
@@ -170,12 +176,49 @@ export function MapContainer() {
   const isSplitScreen = useUIStore((s) => s.isSplitScreen)
   const detailedGrid = useUIStore((s) => s.detailedGrid)
   const isRunning = useSimulationStore((s) => s.isRunning)
+  const openDrawer = useUIStore((s) => s.openDrawer)
+  const scenario = useScenarioStore((s) => s.activeScenario)
+  const fetchExplanation = useAIStore((s) => s.fetchExplanation)
 
   const handleHover = useCallback(
     (dot: DotFeature | null, x: number, y: number) => {
       setHovered(dot ? { x, y, properties: dot.properties } : null)
     },
     []
+  )
+
+  const handleClick = useCallback(
+    async (dot: DotFeature) => {
+      const props = dot.properties ?? {}
+      const zone = props.zone_type_id ?? 'RES_LOW_DETACHED'
+      const displayName = props.zone_display_name ?? props.building_name ?? zone
+      const placementReason = props.placement_reason ?? null
+      const spsScore: number | undefined = props.sps_score
+
+      const explanationText = await fetchExplanation({
+        type: 'zone_explanation',
+        zone_type_id: zone,
+        zone_display_name: displayName,
+        city_name: city?.name ?? 'the city',
+        surrounding_context: placementReason ?? 'Nearby zones, road access, service coverage, terrain conditions, and forecast growth pressure.',
+        metrics_delta: frame?.metrics_snapshot ?? {},
+        scenario_goal: scenario,
+      })
+
+      openDrawer({
+        zone_type_id: zone,
+        zone_display_name: displayName,
+        x: props.x ?? 0,
+        y: props.y ?? 0,
+        year: frame?.year ?? 0,
+        explanation_text: explanationText,
+        metrics_delta: frame?.metrics_snapshot ?? {},
+        surrounding_context: placementReason ?? 'Nearby zones, transit distance, terrain class, and scenario objective.',
+        placement_reason: placementReason ?? undefined,
+        sps_score: spsScore,
+      })
+    },
+    [city, frame, scenario, fetchExplanation, openDrawer]
   )
 
   // Build dots from landmarks (initial state) or from simulation zones
@@ -262,7 +305,7 @@ export function MapContainer() {
             />
 
             {city && <CityFlyController city={city} />}
-            {showDots && <DotLayer dots={dots} onHover={handleHover} />}
+            {showDots && <DotLayer dots={dots} onHover={handleHover} onClick={handleClick} />}
           </LeafletMap>
         </div>
       )}

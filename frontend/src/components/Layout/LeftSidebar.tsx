@@ -50,10 +50,9 @@ export function LeftSidebar() {
               style={
                 active
                   ? {
-                      background: 'rgba(0,212,255,0.12)',
+                      background: 'rgba(0,212,255,0.1)',
                       color: 'var(--color-accent-cyan)',
-                      border: '1px solid rgba(0,212,255,0.3)',
-                      boxShadow: '0 0 10px rgba(0,212,255,0.2)',
+                      border: '1px solid rgba(0,212,255,0.25)',
                     }
                   : {
                       color: 'var(--color-text-muted)',
@@ -108,7 +107,7 @@ export function LeftSidebar() {
             >
               <div
                 className="w-1 h-4 rounded-full"
-                style={{ background: 'var(--color-accent-cyan)', boxShadow: '0 0 6px rgba(0,212,255,0.6)' }}
+                style={{ background: 'var(--color-accent-cyan)' }}
               />
               <h2
                 className="font-display font-semibold text-sm tracking-wide"

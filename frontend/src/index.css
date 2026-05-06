@@ -73,10 +73,9 @@ select:focus-visible,
 }
 
 .glass-panel {
-  border: 1px solid rgba(96, 165, 250, 0.24);
-  background: rgba(17, 24, 39, 0.86);
+  border: 1px solid var(--color-border-subtle);
+  background: var(--color-bg-panel);
   box-shadow: var(--shadow-lg);
-  backdrop-filter: blur(18px);
 }
 
 @keyframes skylineDrift {
