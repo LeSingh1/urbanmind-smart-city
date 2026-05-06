@@ -1,6 +1,7 @@
 import { TopBar } from './TopBar'
 import { LeftSidebar } from './LeftSidebar'
 import { RightPanel } from './RightPanel'
+import { BottomBar } from './BottomBar'
 import { MapContainer } from '@/components/Map/MapContainer'
 
 export function MainLayout() {
@@ -12,11 +13,12 @@ export function MainLayout() {
       }}
     >
       <TopBar />
-      <div className="flex flex-1 overflow-hidden">
+      <div className="flex flex-1 overflow-hidden min-h-0">
         <LeftSidebar />
         <MapContainer />
         <RightPanel />
       </div>
+      <BottomBar />
     </div>
   )
 }

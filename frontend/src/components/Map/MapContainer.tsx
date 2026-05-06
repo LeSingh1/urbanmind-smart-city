@@ -2,7 +2,7 @@ import { useEffect, useMemo, useCallback, useRef, useState } from 'react'
 import { MapContainer as LeafletMap, TileLayer, CircleMarker, Circle, Polyline, Marker, Popup, useMap, useMapEvents } from 'react-leaflet'
 import L from 'leaflet'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Box, Building2, Bus, Cross, Flame, GraduationCap, Home, Layers, Route, Shield, TreePine, Zap } from 'lucide-react'
+import { Box, Building2, Bus, Cross, Flame, GraduationCap, Home, Layers, Shield, TreePine, Zap } from 'lucide-react'
 import { useCityStore } from '@/stores/cityStore'
 import { useSimulationStore } from '@/stores/simulationStore'
 import type { UserPlacedZone } from '@/stores/simulationStore'
@@ -145,7 +145,7 @@ function DotLayer({ dots, onHover, onClick, highlightedToken }: DotLayerProps) {
 }
 
 const LAYER_GROUPS = [
-  { title: 'Existing real world infrastructure', items: ['Existing hospitals', 'Existing schools', 'Existing parks', 'Existing transit', 'Existing police stations', 'Existing fire stations', 'Existing Roads'] },
+  { title: 'Existing real world infrastructure', items: ['Existing hospitals', 'Existing schools', 'Existing parks', 'Existing transit', 'Existing police stations', 'Existing fire stations'] },
   { title: 'Proposed future scenario infrastructure', items: ['Proposed infrastructure'] },
   { title: 'AI recommended infrastructure', items: ['AI Recommendations'] },
   { title: 'Scenario overlays', items: ['Underserved zones', 'Growth Pressure', 'Heatmap Mode'] },
@@ -160,7 +160,6 @@ const CATEGORY_LAYER: Partial<Record<InfrastructureCategory, string>> = {
   transit_line: 'Existing transit',
   police_station: 'Existing police stations',
   fire_station: 'Existing fire stations',
-  road: 'Existing Roads',
 }
 
 const CATEGORY_COLOR: Record<InfrastructureCategory, string> = {
@@ -229,7 +228,7 @@ const TOOL_ZONE_TO_CATEGORY: Record<string, InfrastructureCategory> = {
 
 function LayerControlPanel({ activeLayers, toggleLayer }: { activeLayers: Set<string>; toggleLayer: (layerId: string) => void }) {
   return (
-    <div style={{ position: 'absolute', top: 16, right: 16, zIndex: 18, width: 252, background: 'var(--color-bg-sidebar)', border: '1px solid var(--color-border-subtle)', borderRadius: 8, boxShadow: '0 8px 28px rgba(0,0,0,0.45)', overflow: 'hidden' }}>
+    <div style={{ position: 'absolute', top: 64, right: 16, zIndex: 18, width: 252, background: 'var(--color-bg-sidebar)', border: '1px solid var(--color-border-subtle)', borderRadius: 8, boxShadow: '0 8px 28px rgba(0,0,0,0.45)', overflow: 'hidden' }}>
       <div style={{ padding: '10px 12px', borderBottom: '1px solid var(--color-border-subtle)', display: 'flex', alignItems: 'center', gap: 8 }}>
         <Layers size={13} style={{ color: 'var(--color-accent-cyan)' }} />
         <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--color-text-secondary)' }}>Planning Layers</span>
@@ -267,12 +266,10 @@ function PlanningLegend() {
     ['fire_station', <Flame size={10} />, 'Fire'],
     ['housing_zone', <Home size={10} />, 'Housing'],
     ['commercial_zone', <Building2 size={10} />, 'Commercial'],
-    ['industrial_zone', <Building2 size={10} />, 'Industrial'],
-    ['road', <Route size={10} />, 'Road'],
     ['utility', <Zap size={10} />, 'Utility'],
   ]
   return (
-    <div style={{ position: 'absolute', bottom: 16, right: 16, zIndex: 12, background: 'var(--color-bg-sidebar)', border: '1px solid var(--color-border-subtle)', borderRadius: 8, padding: 10, width: 180 }}>
+    <div style={{ position: 'absolute', bottom: 12, left: 16, zIndex: 12, background: 'var(--color-bg-sidebar)', border: '1px solid var(--color-border-subtle)', borderRadius: 8, padding: 10, width: 180 }}>
       <div style={{ fontFamily: 'var(--font-mono)', fontSize: 9, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--color-text-muted)', marginBottom: 7 }}>Infrastructure Legend</div>
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 5 }}>
         {items.map(([category, icon, label]) => (
@@ -665,8 +662,7 @@ export function MapContainer() {
         flex: 1,
         position: 'relative',
         minWidth: 0,
-        height: 'calc(100% - 24px)',
-        margin: 12,
+        margin: '12px 12px 12px 12px',
         overflow: 'hidden',
         background: 'linear-gradient(135deg,#0d1117,#080D16)',
         border: '1px solid rgba(0,212,255,0.18)',
@@ -674,10 +670,6 @@ export function MapContainer() {
         boxShadow: '0 22px 70px rgba(0,0,0,0.45), 0 0 42px rgba(0,212,255,0.08)',
       }}
     >
-      <div style={{ position: 'absolute', top: 14, left: 16, zIndex: 16, pointerEvents: 'none' }}>
-        <div className="font-mono text-[10px] uppercase tracking-widest" style={{ color: 'rgba(0,212,255,0.72)' }}>Live Planning Canvas</div>
-        <div className="mt-1 text-xs" style={{ color: 'rgba(255,255,255,0.55)' }}>Service gaps, growth pressure, and proposed infrastructure</div>
-      </div>
       {/* 2D / 3D toggle */}
       <motion.button
         onClick={toggle3D}
@@ -686,7 +678,7 @@ export function MapContainer() {
         title={is3DMode ? 'Switch to 2D map' : 'Switch to 3D map'}
         style={{
           position: 'absolute',
-          bottom: 80,
+          top: 16,
           right: 16,
           zIndex: 20,
           width: 38,
@@ -946,10 +938,6 @@ export function MapContainer() {
       <AnimatePresence>
         {!city && <EmptyMapOverlay />}
       </AnimatePresence>
-
-      {showDots && (
-        <DotCountBadge count={dots.length} isLive={isLive} />
-      )}
 
       {hovered && !isOverrideModeActive && <ExplanationTooltip hover={hovered} />}
 
