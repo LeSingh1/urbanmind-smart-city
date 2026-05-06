@@ -37,6 +37,27 @@ const ZONE_DISPLAY: Record<string, string> = {
   INFRA_POWER_SUBSTATION: 'Power Substation',
 }
 const ZONE_TYPES = Object.keys(ZONE_DISPLAY)
+const NEED_SEQUENCE = [
+  'HEALTH_HOSPITAL',
+  'EDU_HIGH',
+  'BUS_STATION',
+  'PARK_SMALL',
+  'INFRA_POWER_SUBSTATION',
+  'RES_MED_APARTMENT',
+  'COM_SMALL_SHOP',
+  'ENV_TREE_CORRIDOR',
+  'RES_HIGH_TOWER',
+  'COM_OFFICE_PLAZA',
+  'RES_LOW_DETACHED',
+  'SMART_TRAFFIC_LIGHT',
+]
+const SPACING_BY_NEED: Record<string, number> = {
+  HEALTH_HOSPITAL: 0.035,
+  EDU_HIGH: 0.025,
+  BUS_STATION: 0.018,
+  PARK_SMALL: 0.018,
+  INFRA_POWER_SUBSTATION: 0.025,
+}
 
 // Fixed cell size ~100m × 133m (city-block scale), independent of bbox
 const ZONE_W_DEG = 0.0014
@@ -227,7 +248,7 @@ function makeOfflineZoneFeatures(
 }
 
 function offlineMetrics(city: CityProfile, year: number): MetricsSnapshot {
-  const t = year / 50
+  const t = Math.max(0, Math.min(1, (year - 2026) / 10))
   return {
     year,
     pop_total: Math.round(city.population_current * (1 + city.urban_growth_rate * t * 0.3)),
@@ -256,24 +277,48 @@ function offlineMetrics(city: CityProfile, year: number): MetricsSnapshot {
 // Jitter in degrees — spreads dots ~500 m around each anchor for natural city coverage
 const JITTER_LNG = 0.006
 const JITTER_LAT = 0.005
+const WATER_SENSITIVE_CITIES = new Set(['new_york', 'singapore', 'mumbai', 'dubai', 'lagos', 'london', 'tokyo'])
+const WATER_EXCLUSION_BOXES: Record<string, Array<[number, number, number, number]>> = {
+  new_york: [
+    [40.7000, 40.9000, -74.0350, -74.0120], // Hudson River edge
+    [40.6900, 40.7950, -73.9940, -73.9340], // East River channel
+    [40.5600, 40.7000, -74.0700, -73.9600], // Upper Bay / harbour
+    [40.5900, 40.6700, -73.9000, -73.7450], // Jamaica Bay
+  ],
+  singapore: [
+    [1.2300, 1.3000, 103.6100, 103.7400],
+    [1.2200, 1.3000, 103.8400, 104.0850],
+  ],
+  mumbai: [
+    [18.8900, 19.0600, 72.7800, 72.8150],
+    [19.0000, 19.2300, 72.9300, 72.9900],
+  ],
+  dubai: [
+    [24.9200, 25.1700, 55.0200, 55.1100],
+  ],
+}
 
 function offlineActions(year: number, city: CityProfile): AgentAction[] {
-  const count = 8 + (year % 6)
   const anchors = CITY_ANCHORS[city.id] ?? [[city.center_lat, city.center_lng] as [number, number]]
+  const count = Math.max(1, Math.min(10, anchors.length, 8 + (year % 6)))
   const offset = (year * 31) % anchors.length
   const bounds = CITY_BOUNDS[city.id]
+  const jitterScale = WATER_SENSITIVE_CITIES.has(city.id) ? 0.38 : 1
+  const placed: Array<{ lat: number; lng: number; zoneId: string }> = []
   return Array.from({ length: count }, (_, i) => {
     const anchorIdx = (offset + i * Math.ceil(anchors.length / count)) % anchors.length
     const [anchorLat, anchorLng] = anchors[anchorIdx]
     const seed = year * 97 + i * 53
-    const lngJitter = (((seed * 7919 + i * 3571) % 10000) / 10000 - 0.5) * 2 * JITTER_LNG
-    const latJitter = (((seed * 6271 + i * 4919) % 10000) / 10000 - 0.5) * 2 * JITTER_LAT
+    const lngJitter = (((seed * 7919 + i * 3571) % 10000) / 10000 - 0.5) * 2 * JITTER_LNG * jitterScale
+    const latJitter = (((seed * 6271 + i * 4919) % 10000) / 10000 - 0.5) * 2 * JITTER_LAT * jitterScale
     // Clamp to city land bounds to prevent placements in water
     const rawLng = anchorLng + lngJitter
     const rawLat = anchorLat + latJitter
-    const lng = bounds ? Math.max(bounds[2], Math.min(bounds[3], rawLng)) : rawLng
-    const lat = bounds ? Math.max(bounds[0], Math.min(bounds[1], rawLat)) : rawLat
-    const zoneId = ZONE_TYPES[(seed + anchorIdx) % ZONE_TYPES.length]
+    const adjusted = safeLandPlacement(city.id, rawLat, rawLng, anchorLat, anchorLng, bounds)
+    const lat = adjusted.lat
+    const lng = adjusted.lng
+    const zoneId = chooseNeededZone(year, i, lat, lng, placed)
+    placed.push({ lat, lng, zoneId })
     return {
       x: 0,
       y: 0,
@@ -285,6 +330,57 @@ function offlineActions(year: number, city: CityProfile): AgentAction[] {
       placement_reason: PLACEMENT_REASONS[zoneId] ?? 'Zone placement optimises service coverage and land-use efficiency in this sector.',
     }
   })
+}
+
+function safeLandPlacement(
+  cityId: string,
+  rawLat: number,
+  rawLng: number,
+  anchorLat: number,
+  anchorLng: number,
+  bounds?: [number, number, number, number]
+) {
+  const clamp = (lat: number, lng: number) => ({
+    lat: bounds ? Math.max(bounds[0], Math.min(bounds[1], lat)) : lat,
+    lng: bounds ? Math.max(bounds[2], Math.min(bounds[3], lng)) : lng,
+  })
+  const candidate = clamp(rawLat, rawLng)
+  if (!isExcludedWater(cityId, candidate.lat, candidate.lng)) return candidate
+
+  const nudges = [
+    [0, 0],
+    [0.004, 0.004],
+    [-0.004, 0.004],
+    [0.004, -0.004],
+    [-0.004, -0.004],
+    [0.007, 0],
+    [0, 0.007],
+    [-0.007, 0],
+    [0, -0.007],
+  ]
+
+  for (const [latOffset, lngOffset] of nudges) {
+    const next = clamp(anchorLat + latOffset, anchorLng + lngOffset)
+    if (!isExcludedWater(cityId, next.lat, next.lng)) return next
+  }
+  return clamp(anchorLat, anchorLng)
+}
+
+function isExcludedWater(cityId: string, lat: number, lng: number) {
+  return (WATER_EXCLUSION_BOXES[cityId] ?? []).some(([minLat, maxLat, minLng, maxLng]) =>
+    lat >= minLat && lat <= maxLat && lng >= minLng && lng <= maxLng
+  )
+}
+
+function chooseNeededZone(year: number, index: number, lat: number, lng: number, placed: Array<{ lat: number; lng: number; zoneId: string }>) {
+  const start = (year + index * 3) % NEED_SEQUENCE.length
+  for (let j = 0; j < NEED_SEQUENCE.length; j += 1) {
+    const zoneId = NEED_SEQUENCE[(start + j) % NEED_SEQUENCE.length]
+    const minDistance = SPACING_BY_NEED[zoneId] ?? 0.012
+    const tooClose = placed.some((item) => item.zoneId === zoneId && Math.hypot(lat - item.lat, lng - item.lng) < minDistance)
+    if (!tooClose) return zoneId
+  }
+  return ZONE_TYPES[(year + index) % ZONE_TYPES.length]
 }
 
 export default function App() {
@@ -311,8 +407,8 @@ export default function App() {
     const ms = Math.max(300, 1200 / speed)
     const id = setInterval(() => {
       const store = useSimulationStore.getState()
-      const nextYear = store.currentYear + 1
-      if (nextYear > 50) {
+      const nextYear = store.currentYear < 2026 ? 2026 : store.currentYear + 1
+      if (nextYear > 2036) {
         store.pauseSimulation()
         return
       }
@@ -333,7 +429,7 @@ export default function App() {
         type: nextYear >= 50 ? 'SIM_COMPLETE' : 'SIM_FRAME',
         year: nextYear,
         zones_geojson: { type: 'FeatureCollection', features: capped },
-        roads_geojson: store.currentFrame?.roads_geojson ?? { type: 'FeatureCollection', features: [] },
+        roads_geojson: { type: 'FeatureCollection', features: [] },
         metrics_snapshot: offlineMetrics(city, nextYear),
         agent_actions: actions,
       })
@@ -342,6 +438,10 @@ export default function App() {
   }, [sessionId, isRunning, isPaused, speed])
 
   const onSimLanding = showLanding || !selectedCity
+  const goHome = () => {
+    setShowLanding(true)
+    selectCity(null)
+  }
 
   return (
     <div style={{ background: 'var(--color-bg-app)', height: '100vh', overflow: 'hidden' }}>
@@ -366,7 +466,7 @@ export default function App() {
             transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
             style={{ position: 'absolute', inset: 0 }}
           >
-            <MainLayout />
+            <MainLayout onHome={goHome} />
           </motion.div>
         )}
       </AnimatePresence>

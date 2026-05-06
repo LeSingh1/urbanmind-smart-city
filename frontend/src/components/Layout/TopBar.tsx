@@ -5,7 +5,7 @@ import { useSimulationStore } from '@/stores/simulationStore'
 import { useNotification } from '@/hooks/useNotification'
 import { Logo } from '@/components/UI/LandingScreen'
 
-export function TopBar() {
+export function TopBar({ onHome }: { onHome: () => void }) {
   const selectedCity = useCityStore((state) => state.selectedCity)
   const activeScenario = useScenarioStore((state) => state.activeScenario)
   const { planning, analyzeDemo, openReport } = useSimulationStore()
@@ -30,7 +30,15 @@ export function TopBar() {
       }}
     >
       <div className="flex items-center gap-3 min-w-0">
-        <Logo />
+        <button
+          onClick={onHome}
+          className="rounded-lg px-1 py-1"
+          style={{ border: '1px solid transparent', background: 'transparent' }}
+          aria-label="Go to home page"
+          title="Home"
+        >
+          <Logo />
+        </button>
         <div className="hidden sm:block min-w-0">
           <div className="font-display text-sm font-semibold" style={{ color: 'var(--color-text-primary)' }}>
             UrbanMind

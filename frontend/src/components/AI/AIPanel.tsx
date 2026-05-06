@@ -215,7 +215,6 @@ function PlanningReport({ onClose }: { onClose: () => void }) {
     : `UrbanMind analyzed ${planning.cityId} under ${planning.growthPercent} percent projected growth, detected infrastructure service gaps, and generated a decision-support plan for scenario comparison.`
   const reportJson = JSON.stringify({
     city: planning.cityId === 'fremon' ? 'Fremon' : 'Fremont, CA',
-    mode: planning.cityMode,
     growthScenario: `${planning.growthPercent}% over ${planning.horizonYears} years`,
     gaps: planning.underservedZones,
     recommendations: planning.aiRecommendations,
@@ -288,7 +287,6 @@ function PlanningReport({ onClose }: { onClose: () => void }) {
           <section>
             <h3 className="font-mono text-[10px] tracking-widest uppercase mb-2" style={{ color: 'var(--color-accent-cyan)' }}>City and Scenario</h3>
             <DataLine label="City" value={planning.cityId === 'fremon' ? 'Fremon' : 'Fremont, CA'} />
-            <DataLine label="Mode" value={planning.cityMode === 'generated' ? 'Generated City Mode' : 'Real City Mode'} />
             <DataLine label="Growth Scenario" value={`${planning.growthPercent}% growth over ${planning.horizonYears} years`} />
             <DataLine label="Scenario Type" value="Balanced Growth default, adjustable by scenario controls" />
             <DataLine label="Timeline Year" value={`${planning.timelineYear} · ${planning.timelinePopulation.toLocaleString()} projected residents`} />
@@ -399,7 +397,7 @@ function PlanningReport({ onClose }: { onClose: () => void }) {
           <section>
             <h3 className="font-mono text-[10px] tracking-widest uppercase mb-2" style={{ color: 'var(--color-accent-cyan)' }}>Risks and Assumptions</h3>
             <p className="text-xs leading-relaxed" style={{ color: 'var(--color-text-secondary)' }}>
-              Data sources: MapLibre, OpenStreetMap, simulated growth model, UrbanMind scoring engine. Infrastructure data may be incomplete, population growth is simulated, and scores are estimates for early-stage decision support.
+              Data sources: clean planning grid, simulated growth model, UrbanMind scoring engine. Infrastructure data may be incomplete, population growth is simulated, and scores are estimates for early-stage decision support.
             </p>
           </section>
           <section>

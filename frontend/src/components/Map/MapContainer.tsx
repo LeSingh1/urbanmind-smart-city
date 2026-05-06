@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useCallback, useRef, useState } from 'react'
-import { MapContainer as LeafletMap, TileLayer, CircleMarker, Circle, Polyline, Marker, Popup, useMap, useMapEvents } from 'react-leaflet'
+import { MapContainer as LeafletMap, TileLayer, CircleMarker, Circle, Marker, Popup, useMap, useMapEvents } from 'react-leaflet'
 import L from 'leaflet'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Box, Building2, Bus, Cross, Flame, GraduationCap, Home, Layers, Shield, TreePine, Zap } from 'lucide-react'
@@ -77,6 +77,68 @@ function DistrictFlyController({ center }: { center: [number, number] | null }) 
     if (!center) return
     map.flyTo(center, 13, { duration: 1.1 })
   }, [center, map])
+  return null
+}
+
+function CleanPlanningGridLayer() {
+  const map = useMap()
+  useEffect(() => {
+    const GridLayer = (L.GridLayer as any).extend({
+      createTile(coords: { x: number; y: number; z: number }, done?: (error: Error | null, tile: HTMLCanvasElement) => void) {
+        const tile = document.createElement('canvas')
+        const size = 256
+        tile.width = size
+        tile.height = size
+        const ctx = tile.getContext('2d')
+        if (!ctx) {
+          done?.(null, tile)
+          return tile
+        }
+
+        ctx.fillStyle = 'rgba(224,229,236,0.18)'
+        ctx.fillRect(0, 0, size, size)
+
+        const major = 64
+        const minor = 16
+        ctx.lineWidth = 1
+        for (let x = 0; x <= size; x += minor) {
+          const isMajor = x % major === 0
+          ctx.strokeStyle = isMajor ? 'rgba(99,110,114,0.11)' : 'rgba(186,190,204,0.1)'
+          ctx.beginPath()
+          ctx.moveTo(x + 0.5, 0)
+          ctx.lineTo(x + 0.5, size)
+          ctx.stroke()
+        }
+        for (let y = 0; y <= size; y += minor) {
+          const isMajor = y % major === 0
+          ctx.strokeStyle = isMajor ? 'rgba(99,110,114,0.11)' : 'rgba(186,190,204,0.1)'
+          ctx.beginPath()
+          ctx.moveTo(0, y + 0.5)
+          ctx.lineTo(size, y + 0.5)
+          ctx.stroke()
+        }
+
+        const seed = Math.abs(coords.x * 928371 + coords.y * 364479 + coords.z * 1021)
+        for (let i = 0; i < 7; i += 1) {
+          const px = (seed + i * 47) % size
+          const py = (seed * 3 + i * 71) % size
+          ctx.fillStyle = i % 3 === 0 ? 'rgba(0,184,148,0.035)' : 'rgba(255,255,255,0.08)'
+          ctx.beginPath()
+          ctx.arc(px, py, 18 + (i % 2) * 10, 0, Math.PI * 2)
+          ctx.fill()
+        }
+
+        done?.(null, tile)
+        return tile
+      },
+    })
+
+    const layer = new GridLayer({ tileSize: 256, zIndex: 1, opacity: 1 })
+    layer.addTo(map)
+    return () => {
+      layer.removeFrom(map)
+    }
+  }, [map])
   return null
 }
 
@@ -171,11 +233,11 @@ const CATEGORY_COLOR: Record<InfrastructureCategory, string> = {
   fire_station: '#E74C3C',
   police_station: '#5D4E75',
   housing_zone: '#E67E22',
-  commercial_zone: '#F1C40F',
+  commercial_zone: '#1A6FA3',
   industrial_zone: '#64748B',
-  road: '#8B949E',
-  bike_lane: '#8B949E',
-  utility: '#F1C40F',
+  road: '#64748B',
+  bike_lane: '#64748B',
+  utility: '#6C5CE7',
   water: '#ff4757',
   power: '#F59E0B',
   mixed_use: '#E67E22',
@@ -194,8 +256,8 @@ const CATEGORY_ICON: Record<InfrastructureCategory, string> = {
   housing_zone: '&#8962;',
   commercial_zone: '&#9632;',
   industrial_zone: '&#9635;',
-  road: '&#9473;',
-  bike_lane: '&#9675;',
+  road: '',
+  bike_lane: '',
   utility: '&#9889;',
   water: '&#9679;',
   power: '&#9889;',
@@ -245,7 +307,7 @@ function LayerControlPanel({ activeLayers, toggleLayer }: { activeLayers: Set<st
           </div>
         ))}
         <div style={{ borderTop: '1px solid var(--color-border-subtle)', paddingTop: 8, display: 'grid', gap: 5 }}>
-          <div style={{ fontSize: 9, color: 'var(--color-text-muted)', lineHeight: 1.45 }}>Data sources: MapLibre, OpenStreetMap, simulated growth model, UrbanMind scoring engine</div>
+          <div style={{ fontSize: 9, color: 'var(--color-text-muted)', lineHeight: 1.45 }}>Data sources: clean planning grid, simulated growth model, UrbanMind scoring engine</div>
           <div style={{ fontSize: 9, color: 'var(--color-text-muted)', lineHeight: 1.45 }}>UrbanMind is a decision support simulator, not a final planning authority.</div>
         </div>
       </div>
@@ -420,7 +482,7 @@ function EmptyMapOverlay() {
 export function MapContainer() {
   const [hovered, setHovered] = useState<{ x: number; y: number; properties: any } | null>(null)
   const [serviceArea, setServiceArea] = useState<ServiceArea | null>(null)
-  const [mapLoading, setMapLoading] = useState(true)
+  const [mapLoading, setMapLoading] = useState(false)
   const [mapError, setMapError] = useState(false)
   const [layersPanelOpen, setLayersPanelOpen] = useState(false)
 
@@ -625,7 +687,9 @@ export function MapContainer() {
   const visibleInfrastructure = useMemo(() => {
     if (!showPlanning) return []
     const aiPreview = planning.hasAnalyzed && !planning.hasAppliedAIPlan ? planning.aiRecommendations : []
-    return [...planning.infrastructure, ...aiPreview].filter((item) => isLayerVisible(item, activeLayers, planning.hasAnalyzed))
+    return [...planning.infrastructure, ...aiPreview].filter((item) =>
+      item.geometryType === 'Point' && isLayerVisible(item, activeLayers, planning.hasAnalyzed)
+    )
   }, [activeLayers, planning.aiRecommendations, planning.hasAnalyzed, planning.hasAppliedAIPlan, planning.infrastructure, showPlanning])
 
   const selectedDistrictCenter = useMemo(() => {
@@ -664,13 +728,13 @@ export function MapContainer() {
         flex: 1,
         position: 'relative',
         minWidth: 0,
-        height: 'calc(100% - 24px)',
-        margin: 12,
+        height: 'calc(100% - 8px)',
+        margin: 4,
         overflow: 'hidden',
-        background: 'var(--color-bg-app)',
-        borderRadius: 16,
-        border: '1px solid var(--color-border-subtle)',
-        boxShadow: 'var(--shadow-lg)',
+        background: 'linear-gradient(145deg, var(--color-bg-app), var(--color-bg-sidebar))',
+        borderRadius: 10,
+        border: '1px solid rgba(186,190,204,0.72)',
+        boxShadow: 'inset 1px 1px 0 rgba(255,255,255,0.8), 8px 8px 18px rgba(186,190,204,0.75), -8px -8px 18px rgba(255,255,255,0.72)',
       }}
     >
       <div style={{ position: 'absolute', top: 14, left: 16, zIndex: 16, pointerEvents: 'none' }}>
@@ -743,30 +807,33 @@ export function MapContainer() {
       ) : (
         // Absolute wrapper ensures the map fills the entire <main>
         // isolation: isolate prevents Leaflet's high z-index panes from leaking outside
-        <div style={{ position: 'absolute', inset: 0, isolation: 'isolate', borderRadius: 16, overflow: 'hidden' }}>
+        <div style={{ position: 'absolute', inset: 0, isolation: 'isolate', borderRadius: 10, overflow: 'hidden' }}>
           <LeafletMap
             key={city?.id ?? 'default'}          // remount when city changes
             center={initialCenter}
             zoom={initialZoom}
             style={{ width: '100%', height: '100%' }}
             zoomControl={false}
+            attributionControl={false}
             maxBounds={maxBounds}
             maxBoundsViscosity={0.85}
-            minZoom={10}
+            minZoom={9}
+            preferCanvas
           >
-            {/* Light CartoDB basemap */}
             <TileLayer
-              url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"
-              attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a> &copy; <a href="https://carto.com/">CARTO</a>'
+              url="https://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}{r}.png"
+              attribution=""
               maxZoom={20}
               subdomains="abcd"
+              opacity={0.74}
+              className="urbanmind-soft-basemap"
               eventHandlers={{
                 load: () => setMapLoading(false),
                 tileerror: () => { setMapLoading(false); setMapError(true) },
                 loading: () => setMapLoading(true),
               }}
             />
-
+            <CleanPlanningGridLayer />
             {city && <CityFlyController city={city} />}
             <DistrictFlyController center={selectedDistrictCenter} />
             <MapClickHandler
@@ -812,8 +879,8 @@ export function MapContainer() {
                 center={district.center}
                 radius={Math.max(8, district.severity * 14)}
                 pathOptions={{
-                  color: district.severity > 0.8 ? '#FF5A3D' : '#fdcb6e',
-                  fillColor: district.severity > 0.8 ? '#FF5A3D' : '#fdcb6e',
+                  color: district.severity > 0.8 ? '#FF5A3D' : '#6C5CE7',
+                  fillColor: district.severity > 0.8 ? '#FF5A3D' : '#6C5CE7',
                   fillOpacity: 0.2,
                   weight: 1,
                   opacity: 0.8,
@@ -833,9 +900,9 @@ export function MapContainer() {
                 center={zone.center}
                 radius={activeLayers.has('Heatmap Mode') ? zone.radiusMeters * 1.2 : zone.radiusMeters}
                 pathOptions={{
-                  color: zone.pressure === 'high' ? '#fdcb6e' : '#ff4757',
-                  fillColor: zone.pressure === 'high' ? '#fdcb6e' : '#ff4757',
-                  fillOpacity: activeLayers.has('Heatmap Mode') ? (zone.pressure === 'high' ? 0.24 : 0.16) : 0.1,
+                  color: zone.pressure === 'high' ? '#6C5CE7' : '#ff4757',
+                  fillColor: zone.pressure === 'high' ? '#6C5CE7' : '#ff4757',
+                  fillOpacity: activeLayers.has('Heatmap Mode') ? (zone.pressure === 'high' ? 0.2 : 0.16) : 0.1,
                   weight: 1.2,
                   opacity: 0.55,
                   dashArray: '7 5',
@@ -870,40 +937,6 @@ export function MapContainer() {
               )
             })}
             {visibleInfrastructure.map((item) => {
-              if (item.geometryType === 'LineString') {
-                const coords = item.coordinates as GeoJSON.Position[]
-                return (
-                  <Polyline
-                    key={item.id}
-                    positions={coords.map(([lng, lat]) => [lat, lng] as [number, number])}
-                    pathOptions={{
-                      color: item.status === 'proposed' || item.status === 'ai_recommended' ? '#ff4757' : CATEGORY_COLOR[item.category],
-                      weight: item.status === 'proposed' || item.status === 'ai_recommended' ? 5 : 3,
-                      opacity: item.status === 'ai_recommended' ? 0.65 : 0.85,
-                      dashArray: item.status === 'ai_recommended' ? '8 7' : undefined,
-                    }}
-                  >
-                  <Popup>
-                    <strong>{item.name}</strong><br />
-                    Category: {item.category.replace(/_/g, ' ')}<br />
-                    Status: {item.status.replace(/_/g, ' ')}<br />
-                    Source: {item.source.replace(/_/g, ' ')}<br />
-                    {item.reason}<br />
-                    {item.costEstimate ? `Cost estimate: $${(item.costEstimate / 1_000_000).toFixed(1)}M` : 'Nearest gap relevance: supports baseline coverage.'}<br />
-                    Expected impact: {item.impactScore}<br />
-                    Confidence: {Math.round(item.confidence * 100)}%
-                    {item.status === 'ai_recommended' && !planning.hasAppliedAIPlan && (
-                      <button
-                        onClick={() => planning.cityId === 'fremon' ? applyRecommendedPlan() : useSimulationStore.getState().applyAIPlan(scenario)}
-                        style={{ display: 'block', marginTop: 8, border: '1px solid var(--color-border-active)', borderRadius: 6, padding: '5px 8px', color: 'var(--color-accent-cyan)', background: 'var(--color-bg-hover)' }}
-                      >
-                        Apply Recommendation
-                      </button>
-                    )}
-                  </Popup>
-                </Polyline>
-                )
-              }
               const [lng, lat] = item.coordinates as GeoJSON.Position
               return (
                 <Marker
@@ -992,7 +1025,7 @@ export function MapContainer() {
                 {mapError ? 'Demo map fallback active' : 'Loading map context'}
               </div>
               <p style={{ marginTop: 8, fontSize: 11, lineHeight: 1.5, color: 'var(--color-text-muted)' }}>
-                {mapError ? 'Base tiles are unavailable, but seeded planning layers and scoring remain usable.' : 'Loading city map and infrastructure layers...'}
+                  {mapError ? 'The clean planning canvas is still usable.' : 'Loading city planning layers...'}
               </p>
               {mapError && (
                 <button onClick={() => { setMapError(false); setMapLoading(true) }} style={{ marginTop: 10, border: '1px solid var(--color-border-subtle)', borderRadius: 6, padding: '6px 10px', color: 'var(--color-accent-cyan)', background: 'var(--color-bg-hover)', fontSize: 11 }}>

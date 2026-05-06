@@ -98,7 +98,7 @@ export function ZonePalette({ compact = false }: { compact?: boolean }) {
           ['Add School', 'EDU_HIGH'],
           ['Add Park', 'PARK_SMALL'],
           ['Add Transit Stop', 'BUS_STATION'],
-          ['Draw Transit Line', 'TRAIN_STATION'],
+          ['Add Transit Hub', 'TRAIN_STATION'],
           ['Draw Housing Zone', 'RES_MED_APARTMENT'],
           ['Draw Commercial Zone', 'COM_OFFICE_PLAZA'],
           ['Draw Mixed-Use Zone', 'RES_MIXED_USE'],
@@ -153,7 +153,7 @@ export function ZonePalette({ compact = false }: { compact?: boolean }) {
         className="w-full py-2 rounded-lg text-xs font-semibold font-display tracking-wide disabled:opacity-40 disabled:cursor-not-allowed"
         style={
           isOverrideModeActive
-            ? { background: 'var(--color-bg-hover)', color: 'var(--color-accent-warning)', border: '1px solid rgba(253,203,110,0.4)', boxShadow: 'var(--shadow-pressed)' }
+            ? { background: 'var(--color-bg-hover)', color: 'var(--color-accent-warning)', border: '1px solid rgba(108,92,231,0.4)', boxShadow: 'var(--shadow-pressed)' }
             : { background: 'var(--color-bg-hover)', color: 'var(--color-accent-cyan)', border: '1px solid var(--color-border-subtle)', boxShadow: 'var(--shadow-sm)' }
         }
       >

@@ -2,6 +2,8 @@ import { useMemo, useState } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import {
   Building2,
+  ChevronLeft,
+  ChevronRight,
   CloudSun,
   Crosshair,
   Flame,
@@ -20,6 +22,9 @@ import {
   Waves,
   Zap,
 } from 'lucide-react'
+import { MetricsDashboard } from '@/components/Simulation/MetricsDashboard'
+import { AIPanel } from '@/components/AI/AIPanel'
+import { ActionsPanel } from '@/components/Simulation/ActionsPanel'
 import { ZonePalette } from '@/components/UI/ZonePalette'
 import { useCityStore } from '@/stores/cityStore'
 import { useScenarioStore, scenarioColors, scenarioLabels } from '@/stores/scenarioStore'
@@ -28,6 +33,16 @@ import { useUIStore } from '@/stores/uiStore'
 import type { CityProfile, ScenarioId } from '@/types/city.types'
 
 const CITY_PRESETS = ['fremon', 'fremont', 'san_jose', 'sacramento', 'phoenix', 'austin']
+
+const TABS = [
+  { id: 'planner', icon: Map, label: 'Planner' },
+  { id: 'metrics', icon: Scale, label: 'Metrics' },
+  { id: 'ai', icon: Sparkles, label: 'Copilot' },
+  { id: 'actions', icon: Layers, label: 'Actions' },
+  { id: 'placement', icon: Crosshair, label: 'Tools' },
+] as const
+
+type TabId = typeof TABS[number]['id']
 
 const CITY_META: Record<string, { type: string; growth: string; challenge: string; badge: string }> = {
   san_jose: { type: 'Bay Area metro', growth: '22% in 10 years', challenge: 'housing, transit, heat', badge: 'Preset' },
@@ -40,7 +55,7 @@ const CITY_META: Record<string, { type: string; growth: string; challenge: strin
 
 const SCENARIO_DETAILS: Record<ScenarioId, { icon: React.ElementType; description: string; weights: string; impact: string }> = {
   balanced: { icon: Scale, description: 'Balances access, growth, commute, and green space.', weights: 'All weights normal', impact: 'Stable baseline' },
-  transit_first: { icon: Train, description: 'Prioritizes bus routes, rail access, bike lanes, and commute reduction.', weights: 'Transit + commute', impact: 'Lower commute' },
+  transit_first: { icon: Train, description: 'Prioritizes transit stops, rail access, and commute reduction.', weights: 'Transit + commute', impact: 'Lower commute' },
   climate_resilient: { icon: Leaf, description: 'Prioritizes parks, CO2, heat risk, and resilient green corridors.', weights: 'Green + CO2', impact: 'Lower emissions' },
   equity_focused: { icon: Users, description: 'Prioritizes underserved zones, schools, emergency access, and transit.', weights: 'Equity + access', impact: 'Fairer access' },
   emergency_ready: { icon: Flame, description: 'Prioritizes clinics, hospitals, police, fire, and response coverage.', weights: 'Emergency + response', impact: 'Faster response' },
@@ -58,7 +73,7 @@ const LAYER_ITEMS = [
   { id: 'Proposed infrastructure', icon: Crosshair, label: 'Proposed Infrastructure', color: '#00D4FF', group: 'Future Scenario' },
   { id: 'AI Recommendations', icon: Sparkles, label: 'AI Recommendations', color: '#00D4FF', group: 'Future Scenario' },
   { id: 'Underserved zones', icon: CloudSun, label: 'Underserved Zones', color: '#FF5A3D', group: 'Analysis Overlays' },
-  { id: 'Heatmap Mode', icon: Zap, label: 'Heatmap Mode', color: '#FFB800', group: 'Analysis Overlays' },
+  { id: 'Heatmap Mode', icon: Zap, label: 'Heatmap Mode', color: '#6C5CE7', group: 'Analysis Overlays' },
 ] as const
 
 const TERRAIN_OPTIONS = [
@@ -71,32 +86,74 @@ const TERRAIN_OPTIONS = [
 ]
 
 export function LeftSidebar() {
+  const [activePanel, setActivePanel] = useState<TabId | null>('planner')
   const [collapsed, setCollapsed] = useState(false)
 
   return (
     <div
       className="flex shrink-0"
       style={{
-        width: collapsed ? 52 : 368,
+        width: collapsed ? 48 : 330,
         transition: 'width 300ms cubic-bezier(0.16,1,0.3,1)',
       }}
     >
-      <button
-        onClick={() => setCollapsed((v) => !v)}
-        className="flex w-[52px] shrink-0 items-start justify-center pt-4"
+      <div
+        className="flex w-12 shrink-0 flex-col items-center gap-1.5 px-1 py-3"
         style={{
           background: 'var(--color-bg-sidebar)',
           borderRight: '1px solid var(--color-border-subtle)',
-          color: 'var(--color-text-muted)',
         }}
-        title={collapsed ? 'Expand controls' : 'Collapse controls'}
-        aria-label={collapsed ? 'Expand controls' : 'Collapse controls'}
       >
-        <Map size={18} />
-      </button>
+        {TABS.map(({ id, icon: Icon, label }) => {
+          const active = activePanel === id && !collapsed
+          return (
+            <motion.button
+              key={id}
+              onClick={() => {
+                if (collapsed) setCollapsed(false)
+                setActivePanel(activePanel === id && !collapsed ? null : id)
+              }}
+              whileHover={{ scale: 1.06, y: -1 }}
+              whileTap={{ scale: 0.94 }}
+              className="relative flex h-9 w-9 items-center justify-center rounded-lg"
+              style={{
+                background: active ? 'var(--color-bg-hover)' : 'transparent',
+                color: active ? 'var(--color-accent-cyan)' : 'var(--color-text-muted)',
+                border: active ? '1px solid rgba(255,71,87,0.32)' : '1px solid transparent',
+                boxShadow: active ? 'var(--shadow-pressed)' : 'none',
+              }}
+              title={label}
+              aria-label={label}
+            >
+              <Icon size={16} />
+              {active && (
+                <motion.div
+                  layoutId="sidebar-active-dot"
+                  className="absolute right-0.5 top-1/2 h-5 w-1 -translate-y-1/2 rounded-full"
+                  style={{ background: 'var(--color-accent-cyan)' }}
+                />
+              )}
+            </motion.button>
+          )
+        })}
+
+        <div className="flex-1" />
+
+        <motion.button
+          onClick={() => setCollapsed((v) => !v)}
+          whileHover={{ scale: 1.06 }}
+          whileTap={{ scale: 0.94 }}
+          className="flex h-9 w-9 items-center justify-center rounded-lg"
+          style={{ color: 'var(--color-text-muted)', border: '1px solid transparent' }}
+          title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+          aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+        >
+          {collapsed ? <ChevronRight size={14} /> : <ChevronLeft size={14} />}
+        </motion.button>
+      </div>
 
       <AnimatePresence>
-        {!collapsed && (
+        {!collapsed && activePanel && (
           <motion.div
             initial={{ opacity: 0, x: -12 }}
             animate={{ opacity: 1, x: 0, transition: { duration: 0.3, ease: [0.16, 1, 0.3, 1] } }}
@@ -116,13 +173,17 @@ export function LeftSidebar() {
               <div className="flex items-center gap-2">
                 <div className="w-1 h-5 rounded-full" style={{ background: 'var(--color-accent-cyan)', boxShadow: 'var(--shadow-sm)' }} />
                 <h2 className="font-display font-semibold text-sm tracking-wide" style={{ color: 'var(--color-text-primary)' }}>
-                  Planner Controls
+                  {TABS.find((tab) => tab.id === activePanel)?.label}
                 </h2>
               </div>
             </div>
 
             <div className="flex-1 overflow-y-auto">
-              <PlannerPanel />
+              {activePanel === 'planner' && <PlannerPanel />}
+              {activePanel === 'metrics' && <MetricsDashboard />}
+              {activePanel === 'ai' && <AIPanel />}
+              {activePanel === 'actions' && <ActionsPanel />}
+              {activePanel === 'placement' && <ZonePalette />}
             </div>
           </motion.div>
         )}
@@ -150,17 +211,22 @@ function PlannerPanel() {
       analyzeDemo(city.id, activeScenario)
   }
 
+  const chooseCity = (city: CityProfile) => {
+    selectCity(city)
+    analyzeDemo(city.id, activeScenario)
+  }
+
+  const chooseScenario = (id: ScenarioId) => {
+    setScenario(id)
+    if (selectedCity) analyzeDemo(selectedCity.id, id)
+  }
+
   return (
     <div className="p-3 space-y-4">
-      <PanelSection title="City" action={<button onClick={() => setCreateOpen(true)} className="panel-link"><Plus size={11} />Create New City</button>}>
+      <PanelSection title="Growth Scenario">
         <div className="grid gap-2">
-          {presetCities.map((city) => (
-            <CityPresetCard
-              key={city.id}
-              city={city}
-              active={selectedCity?.id === city.id}
-              onSelect={() => selectCity(city)}
-            />
+          {(Object.keys(SCENARIO_DETAILS) as ScenarioId[]).map((id) => (
+            <ScenarioCard key={id} id={id} active={activeScenario === id} onSelect={() => chooseScenario(id)} />
           ))}
         </div>
       </PanelSection>
@@ -218,14 +284,6 @@ function PlannerPanel() {
         </div>
         <div className="mt-1 font-mono text-[10px]" style={{ color: 'var(--color-accent-warning)' }}>
           Population: {planning.timelinePopulation.toLocaleString()}
-        </div>
-      </PanelSection>
-
-      <PanelSection title="Growth Scenario">
-        <div className="grid gap-2">
-          {(Object.keys(SCENARIO_DETAILS) as ScenarioId[]).map((id) => (
-            <ScenarioCard key={id} id={id} active={activeScenario === id} onSelect={() => setScenario(id)} />
-          ))}
         </div>
       </PanelSection>
 

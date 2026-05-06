@@ -1,10 +1,61 @@
+import { motion } from 'framer-motion'
+import { Pause, Play, RotateCcw } from 'lucide-react'
+import { useCityStore } from '@/stores/cityStore'
+import { useScenarioStore } from '@/stores/scenarioStore'
 import { useSimulationStore } from '@/stores/simulationStore'
-import type { TimelineYear } from '@/types/city.types'
 
-const YEARS: TimelineYear[] = [2026, 2028, 2030, 2032, 2036]
+const START_YEAR = 2026
+const END_YEAR = 2036
+const KEY_YEARS = [2026, 2028, 2030, 2032, 2036] as const
 
 export function BottomBar() {
-  const { planning, setTimelineYear } = useSimulationStore()
+  const selectedCity = useCityStore((state) => state.selectedCity)
+  const activeScenario = useScenarioStore((state) => state.activeScenario)
+  const {
+    currentYear,
+    frameHistory,
+    isRunning,
+    isPaused,
+    planning,
+    startSimulation,
+    pauseSimulation,
+    resumeSimulation,
+    scrubToYear,
+    setTimelineYear,
+    analyzeDemo,
+  } = useSimulationStore()
+
+  const displayYear = currentYear >= START_YEAR ? currentYear : planning.timelineYear
+  const progress = Math.max(0, Math.min(100, ((displayYear - START_YEAR) / (END_YEAR - START_YEAR)) * 100))
+
+  const togglePlayback = () => {
+    if (!selectedCity) return
+    if (isRunning) {
+      pauseSimulation()
+      return
+    }
+    if (isPaused && currentYear < END_YEAR) {
+      resumeSimulation()
+      return
+    }
+    startSimulation(selectedCity.id, activeScenario)
+  }
+
+  const reset = () => {
+    if (selectedCity) analyzeDemo(selectedCity.id, activeScenario)
+  }
+
+  const moveToYear = (year: number) => {
+    const frame = frameHistory.find((item) => item.year === year)
+    if (frame) {
+      scrubToYear(year)
+      return
+    }
+    const nearest = KEY_YEARS.reduce((best, candidate) =>
+      Math.abs(candidate - year) < Math.abs(best - year) ? candidate : best
+    )
+    setTimelineYear(nearest)
+  }
 
   return (
     <footer
@@ -12,44 +63,91 @@ export function BottomBar() {
       style={{
         background: 'var(--color-bg-sidebar)',
         borderTop: '1px solid var(--color-border-subtle)',
-        boxShadow: '0 -10px 30px rgba(0,0,0,0.22)',
+        boxShadow: '0 -10px 30px rgba(0,0,0,0.18)',
       }}
     >
-      <div className="min-w-[180px]">
-        <div className="font-display text-sm font-semibold" style={{ color: 'var(--color-text-primary)' }}>
-          Growth Timeline
-        </div>
-        <div className="mt-0.5 text-xs" style={{ color: 'var(--color-text-secondary)' }}>
-          {planning.timelinePhase || 'Run analysis to simulate growth pressure.'}
+      <div className="flex min-w-[180px] items-center gap-2">
+        <button
+          onClick={togglePlayback}
+          disabled={!selectedCity}
+          className="grid h-10 w-10 place-items-center rounded-lg disabled:cursor-not-allowed disabled:opacity-40"
+          style={{ color: 'var(--color-accent-cyan)', border: '1px solid rgba(255,71,87,0.32)', background: 'var(--color-bg-panel)', boxShadow: 'var(--shadow-sm)' }}
+          aria-label={isRunning ? 'Pause simulation' : 'Play simulation'}
+          title={isRunning ? 'Pause simulation' : 'Play simulation'}
+        >
+          {isRunning ? <Pause size={17} /> : <Play size={17} />}
+        </button>
+        <button
+          onClick={reset}
+          disabled={!selectedCity}
+          className="grid h-10 w-10 place-items-center rounded-lg disabled:cursor-not-allowed disabled:opacity-40"
+          style={{ color: 'var(--color-text-secondary)', border: '1px solid var(--color-border-subtle)', background: 'var(--color-bg-panel)', boxShadow: 'var(--shadow-sm)' }}
+          aria-label="Reset simulation"
+          title="Reset simulation"
+        >
+          <RotateCcw size={16} />
+        </button>
+        <div>
+          <div className="font-mono text-[9px] uppercase tracking-widest" style={{ color: 'var(--color-text-muted)' }}>Year</div>
+          <motion.div
+            key={displayYear}
+            initial={{ opacity: 0.55, y: 5 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.28, ease: [0.16, 1, 0.3, 1] }}
+            className="font-mono text-xl font-bold"
+            style={{ color: 'var(--color-text-primary)' }}
+          >
+            {displayYear}
+          </motion.div>
         </div>
       </div>
 
-      <div className="flex flex-1 items-center justify-center gap-2">
-        {YEARS.map((year) => {
-          const active = planning.timelineYear === year
-          return (
-            <button
-              key={year}
-              onClick={() => setTimelineYear(year)}
-              disabled={!planning.hasAnalyzed}
-              className="rounded-xl px-4 py-2 font-mono text-xs font-semibold disabled:cursor-not-allowed disabled:opacity-40"
-              style={{
-                color: active ? 'var(--color-accent-cyan)' : 'var(--color-text-secondary)',
-                border: active ? '1px solid rgba(0,212,255,0.45)' : '1px solid var(--color-border-subtle)',
-                background: active ? 'var(--color-bg-hover)' : 'var(--color-bg-card)',
-              }}
-            >
-              {year}
-            </button>
-          )
-        })}
+      <div className="min-w-0 flex-1">
+        <div className="mb-2 flex items-center justify-between gap-2">
+          <span className="text-xs font-semibold" style={{ color: 'var(--color-text-secondary)' }}>
+            {planning.timelinePhase || 'Move the timeline or press play to run the growth simulation.'}
+          </span>
+          <span className="font-mono text-[10px]" style={{ color: 'var(--color-text-muted)' }}>
+            {START_YEAR} to {END_YEAR}
+          </span>
+        </div>
+        <div className="relative">
+          <div className="absolute left-0 right-0 top-1/2 h-2 -translate-y-1/2 rounded-full" style={{ background: 'var(--color-bg-hover)', boxShadow: 'var(--shadow-inset)' }} />
+          <motion.div
+            className="absolute left-0 top-1/2 h-2 -translate-y-1/2 rounded-full"
+            animate={{ width: `${progress}%` }}
+            transition={{ duration: isRunning ? 0.42 : 0.28, ease: [0.16, 1, 0.3, 1] }}
+            style={{ background: 'var(--color-accent-cyan)', opacity: 0.72 }}
+          />
+          <motion.div
+            className="pointer-events-none absolute top-1/2 h-5 w-5 -translate-x-1/2 -translate-y-1/2 rounded-full"
+            animate={{ left: `${progress}%` }}
+            transition={{ duration: isRunning ? 0.42 : 0.28, ease: [0.16, 1, 0.3, 1] }}
+            style={{
+              background: 'var(--color-accent-cyan)',
+              border: '2px solid var(--color-bg-sidebar)',
+              boxShadow: '0 6px 18px rgba(255,71,87,0.34)',
+            }}
+          />
+          <input
+            type="range"
+            min={START_YEAR}
+            max={END_YEAR}
+            step={1}
+            value={displayYear}
+            onChange={(event) => moveToYear(Number(event.target.value))}
+            className="relative z-10 w-full"
+            style={{ accentColor: 'var(--color-accent-cyan)', opacity: 0 }}
+            aria-label="Simulation year"
+          />
+        </div>
       </div>
 
-      <div className="hidden min-w-[180px] text-right md:block">
+      <div className="hidden min-w-[150px] text-right md:block">
         <div className="font-mono text-[10px] uppercase tracking-widest" style={{ color: 'var(--color-text-muted)' }}>
-          Projected population
+          Population
         </div>
-        <div className="font-mono text-lg font-bold" style={{ color: 'var(--color-accent-warning)' }}>
+        <div className="font-mono text-lg font-bold" style={{ color: 'var(--color-text-primary)' }}>
           {planning.timelinePopulation.toLocaleString()}
         </div>
       </div>

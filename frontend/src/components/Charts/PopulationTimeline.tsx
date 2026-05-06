@@ -78,7 +78,7 @@ export function PopulationTimeline() {
             stroke="var(--color-accent-cyan)" strokeDasharray="2 4" opacity={0.7} />
           {eventActions.map((action, index) => (
             <g key={`${action.year}-${index}`} transform={`translate(${x(action.year)},0)`}>
-              <line y1={0} y2={innerH} stroke="rgba(253,203,110,0.5)" strokeDasharray="1 4" />
+              <line y1={0} y2={innerH} stroke="rgba(108,92,231,0.45)" strokeDasharray="1 4" />
               <circle cy={8} r={3} fill="var(--color-accent-warning)" />
             </g>
           ))}

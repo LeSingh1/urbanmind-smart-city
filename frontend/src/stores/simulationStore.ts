@@ -357,7 +357,7 @@ export const useSimulationStore = create<SimulationStore>((set, get) => ({
       .filter((item) => featureIds.includes(item.id))
       .map((item) => ({ ...item, status: 'proposed' as const }))
     const infrastructure = [
-      ...state.planning.infrastructure.filter((item) => !FREMON_AI_RECOMMENDATIONS.some((rec) => rec.id === item.id) && item.category !== 'road'),
+      ...state.planning.infrastructure.filter((item) => !FREMON_AI_RECOMMENDATIONS.some((rec) => rec.id === item.id) && item.category !== 'road' && item.category !== 'bike_lane'),
       ...applied,
     ]
     const underservedZones = markFremonImprovedZones(applied.map((item) => item.id))
@@ -477,7 +477,7 @@ export const useSimulationStore = create<SimulationStore>((set, get) => ({
   selectDistrict: (id) => set((state) => ({ planning: { ...state.planning, selectedDistrictId: id } })),
 
   addInfrastructure: (item) => set((state) => {
-    if (item.category === 'road') return state
+    if (item.category === 'road' || item.category === 'bike_lane') return state
     const infrastructure = withoutRoadInfrastructure([...state.planning.infrastructure, item])
     const underservedZones = state.planning.underservedZones.map((zone) =>
       item.category === 'clinic' && (zone.gapType === 'hospital_access' || zone.gapType === 'emergency_access')
@@ -684,7 +684,11 @@ function shiftGrowthZones(zones: GrowthPressureZone[], shift: { lat: number; lng
 }
 
 function withoutRoadInfrastructure(items: InfrastructureItem[]): InfrastructureItem[] {
-  return items.filter((item) => item.category !== 'road')
+  return items.filter((item) =>
+    item.category !== 'road' &&
+    item.category !== 'bike_lane' &&
+    item.geometryType !== 'LineString'
+  )
 }
 
 function normalizeScenario(scenarioId: string): ScenarioId {
@@ -703,12 +707,7 @@ function scoresToFrame(scores: PlanningScores, year: number, infrastructure: Inf
         .filter((item) => item.geometryType === 'Point')
         .map((item) => pointFeature(item)),
     },
-    roads_geojson: {
-      type: 'FeatureCollection',
-      features: infrastructure
-        .filter((item) => item.geometryType === 'LineString')
-        .map((item) => lineFeature(item)),
-    },
+    roads_geojson: { type: 'FeatureCollection', features: [] },
     metrics_snapshot: scoresToMetrics(scores, year),
     agent_actions: zones.filter((zone) => !zone.isImproved).slice(0, 4).map((zone, index) => ({
       x: index,
@@ -738,14 +737,6 @@ function pointFeature(item: InfrastructureItem): GeoJSON.Feature {
       type: 'Polygon',
       coordinates: squareAround(coords[0], coords[1], 0.001),
     },
-  }
-}
-
-function lineFeature(item: InfrastructureItem): GeoJSON.Feature {
-  return {
-    type: 'Feature',
-    properties: { infrastructureId: item.id, zone_type_id: categoryToZoneType(item.category), zone_display_name: item.name },
-    geometry: { type: 'LineString', coordinates: item.coordinates as GeoJSON.Position[] },
   }
 }
 

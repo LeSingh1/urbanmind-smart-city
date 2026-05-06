@@ -5,7 +5,7 @@
   --color-brand-primary:   #2c3e50;
   --color-brand-secondary: #ff4757;
   --color-brand-accent:    #00b894;
-  --color-brand-warning:   #fdcb6e;
+  --color-brand-warning:   #6c5ce7;
   --color-brand-danger:    #e17055;
 
   /* ── Chassis / surface hierarchy ── */
@@ -42,11 +42,11 @@
   --zone-forest:     #145A32;
   --zone-transit:    #7D3C98;
   --zone-health:     #C0392B;
-  --zone-education:  #B7950B;
-  --zone-utility:    #6E5D0A;
+  --zone-education:  #2E86C1;
+  --zone-utility:    #6C5CE7;
   --zone-government: #4A3F5C;
-  --zone-culture:    #B7770D;
-  --zone-disaster:   #CA6F1E;
+  --zone-culture:    #8E44AD;
+  --zone-disaster:   #E17055;
   --zone-smart:      #0097A7;
   --zone-waterfront: #154360;
   --zone-landmark:   #922B21;
@@ -90,7 +90,7 @@
   --color-accent-cyan:    #ff4757;  /* primary accent — safety red */
   --color-accent-purple:  #d63031;  /* dark red variant */
   --color-accent-green:   #00b894;
-  --color-accent-warning: #fdcb6e;
+  --color-accent-warning: #6c5ce7;
   --color-accent-danger:  #e17055;
 }
 

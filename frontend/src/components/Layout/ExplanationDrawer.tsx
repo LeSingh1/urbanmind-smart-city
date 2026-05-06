@@ -56,7 +56,7 @@ export function ExplanationDrawer() {
 
           {content.placement_reason && (
             <Section title="Why placed here">
-              <div style={{ ...cardStyle, borderColor: 'rgba(253,203,110,0.4)', background: 'rgba(253,203,110,0.08)' }}>
+              <div style={{ ...cardStyle, borderColor: 'rgba(108,92,231,0.34)', background: 'rgba(108,92,231,0.07)' }}>
                 {content.sps_score != null && (
                   <div style={{ fontSize: 11, color: 'var(--color-accent-warning)', fontWeight: 700, marginBottom: 6, fontFamily: 'var(--font-mono)' }}>
                     SPS Score: {content.sps_score.toFixed(2)}

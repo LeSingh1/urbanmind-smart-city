@@ -258,6 +258,21 @@ button, select, input, a, [role="button"] {
 .leaflet-container {
   width: 100% !important;
   height: 100% !important;
+  background:
+    radial-gradient(circle at 20% 18%, rgba(255,255,255,0.45), transparent 28%),
+    linear-gradient(var(--color-border-subtle) 1px, transparent 1px),
+    linear-gradient(90deg, var(--color-border-subtle) 1px, transparent 1px),
+    var(--color-bg-app) !important;
+  background-size: auto, 64px 64px, 64px 64px, auto !important;
+}
+
+.urbanmind-soft-basemap {
+  filter: saturate(0.62) contrast(0.9) brightness(1.05);
+  mix-blend-mode: multiply;
+}
+
+.leaflet-pane {
+  transition: opacity 220ms ease, transform 220ms cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .leaflet-control-attribution {

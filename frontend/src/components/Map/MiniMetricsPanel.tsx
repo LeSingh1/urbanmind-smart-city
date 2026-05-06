@@ -142,7 +142,7 @@ export function MiniMetricsPanel() {
       label: 'Commute',
       value: Math.round(metrics?.mobility_commute ?? 0),
       unit: 'min',
-      color: '#fdcb6e',
+      color: '#6c5ce7',
       delay: 0.05,
     },
     {

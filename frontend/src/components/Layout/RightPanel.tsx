@@ -21,14 +21,14 @@ export function RightPanel() {
 
   return (
     <aside
-      className="w-[350px] shrink-0 overflow-y-auto"
+      className="w-[252px] shrink-0 overflow-y-auto"
       style={{
         background: 'var(--color-bg-sidebar)',
         borderLeft: '1px solid var(--color-border-subtle)',
         boxShadow: '-16px 0 46px rgba(0,0,0,0.18)',
       }}
     >
-      <div className="space-y-4 p-4">
+      <div className="space-y-3 p-3">
         <Section title="Selected City">
           {selectedCity ? (
             <div className="flex items-center gap-3 rounded-xl p-3" style={{ background: 'var(--color-bg-card)', border: '1px solid var(--color-border-subtle)' }}>
@@ -128,7 +128,7 @@ export function RightPanel() {
 
         {planning.placementFeedback && (
           <Section title="Placement Feedback">
-            <div className="rounded-xl p-3" style={{ border: planning.placementFeedback.type === 'good' ? '1px solid rgba(0,184,148,0.34)' : '1px solid rgba(253,203,110,0.34)', background: planning.placementFeedback.type === 'good' ? 'rgba(0,184,148,0.07)' : 'rgba(253,203,110,0.07)' }}>
+            <div className="rounded-xl p-3" style={{ border: planning.placementFeedback.type === 'good' ? '1px solid rgba(0,184,148,0.34)' : '1px solid rgba(108,92,231,0.34)', background: planning.placementFeedback.type === 'good' ? 'rgba(0,184,148,0.07)' : 'rgba(108,92,231,0.07)' }}>
               <div className="text-sm font-semibold" style={{ color: planning.placementFeedback.type === 'good' ? 'var(--color-accent-green)' : 'var(--color-accent-warning)' }}>{planning.placementFeedback.title}</div>
               <p className="mt-1 text-xs leading-relaxed" style={{ color: 'var(--color-text-secondary)' }}>{planning.placementFeedback.message}</p>
             </div>
