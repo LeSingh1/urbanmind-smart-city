@@ -44,10 +44,12 @@ const TABS = [
 
 type TabId = typeof TABS[number]['id']
 
-const CITY_PRESETS = ['san_jose', 'fremont', 'sacramento', 'phoenix', 'austin']
+const REAL_CITY_PRESETS = ['san_jose', 'fremont', 'sacramento', 'phoenix', 'austin']
+const GENERATED_CITY_PRESETS = ['fremon']
 
 const CITY_META: Record<string, { type: string; growth: string; challenge: string; badge: string }> = {
   san_jose: { type: 'Bay Area metro', growth: '22% in 10 years', challenge: 'housing, transit, heat', badge: 'Preset' },
+  fremon: { type: 'Generated future suburb', growth: '35% in 10 years', challenge: 'clinics, schools, transit, parks, congestion, utilities', badge: 'Generated' },
   fremont: { type: 'Bay Area suburb', growth: '30% in 10 years', challenge: 'transit, schools, clinics, housing growth', badge: 'Demo ready' },
   sacramento: { type: 'Capital region', growth: '18% in 10 years', challenge: 'flood, heat, service access', badge: 'Preset' },
   phoenix: { type: 'Desert growth city', growth: '26% in 10 years', challenge: 'heat, water, roads', badge: 'Preset' },
@@ -211,13 +213,13 @@ export function LeftSidebar() {
 function PlannerPanel() {
   const { cities, selectedCity, selectCity, addCity } = useCityStore()
   const { activeScenario, setScenario } = useScenarioStore()
-  const { planning, analyzeDemo, setPlanningConstraint } = useSimulationStore()
+  const { planning, analyzeDemo, setPlanningConstraint, setCityMode, setBudgetLevel, setTimelineYear } = useSimulationStore()
   const { activeLayers, toggleLayer } = useUIStore()
   const [createOpen, setCreateOpen] = useState(false)
 
   const presetCities = useMemo(
-    () => cities.filter((city) => CITY_PRESETS.includes(city.id)),
-    [cities]
+    () => cities.filter((city) => (planning.cityMode === 'generated' ? GENERATED_CITY_PRESETS : REAL_CITY_PRESETS).includes(city.id)),
+    [cities, planning.cityMode]
   )
 
   const createCity = (city: CityProfile) => {
@@ -228,6 +230,33 @@ function PlannerPanel() {
 
   return (
     <div className="p-4 space-y-5">
+      <PanelSection title="City Mode">
+        <div className="grid grid-cols-2 gap-2">
+          {[
+            ['real', 'Real City', 'Seeded real-world inspired presets'],
+            ['generated', 'Generated City', 'Clean simulated city for demo clarity'],
+          ].map(([mode, label, helper]) => (
+            <button
+              key={mode}
+              onClick={() => {
+                setCityMode(mode as 'real' | 'generated')
+                const nextCity = cities.find((city) => city.id === (mode === 'generated' ? 'fremon' : 'san_jose'))
+                if (nextCity) selectCity(nextCity)
+              }}
+              className="rounded-xl p-3 text-left"
+              style={{
+                background: planning.cityMode === mode ? 'rgba(0,212,255,0.1)' : 'rgba(255,255,255,0.03)',
+                border: planning.cityMode === mode ? '1px solid rgba(0,212,255,0.4)' : '1px solid rgba(255,255,255,0.07)',
+                color: planning.cityMode === mode ? 'var(--color-accent-cyan)' : 'var(--color-text-secondary)',
+              }}
+            >
+              <div className="font-display text-xs font-semibold">{label}</div>
+              <p className="mt-1 text-[10px] leading-relaxed" style={{ color: 'var(--color-text-muted)' }}>{helper}</p>
+            </button>
+          ))}
+        </div>
+      </PanelSection>
+
       <PanelSection title="City" action={<button onClick={() => setCreateOpen(true)} className="panel-link"><Plus size={11} />Create New City</button>}>
         <div className="grid gap-2">
           {presetCities.map((city) => (
@@ -255,6 +284,62 @@ function PlannerPanel() {
               Generate a simulated city grid with starter infrastructure and gaps.
             </p>
           </button>
+        </div>
+      </PanelSection>
+
+      <PanelSection title="Budget Optimizer">
+        <div className="grid grid-cols-3 gap-1.5">
+          {[
+            ['low', 'Low', '$25M'],
+            ['medium', 'Medium', '$75M'],
+            ['high', 'High', '$150M'],
+          ].map(([level, label, amount]) => (
+            <button
+              key={level}
+              onClick={() => setBudgetLevel(level as 'low' | 'medium' | 'high')}
+              className="rounded-lg p-2 text-center"
+              style={{
+                background: planning.budgetLevel === level ? 'rgba(0,255,156,0.08)' : 'rgba(255,255,255,0.03)',
+                border: planning.budgetLevel === level ? '1px solid rgba(0,255,156,0.32)' : '1px solid rgba(255,255,255,0.07)',
+                color: planning.budgetLevel === level ? 'var(--color-accent-green)' : 'var(--color-text-muted)',
+              }}
+            >
+              <div className="font-display text-[11px] font-semibold">{label}</div>
+              <div className="font-mono text-[9px]">{amount}</div>
+            </button>
+          ))}
+        </div>
+        <div className="mt-2 rounded-xl p-3" style={{ border: '1px solid rgba(0,255,156,0.14)', background: 'rgba(0,255,156,0.035)' }}>
+          <div className="flex justify-between font-mono text-[10px]" style={{ color: 'var(--color-text-secondary)' }}>
+            <span>Used ${(planning.budgetSummary.used / 1_000_000).toFixed(0)}M</span>
+            <span>Remaining ${(planning.budgetSummary.remaining / 1_000_000).toFixed(0)}M</span>
+          </div>
+          <p className="mt-1 text-[10px] leading-relaxed" style={{ color: 'var(--color-accent-green)' }}>{planning.budgetSummary.guidance}</p>
+        </div>
+      </PanelSection>
+
+      <PanelSection title="Timeline Simulation">
+        <div className="grid grid-cols-5 gap-1">
+          {([2026, 2028, 2030, 2032, 2036] as const).map((year) => (
+            <button
+              key={year}
+              onClick={() => setTimelineYear(year)}
+              className="rounded-lg py-2 font-mono text-[9px]"
+              style={{
+                border: year === planning.timelineYear ? '1px solid rgba(0,212,255,0.42)' : '1px solid rgba(255,255,255,0.07)',
+                color: year === planning.timelineYear ? 'var(--color-accent-cyan)' : 'var(--color-text-muted)',
+                background: year === planning.timelineYear ? 'rgba(0,212,255,0.08)' : 'rgba(255,255,255,0.025)',
+              }}
+            >
+              {year}
+            </button>
+          ))}
+        </div>
+        <div className="mt-2 text-[10px] leading-relaxed" style={{ color: 'var(--color-text-secondary)' }}>
+          {planning.timelinePhase}
+        </div>
+        <div className="mt-1 font-mono text-[10px]" style={{ color: 'var(--color-accent-warning)' }}>
+          Population: {planning.timelinePopulation.toLocaleString()}
         </div>
       </PanelSection>
 
@@ -404,17 +489,18 @@ function LayerSwitch({ item, checked, onToggle }: { item: typeof LAYER_ITEMS[num
 }
 
 function CreateCityModal({ open, onClose, onCreate }: { open: boolean; onClose: () => void; onCreate: (city: CityProfile) => void }) {
-  const [name, setName] = useState('Fremont')
+  const [name, setName] = useState('Fremon')
   const [terrain, setTerrain] = useState('suburban')
-  const [population, setPopulation] = useState(230000)
-  const [growth, setGrowth] = useState(30)
+  const [population, setPopulation] = useState(420000)
+  const [growth, setGrowth] = useState(35)
   const [priority, setPriority] = useState('balanced')
   const [budget, setBudget] = useState('medium')
+  const [layout, setLayout] = useState('grid')
   const [horizon, setHorizon] = useState(10)
 
   const generate = () => {
-    const cityName = name.trim() || 'Fremont'
-    const id = `generated_${cityName.toLowerCase().replace(/[^a-z0-9]+/g, '_')}_${Date.now()}`
+    const cityName = name.trim() || 'Fremon'
+    const id = cityName.toLowerCase() === 'fremon' ? 'fremon' : `generated_${cityName.toLowerCase().replace(/[^a-z0-9]+/g, '_')}_${Date.now()}`
     onCreate({
       id,
       name: cityName,
@@ -426,7 +512,7 @@ function CreateCityModal({ open, onClose, onCreate }: { open: boolean; onClose: 
       population_current: population,
       gdp_per_capita: 82000,
       urban_growth_rate: growth / 10,
-      key_planning_challenge: `${cityName} is a generated ${terrain.replace(/_/g, ' ')} planning scenario focused on ${priority}, ${growth}% growth, ${budget} budget, and a ${horizon}-year horizon.`,
+      key_planning_challenge: `${cityName} is a generated ${terrain.replace(/_/g, ' ')} ${layout.replace(/_/g, ' ')} planning scenario focused on ${priority}, ${growth}% growth, ${budget} budget, and a ${horizon}-year horizon.`,
       expansion_constraint: 'Generated scenario constraints from local demo inputs',
       bbox: [-122.09, 37.45, -121.86, 37.62],
       landmarks: [
@@ -464,7 +550,7 @@ function CreateCityModal({ open, onClose, onCreate }: { open: boolean; onClose: 
             </div>
             <div className="p-5 grid grid-cols-2 gap-4">
               <Field label="City Name">
-                <input value={name} onChange={(event) => setName(event.target.value)} placeholder="Fremont" className="premium-input" />
+                <input value={name} onChange={(event) => setName(event.target.value)} placeholder="Fremon" className="premium-input" />
               </Field>
               <Field label="Population Size">
                 <input type="number" value={population} onChange={(event) => setPopulation(Number(event.target.value))} className="premium-input" />
@@ -491,6 +577,11 @@ function CreateCityModal({ open, onClose, onCreate }: { open: boolean; onClose: 
                     )
                   })}
                 </div>
+              </Field>
+              <Field label="City Layout">
+                <select value={layout} onChange={(event) => setLayout(event.target.value)} className="premium-input">
+                  {['grid', 'radial', 'transit_corridor', 'sprawling_suburb', 'mixed_use'].map((value) => <option key={value} value={value}>{value.replace(/_/g, ' ')}</option>)}
+                </select>
               </Field>
               <Field label="Planning Priority">
                 <select value={priority} onChange={(event) => setPriority(event.target.value)} className="premium-input">

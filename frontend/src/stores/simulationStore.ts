@@ -11,7 +11,26 @@ import {
   FREMONT_UNDERSERVED_ZONES,
   markImprovedZones,
 } from '@/data/fremontDemo'
-import type { AIRecommendation, GrowthPressureZone, InfrastructureItem, MetricsSnapshot, PlanningScores, SavedPlanningScenario, ScenarioId, UnderservedZone } from '@/types/city.types'
+import {
+  budgetRecommendations,
+  FREMON_AI_RECOMMENDATIONS,
+  FREMON_BASE_METRICS,
+  FREMON_BUDGET_AMOUNTS,
+  FREMON_DISTRICTS,
+  FREMON_EXISTING_INFRASTRUCTURE,
+  FREMON_GROWTH_PERCENT,
+  FREMON_GROWTH_PRESSURE_ZONES,
+  FREMON_HORIZON_YEARS,
+  FREMON_PLACEMENT_SUGGESTIONS,
+  FREMON_PLAN_BATTLE,
+  FREMON_POPULATION,
+  FREMON_TIMELINE,
+  FREMON_TOP_RECOMMENDATION,
+  FREMON_UNDERSERVED_ZONES,
+  getFremonBudgetSummary,
+  markFremonImprovedZones,
+} from '@/data/fremonDemo'
+import type { AIRecommendation, BudgetLevel, BudgetSummary, CityMode, DistrictProfile, GrowthPressureZone, InfrastructureItem, MetricsSnapshot, PlacementFeedback, PlacementSuggestion, PlanBattlePlan, PlanningScores, SavedPlanningScenario, ScenarioId, TimelineYear, UnderservedZone } from '@/types/city.types'
 import type { AgentAction, SimulationFrame } from '@/types/simulation.types'
 
 type Speed = 1 | 5 | 10 | 50
@@ -25,6 +44,7 @@ export interface UserPlacedZone {
 }
 
 interface PlanningState {
+  cityMode: CityMode
   cityId: string
   growthPercent: number
   horizonYears: number
@@ -47,6 +67,30 @@ interface PlanningState {
   serviceRadius: number
   climatePriority: number
   equityPriority: number
+  budgetLevel: BudgetLevel
+  budgetSummary: BudgetSummary
+  planBattlePlans: PlanBattlePlan[]
+  recommendedPlanId: PlanBattlePlan['id']
+  selectedPlanId: PlanBattlePlan['id']
+  hasComparedPlans: boolean
+  timelineYear: TimelineYear
+  timelinePhase: string
+  timelinePopulation: number
+  equityLens: boolean
+  presentationMode: boolean
+  presentationStep: number
+  districtProfiles: DistrictProfile[]
+  selectedDistrictId: string | null
+  placementSuggestions: PlacementSuggestion[]
+  placementFeedback: PlacementFeedback | null
+  impactSummary: {
+    residentsServed: number
+    gapsFixed: number
+    commuteReduction: number
+    emergencyDelta: number
+    greenAccessDelta: number
+    budgetUsed: number
+  } | null
 }
 
 interface SimulationStore {
@@ -73,6 +117,16 @@ interface SimulationStore {
   removeUserZone: (id: string) => void
   analyzeDemo: (cityId: string, scenarioId: string) => void
   applyAIPlan: (scenarioId?: string) => void
+  comparePlans: () => void
+  applyRecommendedPlan: () => void
+  setCityMode: (mode: CityMode) => void
+  setBudgetLevel: (level: BudgetLevel) => void
+  setTimelineYear: (year: TimelineYear) => void
+  toggleEquityLens: () => void
+  togglePresentationMode: () => void
+  nextPresentationStep: () => void
+  previousPresentationStep: () => void
+  selectDistrict: (id: string | null) => void
   addInfrastructure: (item: InfrastructureItem) => void
   deleteInfrastructure: (id: string) => void
   selectInfrastructure: (id: string | null) => void
@@ -146,6 +200,59 @@ export const useSimulationStore = create<SimulationStore>((set, get) => ({
   removeUserZone: (id) => set((state) => ({ userZones: state.userZones.filter((z) => z.id !== id) })),
 
   analyzeDemo: (cityId, scenarioId) => {
+    if (cityId === 'fremon' || get().planning.cityMode === 'generated') {
+      const beforeScores = { ...FREMON_BASE_METRICS }
+      const frame = scoresToFrame(beforeScores, 2026, FREMON_EXISTING_INFRASTRUCTURE, FREMON_UNDERSERVED_ZONES)
+      set((state) => ({
+        sessionId: state.sessionId ?? 'offline',
+        isRunning: false,
+        isPaused: true,
+        currentYear: 2026,
+        currentFrame: frame,
+        frameHistory: [frame],
+        metricsHistory: [frame.metrics_snapshot],
+        lastActions: FREMON_UNDERSERVED_ZONES.slice(0, 4).map((zone, index) => ({
+          x: index,
+          y: 0,
+          lat: zone.center[0],
+          lng: zone.center[1],
+          zone_type_id: 'SMART_TRAFFIC_LIGHT',
+          zone_display_name: zone.name,
+          sps_score: zone.severity,
+          placement_reason: zone.reason,
+        })),
+        planning: {
+          ...state.planning,
+          cityMode: 'generated',
+          cityId: 'fremon',
+          growthPercent: FREMON_GROWTH_PERCENT,
+          horizonYears: FREMON_HORIZON_YEARS,
+          infrastructure: FREMON_EXISTING_INFRASTRUCTURE.map((item) => ({ ...item })),
+          underservedZones: FREMON_UNDERSERVED_ZONES.map((zone) => ({ ...zone, improved: false, isImproved: false })),
+          growthPressureZones: FREMON_GROWTH_PRESSURE_ZONES.map((zone) => ({ ...zone })),
+          aiRecommendations: budgetRecommendations(state.planning.budgetLevel).map((item) => ({ ...item })),
+          topRecommendation: FREMON_TOP_RECOMMENDATION,
+          beforeScores,
+          afterScores: null,
+          hasAnalyzed: true,
+          hasAppliedAIPlan: false,
+          hasComparedPlans: false,
+          planBattlePlans: [],
+          recommendedPlanId: 'equity_first',
+          selectedPlanId: 'equity_first',
+          selectedInfrastructureId: null,
+          undoStack: [],
+          timelineYear: 2026,
+          timelinePhase: FREMON_TIMELINE[2026].phase,
+          timelinePopulation: FREMON_TIMELINE[2026].population,
+          districtProfiles: FREMON_DISTRICTS,
+          placementSuggestions: FREMON_PLACEMENT_SUGGESTIONS,
+          placementFeedback: null,
+          impactSummary: null,
+        },
+      }))
+      return
+    }
     const shift = cityShift(cityId)
     const infrastructure = shiftInfrastructure(FREMONT_EXISTING_INFRASTRUCTURE, shift)
     const underservedZones = shiftZones(FREMONT_UNDERSERVED_ZONES, shift).map((zone) => ({ ...zone, isImproved: false, improved: false }))
@@ -176,6 +283,7 @@ export const useSimulationStore = create<SimulationStore>((set, get) => ({
       planning: {
         ...state.planning,
         cityId,
+        cityMode: 'real',
         growthPercent: DEFAULT_GROWTH_PERCENT,
         horizonYears: DEFAULT_HORIZON_YEARS,
         infrastructure,
@@ -227,6 +335,137 @@ export const useSimulationStore = create<SimulationStore>((set, get) => ({
     }
   }),
 
+  comparePlans: () => set((state) => ({
+    planning: {
+      ...state.planning,
+      hasComparedPlans: true,
+      planBattlePlans: FREMON_PLAN_BATTLE,
+      recommendedPlanId: 'equity_first',
+      selectedPlanId: 'equity_first',
+    },
+  })),
+
+  applyRecommendedPlan: () => set((state) => {
+    if (!state.planning.hasAnalyzed) return state
+    if (state.planning.cityId !== 'fremon') {
+      return state
+    }
+    const selectedPlan = FREMON_PLAN_BATTLE.find((plan) => plan.id === state.planning.selectedPlanId) ?? FREMON_PLAN_BATTLE.find((plan) => plan.isRecommended)!
+    const featureIds = selectedPlan.featureIds.filter((id) => state.planning.aiRecommendations.some((item) => item.id === id))
+    const applied = state.planning.aiRecommendations
+      .filter((item) => featureIds.includes(item.id))
+      .map((item) => ({ ...item, status: 'proposed' as const }))
+    const infrastructure = [
+      ...state.planning.infrastructure.filter((item) => !FREMON_AI_RECOMMENDATIONS.some((rec) => rec.id === item.id)),
+      ...applied,
+    ]
+    const underservedZones = markFremonImprovedZones(applied.map((item) => item.id))
+    const metrics = selectedPlan.metrics
+    const afterScores = {
+      ...metrics,
+      totalEstimatedCost: applied.reduce((sum, item) => sum + item.costEstimate, 0),
+      populationServed: selectedPlan.populationServed,
+      serviceGapCount: underservedZones.filter((zone) => !zone.isImproved).length,
+    }
+    const frame = scoresToFrame(afterScores, state.planning.timelineYear, infrastructure, underservedZones)
+    return {
+      currentFrame: frame,
+      currentYear: state.planning.timelineYear,
+      frameHistory: [state.frameHistory[0] ?? frame, frame],
+      metricsHistory: [state.metricsHistory[0] ?? frame.metrics_snapshot, frame.metrics_snapshot],
+      lastActions: [
+        ...applied.map((item, index) => ({
+          x: index,
+          y: 0,
+          lng: Array.isArray(item.coordinates[0]) ? undefined : item.coordinates[0] as number,
+          lat: Array.isArray(item.coordinates[0]) ? undefined : item.coordinates[1] as number,
+          zone_type_id: categoryToZoneType(item.category),
+          zone_display_name: item.name,
+          sps_score: item.confidence,
+          placement_reason: item.reason,
+        })),
+        ...state.lastActions,
+      ].slice(0, 12),
+      planning: {
+        ...state.planning,
+        infrastructure,
+        underservedZones,
+        afterScores,
+        hasAppliedAIPlan: true,
+        hasComparedPlans: true,
+        planBattlePlans: FREMON_PLAN_BATTLE,
+        undoStack: [...state.planning.undoStack, state.planning.infrastructure],
+        impactSummary: {
+          residentsServed: 74_000,
+          gapsFixed: 4,
+          commuteReduction: 12,
+          emergencyDelta: 18,
+          greenAccessDelta: 22,
+          budgetUsed: state.planning.budgetSummary.used,
+        },
+      },
+    }
+  }),
+
+  setCityMode: (mode) => set((state) => ({
+    planning: { ...state.planning, cityMode: mode },
+  })),
+
+  setBudgetLevel: (level) => set((state) => {
+    const budgetSummary = getFremonBudgetSummary(level)
+    const aiRecommendations = state.planning.cityId === 'fremon'
+      ? budgetRecommendations(level).map((item) => ({ ...item }))
+      : state.planning.aiRecommendations
+    return {
+      planning: {
+        ...state.planning,
+        budgetLevel: level,
+        budget: FREMON_BUDGET_AMOUNTS[level],
+        budgetSummary,
+        aiRecommendations,
+        placementFeedback: null,
+      },
+    }
+  }),
+
+  setTimelineYear: (year) => set((state) => {
+    const timeline = FREMON_TIMELINE[year]
+    if (!timeline) return state
+    const pressureScale = timeline.pressure
+    const growthPressureZones = state.planning.growthPressureZones.map((zone) => ({
+      ...zone,
+      radiusMeters: Math.round(zone.radiusMeters * pressureScale),
+      projectedGrowthPercent: Math.round(zone.projectedGrowthPercent * pressureScale),
+    }))
+    const underservedZones = state.planning.underservedZones.map((zone) => ({
+      ...zone,
+      radiusMeters: zone.isImproved ? zone.radiusMeters : Math.round(zone.radiusMeters * pressureScale),
+      severity: zone.isImproved ? zone.severity : Math.min(0.98, zone.severity * pressureScale),
+    }))
+    const metrics = state.planning.hasAppliedAIPlan ? state.planning.afterScores ?? timeline.metrics : timeline.metrics
+    const frame = scoresToFrame(metrics, year, state.planning.infrastructure, underservedZones)
+    return {
+      currentYear: year,
+      currentFrame: frame,
+      metricsHistory: [frame.metrics_snapshot],
+      planning: {
+        ...state.planning,
+        timelineYear: year,
+        timelinePhase: timeline.phase,
+        timelinePopulation: timeline.population,
+        growthPressureZones,
+        underservedZones,
+        beforeScores: state.planning.hasAppliedAIPlan ? state.planning.beforeScores : timeline.metrics,
+      },
+    }
+  }),
+
+  toggleEquityLens: () => set((state) => ({ planning: { ...state.planning, equityLens: !state.planning.equityLens } })),
+  togglePresentationMode: () => set((state) => ({ planning: { ...state.planning, presentationMode: !state.planning.presentationMode } })),
+  nextPresentationStep: () => set((state) => ({ planning: { ...state.planning, presentationStep: Math.min(6, state.planning.presentationStep + 1), presentationMode: true } })),
+  previousPresentationStep: () => set((state) => ({ planning: { ...state.planning, presentationStep: Math.max(0, state.planning.presentationStep - 1), presentationMode: true } })),
+  selectDistrict: (id) => set((state) => ({ planning: { ...state.planning, selectedDistrictId: id } })),
+
   addInfrastructure: (item) => set((state) => {
     const infrastructure = [...state.planning.infrastructure, item]
     const underservedZones = state.planning.underservedZones.map((zone) =>
@@ -245,6 +484,7 @@ export const useSimulationStore = create<SimulationStore>((set, get) => ({
     const before = state.planning.beforeScores ?? calculatePlanningScores(state.planning.infrastructure, state.planning.underservedZones, state.planning.growthPercent, 'balanced')
     const afterScores = calculatePlanningScores(infrastructure, underservedZones, state.planning.growthPercent, 'balanced')
     const frame = scoresToFrame(afterScores, state.planning.horizonYears, infrastructure, underservedZones)
+    const placementFeedback = detectPlacementFeedback(item, state.planning)
     return {
       currentFrame: frame,
       metricsHistory: [before, afterScores].map((score, index) => scoresToMetrics(score, index === 0 ? 0 : state.planning.horizonYears)),
@@ -255,6 +495,7 @@ export const useSimulationStore = create<SimulationStore>((set, get) => ({
         beforeScores: state.planning.beforeScores ?? before,
         afterScores,
         hasAnalyzed: true,
+        placementFeedback,
         undoStack: [...state.planning.undoStack, state.planning.infrastructure],
       },
     }
@@ -367,6 +608,24 @@ function createInitialPlanningState(): PlanningState {
     serviceRadius: 1200,
     climatePriority: 50,
     equityPriority: 50,
+    budgetLevel: 'high',
+    budgetSummary: getFremonBudgetSummary('high'),
+    planBattlePlans: [],
+    recommendedPlanId: 'equity_first',
+    selectedPlanId: 'equity_first',
+    hasComparedPlans: false,
+    timelineYear: 2026,
+    timelinePhase: FREMON_TIMELINE[2026].phase,
+    timelinePopulation: FREMON_POPULATION,
+    equityLens: false,
+    presentationMode: false,
+    presentationStep: 0,
+    districtProfiles: [],
+    selectedDistrictId: null,
+    placementSuggestions: [],
+    placementFeedback: null,
+    impactSummary: null,
+    cityMode: 'real',
   }
 }
 
@@ -483,7 +742,7 @@ function squareAround(lng: number, lat: number, size: number) {
 function scoresToMetrics(scores: PlanningScores, year: number): MetricsSnapshot {
   return {
     year,
-    pop_total: 294000,
+    pop_total: year >= 2026 ? FREMON_TIMELINE[year as TimelineYear]?.population ?? 294000 : 294000,
     pop_density_avg: 1250,
     pop_growth_rate: DEFAULT_GROWTH_PERCENT / DEFAULT_HORIZON_YEARS,
     mobility_commute: scores.averageCommute,
@@ -499,11 +758,51 @@ function scoresToMetrics(scores: PlanningScores, year: number): MetricsSnapshot 
     env_flood_exposure: 16,
     equity_infra_gini: 100 - scores.equityScore,
     equity_hosp_coverage: scores.emergencyAccess,
-    equity_school_access: Math.round((scores.housingAccess + scores.equityScore) / 2),
+    equity_school_access: scores.educationAccess ?? Math.round((scores.housingAccess + scores.equityScore) / 2),
     infra_power_load: 72,
     infra_water_capacity: 71,
     safety_response_time: Math.round((12 - scores.emergencyAccess / 14) * 10) / 10,
   }
+}
+
+function detectPlacementFeedback(item: InfrastructureItem, planning: PlanningState): PlacementFeedback {
+  const coords = item.geometryType === 'Point' ? item.coordinates as GeoJSON.Position : null
+  const near = (target: [number, number], threshold = 0.026) => {
+    if (!coords) return false
+    return Math.hypot((coords[1] as number) - target[0], (coords[0] as number) - target[1]) < threshold
+  }
+  const duplicate = coords && planning.infrastructure.some((other) => {
+    if (other.geometryType !== 'Point' || other.category !== item.category) return false
+    const otherCoords = other.coordinates as GeoJSON.Position
+    return Math.hypot((coords[1] as number) - otherCoords[1], (coords[0] as number) - otherCoords[0]) < 0.01
+  })
+  const budgetExceeded = (planning.afterScores?.totalEstimatedCost ?? planning.budgetSummary.used) + item.costEstimate > planning.budgetSummary.amount
+
+  if (budgetExceeded) {
+    return { type: 'warning', title: 'Planning Conflict', message: 'Budget exceeded. This placement pushes the scenario beyond the selected budget level.' }
+  }
+  if (duplicate) {
+    return { type: 'warning', title: 'Planning Conflict', message: 'Duplicate infrastructure is too close to an existing item. Move it to serve a different gap.' }
+  }
+  if (item.category === 'school' && near([37.515, -122.035], 0.032)) {
+    return { type: 'warning', title: 'Planning Conflict', message: 'This school is too close to the Industrial Edge. Move it closer to East or New Housing growth to improve Education Access.' }
+  }
+  if (item.category === 'school' && !near([37.548, -121.936], 0.04) && !near([37.512, -121.945], 0.04)) {
+    return { type: 'warning', title: 'Planning Conflict', message: 'This school is too far from the projected housing growth zone. Move it closer to improve Education Access.' }
+  }
+  if ((item.category === 'clinic' || item.category === 'hospital') && near([37.500, -121.990], 0.045)) {
+    return { type: 'good', title: 'Good Placement', message: 'This clinic fills a high severity emergency access gap and serves about 18,000 projected residents.' }
+  }
+  if (item.category === 'transit_stop' && !near([37.586, -121.990], 0.05) && !near([37.512, -121.945], 0.05)) {
+    return { type: 'warning', title: 'Planning Conflict', message: 'Transit stop is too far from housing growth. Place it near North Transit Gap or New Housing Expansion.' }
+  }
+  if (item.category === 'park' && near([37.552, -121.990], 0.045)) {
+    return { type: 'good', title: 'Good Placement', message: 'This park expands 15 Minute City coverage in the central green-space gap.' }
+  }
+  if (item.category === 'road') {
+    return { type: 'warning', title: 'Planning Conflict', message: 'New road capacity can increase congestion risk unless paired with transit, bike, or mixed-use access.' }
+  }
+  return { type: 'good', title: 'Good Placement', message: 'This proposed infrastructure improves local access in the current scenario.' }
 }
 
 export function categoryToZoneType(category: InfrastructureItem['category']) {

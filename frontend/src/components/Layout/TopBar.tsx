@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion'
-import { Database, FileText, RefreshCw, Save, Search, Sparkles, Wifi, WifiOff } from 'lucide-react'
+import { Database, FileText, MonitorPlay, RefreshCw, Save, Search, Sparkles, Swords, Wifi, WifiOff } from 'lucide-react'
 import { useSimulationStore } from '@/stores/simulationStore'
 import { useCityStore } from '@/stores/cityStore'
 import { useScenarioStore, scenarioLabels } from '@/stores/scenarioStore'
@@ -8,7 +8,7 @@ import { useNotification } from '@/hooks/useNotification'
 import { Logo } from '@/components/UI/LandingScreen'
 
 export function TopBar() {
-  const { sessionId, currentYear, analyzeDemo, applyAIPlan, planning, openReport, saveScenario } = useSimulationStore()
+  const { sessionId, currentYear, analyzeDemo, applyAIPlan, applyRecommendedPlan, comparePlans, planning, openReport, saveScenario, setCityMode, togglePresentationMode } = useSimulationStore()
   const { selectedCity } = useCityStore()
   const { activeScenario } = useScenarioStore()
   const ws = useWebSocket(sessionId)
@@ -21,8 +21,13 @@ export function TopBar() {
   }
 
   const handleApplyAIPlan = () => {
-    applyAIPlan(activeScenario)
-    notify('success', 'AI plan applied. Proposed infrastructure is now on the map.', 2800)
+    if (planning.cityId === 'fremon') {
+      applyRecommendedPlan()
+      notify('success', 'Recommended plan applied. Coverage rings and proposed infrastructure are now on the map.', 2800)
+    } else {
+      applyAIPlan(activeScenario)
+      notify('success', 'AI plan applied. Proposed infrastructure is now on the map.', 2800)
+    }
   }
 
   const handleSave = () => {
@@ -55,6 +60,21 @@ export function TopBar() {
       </div>
 
       <div className="hidden xl:flex items-center gap-2">
+        <div className="inline-flex rounded-full p-1" style={{ border: '1px solid rgba(0,212,255,0.18)', background: 'rgba(255,255,255,0.035)' }}>
+          {[
+            ['real', 'Real City'],
+            ['generated', 'Generated'],
+          ].map(([mode, label]) => (
+            <button
+              key={mode}
+              onClick={() => setCityMode(mode as 'real' | 'generated')}
+              className="rounded-full px-3 py-1 font-mono text-[9px] uppercase tracking-widest"
+              style={{ color: planning.cityMode === mode ? 'var(--color-accent-cyan)' : 'var(--color-text-muted)', background: planning.cityMode === mode ? 'rgba(0,212,255,0.12)' : 'transparent' }}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
         <Badge color="var(--color-accent-green)">Demo Mode</Badge>
         <Badge color="var(--color-accent-cyan)" icon={<Database size={11} />}>MapLibre · OSM · Growth Model · UrbanMind Engine</Badge>
         <Badge color={ws.isConnected ? 'var(--color-accent-cyan)' : 'var(--color-accent-warning)'} icon={ws.isConnected ? <Wifi size={11} /> : <WifiOff size={11} />}>
@@ -79,9 +99,13 @@ export function TopBar() {
         <TopAction onClick={handleAnalyze} icon={<Search size={14} />} color="var(--color-accent-cyan)">
           Analyze Infrastructure Gaps
         </TopAction>
-        <TopAction onClick={handleApplyAIPlan} disabled={!planning.hasAnalyzed || planning.hasAppliedAIPlan} icon={<Sparkles size={14} />} color="var(--color-accent-green)">
-          Apply AI Plan
+        <TopAction onClick={() => { comparePlans(); notify('success', 'Plan Battle generated: Balanced, Transit First, and Equity First.', 2400) }} disabled={!planning.hasAnalyzed} icon={<Swords size={14} />} color="var(--color-accent-purple)">
+          Compare Plans
         </TopAction>
+        <TopAction onClick={handleApplyAIPlan} disabled={!planning.hasAnalyzed || planning.hasAppliedAIPlan} icon={<Sparkles size={14} />} color="var(--color-accent-green)">
+          Apply Recommended Plan
+        </TopAction>
+        <TopIcon onClick={togglePresentationMode} label="Presentation Mode" icon={<MonitorPlay size={15} />} />
         <TopIcon onClick={handleSave} label="Save Scenario" icon={<Save size={15} />} />
         <TopIcon onClick={openReport} label="Generate Planning Report" icon={planning.hasAnalyzed ? <FileText size={15} /> : <RefreshCw size={15} />} disabled={!planning.hasAnalyzed} />
       </div>

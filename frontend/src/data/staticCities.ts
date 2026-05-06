@@ -1,6 +1,20 @@
 import type { CityProfile, Landmark } from '@/types/city.types'
 
 export const STATIC_CITIES: CityProfile[] = [
+  city('fremon', 'Fremon', 'Generated City', 37.5485, -121.9886, 12, 'Simulated future suburb', 420000, 88000, 3.5,
+    'Fremon is a generated future suburb built for infrastructure gap analysis, plan comparison, budget optimization, and timeline simulation.',
+    'Generated grid, growth pressure, district service gaps, and clean demo-safe seeded infrastructure',
+    [-122.09, 37.45, -121.86, 37.62],
+    [
+      { name: 'North Transit Gap', lat: 37.586, lng: -121.990, zone_type_id: 'BUS_STATION', category: 'District', data_source: 'projected', w_deg: 0.018, h_deg: 0.012 },
+      { name: 'East Education Gap', lat: 37.548, lng: -121.936, zone_type_id: 'EDU_HIGH', category: 'District', data_source: 'projected', w_deg: 0.018, h_deg: 0.012 },
+      { name: 'South Emergency Gap', lat: 37.500, lng: -121.990, zone_type_id: 'HEALTH_CLINIC', category: 'District', data_source: 'projected', w_deg: 0.018, h_deg: 0.012 },
+      { name: 'Central Green Space Gap', lat: 37.552, lng: -121.990, zone_type_id: 'PARK_SMALL', category: 'District', data_source: 'projected', w_deg: 0.018, h_deg: 0.012 },
+      { name: 'West Congestion Zone', lat: 37.548, lng: -122.038, zone_type_id: 'ROAD_ARTERIAL', category: 'District', data_source: 'projected', w_deg: 0.018, h_deg: 0.012 },
+      { name: 'Innovation District', lat: 37.565, lng: -121.956, zone_type_id: 'COM_OFFICE_PLAZA', category: 'District', data_source: 'projected', w_deg: 0.016, h_deg: 0.011 },
+      { name: 'New Housing Expansion Zone', lat: 37.512, lng: -121.945, zone_type_id: 'RES_MIXED_USE', category: 'District', data_source: 'projected', w_deg: 0.018, h_deg: 0.012 },
+    ]
+  ),
   city('fremont', 'Fremont, CA', 'United States', 37.5485, -121.9886, 12, 'Mediterranean', 230000, 92000, 1.1,
     'Fremont is testing how 30% growth over 10 years affects clinics, schools, parks, transit access, emergency response, and commute pressure.',
     'Bay edge, hillside constraints, regional commute corridors, distributed neighborhood centers',

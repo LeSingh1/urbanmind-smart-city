@@ -1,7 +1,7 @@
 import { motion, AnimatePresence } from 'framer-motion'
 import { useAIStore } from '@/stores/aiStore'
 import { createPortal } from 'react-dom'
-import { Cpu, FileText, Sparkles, X, Zap } from 'lucide-react'
+import { Copy, Cpu, FileText, Sparkles, X, Zap } from 'lucide-react'
 import { getZoneColor } from '@/utils/colorUtils'
 import { useScenarioStore } from '@/stores/scenarioStore'
 import { useSimulationStore } from '@/stores/simulationStore'
@@ -9,7 +9,7 @@ import type { ZoneExplanation } from '@/types/simulation.types'
 
 export function AIPanel() {
   const { lastExplanations, isLoadingExplanation, explanationCache } = useAIStore()
-  const { planning, applyAIPlan, openReport, closeReport } = useSimulationStore()
+  const { planning, applyAIPlan, applyRecommendedPlan, openReport, closeReport } = useSimulationStore()
   const activeScenario = useScenarioStore((s) => s.activeScenario)
   const latestExplanation: ZoneExplanation | undefined = lastExplanations[0]
   const cachedCount = Object.keys(explanationCache).length
@@ -51,7 +51,7 @@ export function AIPanel() {
             </div>
           </div>
           <button
-            onClick={() => applyAIPlan(activeScenario)}
+            onClick={() => planning.cityId === 'fremon' ? applyRecommendedPlan() : applyAIPlan(activeScenario)}
             disabled={!planning.hasAnalyzed || planning.hasAppliedAIPlan}
             className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-[11px] font-display font-semibold disabled:opacity-40"
             style={{ background: 'rgba(0,255,156,0.08)', color: 'var(--color-accent-green)', border: '1px solid rgba(0,255,156,0.3)' }}
@@ -209,14 +209,22 @@ function PlanningReport({ onClose }: { onClose: () => void }) {
   const after = planning.afterScores ?? before
   const proposed = planning.infrastructure.filter((item) => item.status === 'proposed')
   const activeGaps = planning.underservedZones.filter((zone) => !zone.isImproved)
+  const pitchSummary = planning.cityId === 'fremon'
+    ? 'UrbanMind analyzed Fremon under 35 percent projected growth, detected emergency, education, transit, and green space gaps, compared three infrastructure plans, and recommended an Equity First plan that improves City Health from 61 to 82 while serving 74,000 residents.'
+    : `UrbanMind analyzed ${planning.cityId} under ${planning.growthPercent} percent projected growth, detected infrastructure service gaps, and generated a decision-support plan for scenario comparison.`
   const reportJson = JSON.stringify({
-    city: 'Fremont, CA',
+    city: planning.cityId === 'fremon' ? 'Fremon' : 'Fremont, CA',
+    mode: planning.cityMode,
     growthScenario: `${planning.growthPercent}% over ${planning.horizonYears} years`,
     gaps: planning.underservedZones,
     recommendations: planning.aiRecommendations,
+    planComparison: planning.planBattlePlans,
+    budget: planning.budgetSummary,
+    districts: planning.districtProfiles,
     proposedInfrastructure: proposed,
     beforeMetrics: before,
     afterMetrics: after,
+    pitchSummary,
     limitations: [
       'Population growth is simulated.',
       'Infrastructure data may be incomplete.',
@@ -224,6 +232,7 @@ function PlanningReport({ onClose }: { onClose: () => void }) {
     ],
   }, null, 2)
   const copyReport = () => navigator.clipboard?.writeText(document.getElementById('urbanmind-report-body')?.innerText ?? reportJson)
+  const copyPitch = () => navigator.clipboard?.writeText(pitchSummary)
   const downloadJson = () => {
     const blob = new Blob([reportJson], { type: 'application/json' })
     const url = URL.createObjectURL(blob)
@@ -252,7 +261,7 @@ function PlanningReport({ onClose }: { onClose: () => void }) {
         <div className="flex items-center justify-between px-5 py-4" style={{ borderBottom: '1px solid var(--color-border-subtle)' }}>
           <div>
             <div className="font-display font-semibold text-lg" style={{ color: 'var(--color-text-primary)' }}>UrbanMind Planning Report</div>
-            <div className="font-mono text-[10px] tracking-widest uppercase" style={{ color: 'var(--color-text-muted)' }}>Fremont, CA · 30% growth over 10 years</div>
+            <div className="font-mono text-[10px] tracking-widest uppercase" style={{ color: 'var(--color-text-muted)' }}>{planning.cityId === 'fremon' ? 'Fremon · Generated City' : 'Fremont, CA'} · {planning.growthPercent}% growth over {planning.horizonYears} years</div>
           </div>
           <button onClick={onClose} className="w-8 h-8 rounded-lg grid place-items-center" style={{ border: '1px solid var(--color-border-subtle)', color: 'var(--color-text-muted)' }}>
             <X size={14} />
@@ -262,6 +271,7 @@ function PlanningReport({ onClose }: { onClose: () => void }) {
           <button onClick={copyReport} className="px-3 py-1.5 rounded-lg text-[11px]" style={{ border: '1px solid rgba(0,212,255,0.25)', color: 'var(--color-accent-cyan)' }}>Copy Report</button>
           <button onClick={downloadJson} className="px-3 py-1.5 rounded-lg text-[11px]" style={{ border: '1px solid rgba(124,58,237,0.25)', color: 'var(--color-accent-purple)' }}>Download JSON</button>
           <button onClick={() => window.print()} className="px-3 py-1.5 rounded-lg text-[11px]" style={{ border: '1px solid var(--color-border-subtle)', color: 'var(--color-text-muted)' }}>Print Report</button>
+          <button onClick={copyPitch} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px]" style={{ border: '1px solid rgba(0,255,156,0.25)', color: 'var(--color-accent-green)' }}><Copy size={11} />Copy Pitch Summary</button>
         </div>
         <div id="urbanmind-report-body" className="p-5 space-y-4">
           <section>
@@ -269,13 +279,36 @@ function PlanningReport({ onClose }: { onClose: () => void }) {
             <p className="text-xs leading-relaxed" style={{ color: 'var(--color-text-secondary)' }}>
               UrbanMind identified emergency access, school access, transit coverage, green space, congestion, and housing pressure gaps under the selected growth scenario. The proposed plan estimates improved city health while prioritizing underserved zones.
             </p>
+            <div className="mt-3 rounded-lg p-3" style={{ border: '1px solid rgba(0,255,156,0.18)', background: 'rgba(0,255,156,0.045)' }}>
+              <div className="font-mono text-[9px] uppercase tracking-widest mb-1" style={{ color: 'var(--color-accent-green)' }}>Pitch Summary</div>
+              <p className="text-xs leading-relaxed" style={{ color: 'var(--color-text-secondary)' }}>{pitchSummary}</p>
+            </div>
           </section>
           <section>
             <h3 className="font-mono text-[10px] tracking-widest uppercase mb-2" style={{ color: 'var(--color-accent-cyan)' }}>City and Scenario</h3>
-            <DataLine label="City" value="Fremont, CA" />
+            <DataLine label="City" value={planning.cityId === 'fremon' ? 'Fremon' : 'Fremont, CA'} />
+            <DataLine label="Mode" value={planning.cityMode === 'generated' ? 'Generated City Mode' : 'Real City Mode'} />
             <DataLine label="Growth Scenario" value={`${planning.growthPercent}% growth over ${planning.horizonYears} years`} />
             <DataLine label="Scenario Type" value="Balanced Growth default, adjustable by scenario controls" />
+            <DataLine label="Timeline Year" value={`${planning.timelineYear} · ${planning.timelinePopulation.toLocaleString()} projected residents`} />
           </section>
+          {planning.planBattlePlans.length > 0 && (
+            <section>
+              <h3 className="font-mono text-[10px] tracking-widest uppercase mb-2" style={{ color: 'var(--color-accent-cyan)' }}>Plan Comparison</h3>
+              <div className="grid grid-cols-3 gap-2">
+                {planning.planBattlePlans.map((plan) => (
+                  <div key={plan.id} className="rounded-lg p-3" style={{ border: plan.isRecommended ? '1px solid rgba(0,255,156,0.25)' : '1px solid var(--color-border-subtle)', background: plan.isRecommended ? 'rgba(0,255,156,0.045)' : 'rgba(255,255,255,0.02)' }}>
+                    <div className="font-display text-xs font-semibold" style={{ color: 'var(--color-text-primary)' }}>{plan.label}</div>
+                    <DataLine label="City Health" value={String(plan.metrics.cityHealth)} />
+                    <DataLine label="Cost" value={`$${(plan.cost / 1_000_000).toFixed(0)}M`} />
+                    <DataLine label="Served" value={plan.populationServed.toLocaleString()} />
+                    <DataLine label="Gaps fixed" value={String(plan.gapsFixed)} />
+                    <p className="mt-2 text-[10px] leading-relaxed" style={{ color: 'var(--color-text-muted)' }}>{plan.isRecommended ? plan.reason : plan.tradeoff}</p>
+                  </div>
+                ))}
+              </div>
+            </section>
+          )}
           <section>
             <h3 className="font-mono text-[10px] tracking-widest uppercase mb-2" style={{ color: 'var(--color-accent-cyan)' }}>Current Infrastructure Gaps</h3>
             <div className="grid grid-cols-2 gap-2">
@@ -291,6 +324,28 @@ function PlanningReport({ onClose }: { onClose: () => void }) {
             <h3 className="font-mono text-[10px] tracking-widest uppercase mb-2" style={{ color: 'var(--color-accent-cyan)' }}>AI Recommendations</h3>
             <p className="text-xs leading-relaxed" style={{ color: 'var(--color-text-secondary)' }}>{planning.topRecommendation.reason}</p>
             <div className="mt-2 font-mono text-[10px]" style={{ color: 'var(--color-accent-warning)' }}>Estimated first project cost: ${(planning.topRecommendation.estimatedCost / 1_000_000).toFixed(0)}M</div>
+          </section>
+          <section>
+            <h3 className="font-mono text-[10px] tracking-widest uppercase mb-2" style={{ color: 'var(--color-accent-cyan)' }}>Budget Breakdown</h3>
+            <DataLine label="Budget level" value={planning.budgetSummary.label} />
+            <DataLine label="Budget used" value={`$${(planning.budgetSummary.used / 1_000_000).toFixed(0)}M`} />
+            <DataLine label="Budget remaining" value={`$${(planning.budgetSummary.remaining / 1_000_000).toFixed(0)}M`} />
+            <DataLine label="Cost per impact point" value={`$${planning.budgetSummary.costPerImpactPoint}M`} />
+            <DataLine label="Population served per $1M" value={planning.budgetSummary.populationServedPerMillion.toLocaleString()} />
+          </section>
+          <section>
+            <h3 className="font-mono text-[10px] tracking-widest uppercase mb-2" style={{ color: 'var(--color-accent-cyan)' }}>Equity Impact</h3>
+            <DataLine label="Equity Score" value={`${before?.equityScore ?? '--'} → ${after?.equityScore ?? '--'}`} />
+            <DataLine label="Low-access zones improved" value={String(planning.underservedZones.filter((zone) => zone.isImproved).length)} />
+            <DataLine label="Most underserved district" value="South Emergency Gap" />
+          </section>
+          <section>
+            <h3 className="font-mono text-[10px] tracking-widest uppercase mb-2" style={{ color: 'var(--color-accent-cyan)' }}>15 Minute City Score</h3>
+            <DataLine label="Before" value={String(before?.fifteenMinuteCityScore ?? 54)} />
+            <DataLine label="After" value={String(after?.fifteenMinuteCityScore ?? 79)} />
+            <p className="mt-2 text-xs leading-relaxed" style={{ color: 'var(--color-text-secondary)' }}>
+              This score estimates access to school, clinic, park, transit, commercial services, and community anchors within a short local trip.
+            </p>
           </section>
           <section>
             <h3 className="font-mono text-[10px] tracking-widest uppercase mb-2" style={{ color: 'var(--color-accent-cyan)' }}>Proposed Additions</h3>
@@ -311,6 +366,7 @@ function PlanningReport({ onClose }: { onClose: () => void }) {
                 ['Emergency', before.emergencyAccess, after.emergencyAccess],
                 ['Transit', before.transitCoverage, after.transitCoverage],
                 ['Green Space', before.greenSpace, after.greenSpace],
+                ['15 Min City', before.fifteenMinuteCityScore ?? 54, after.fifteenMinuteCityScore ?? 79],
                 ['Commute', before.averageCommute, after.averageCommute],
                 ['CO2', before.co2Estimate, after.co2Estimate],
                 ['Equity', before.equityScore, after.equityScore],
@@ -324,6 +380,12 @@ function PlanningReport({ onClose }: { onClose: () => void }) {
             </div>
           </section>
           <section>
+            <h3 className="font-mono text-[10px] tracking-widest uppercase mb-2" style={{ color: 'var(--color-accent-cyan)' }}>Proposed Infrastructure Map Summary</h3>
+            <p className="text-xs leading-relaxed" style={{ color: 'var(--color-text-secondary)' }}>
+              The proposed layer adds glowing markers and coverage rings for clinics, schools, green corridors, transit, housing, and mobility upgrades. Underserved red zones shrink or become improved after the plan is applied.
+            </p>
+          </section>
+          <section>
             <h3 className="font-mono text-[10px] tracking-widest uppercase mb-2" style={{ color: 'var(--color-accent-cyan)' }}>Estimated Costs</h3>
             <DataLine label="Proposed plan estimate" value={`$${(((after?.totalEstimatedCost ?? 0) - (before?.totalEstimatedCost ?? 0)) / 1_000_000).toFixed(1)}M`} />
           </section>
@@ -334,7 +396,7 @@ function PlanningReport({ onClose }: { onClose: () => void }) {
             </p>
           </section>
           <section>
-            <h3 className="font-mono text-[10px] tracking-widest uppercase mb-2" style={{ color: 'var(--color-accent-cyan)' }}>Data Sources and Limitations</h3>
+            <h3 className="font-mono text-[10px] tracking-widest uppercase mb-2" style={{ color: 'var(--color-accent-cyan)' }}>Risks and Assumptions</h3>
             <p className="text-xs leading-relaxed" style={{ color: 'var(--color-text-secondary)' }}>
               Data sources: MapLibre, OpenStreetMap, simulated growth model, UrbanMind scoring engine. Infrastructure data may be incomplete, population growth is simulated, and scores are estimates for early-stage decision support.
             </p>

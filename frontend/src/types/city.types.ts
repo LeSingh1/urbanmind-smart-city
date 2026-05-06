@@ -86,6 +86,7 @@ export interface PlanningScores {
   emergencyAccess: number
   housingAccess: number
   greenSpace: number
+  fifteenMinuteCityScore?: number
   walkability: number
   congestion: number
   congestionRisk: number
@@ -96,6 +97,67 @@ export interface PlanningScores {
   populationServed?: number
   serviceGapCount?: number
   totalEstimatedCost: number
+}
+
+export type CityMode = 'real' | 'generated'
+export type BudgetLevel = 'low' | 'medium' | 'high'
+export type TimelineYear = 2026 | 2028 | 2030 | 2032 | 2036
+
+export interface PlanBattlePlan {
+  id: 'balanced' | 'transit_first' | 'equity_first'
+  label: string
+  summary: string
+  tradeoff: string
+  cost: number
+  budgetUsed: number
+  populationServed: number
+  gapsFixed: number
+  isRecommended: boolean
+  reason?: string
+  metrics: PlanningScores
+  featureIds: string[]
+}
+
+export interface DistrictProfile {
+  id: string
+  name: string
+  mainIssue: string
+  severity: number
+  populationAffected: number
+  recommendedFix: string
+  beforeScore: number
+  afterScore: number
+  center: [number, number]
+  relatedGapId?: string
+}
+
+export interface PlacementSuggestion {
+  id: string
+  rank: number
+  title: string
+  category: InfrastructureCategory
+  coordinates: GeoJSON.Position
+  expectedImpact: string
+  costEstimate: number
+  reason: string
+  confidence: number
+}
+
+export interface PlacementFeedback {
+  type: 'good' | 'warning'
+  title: string
+  message: string
+}
+
+export interface BudgetSummary {
+  level: BudgetLevel
+  amount: number
+  used: number
+  remaining: number
+  costPerImpactPoint: number
+  populationServedPerMillion: number
+  label: string
+  guidance: string
 }
 
 export interface AIRecommendation {

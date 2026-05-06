@@ -72,6 +72,15 @@ function CityFlyController({ city }: { city: any }) {
   return null
 }
 
+function DistrictFlyController({ center }: { center: [number, number] | null }) {
+  const map = useMap()
+  useEffect(() => {
+    if (!center) return
+    map.flyTo(center, 13, { duration: 1.1 })
+  }, [center, map])
+  return null
+}
+
 // ─── Dot markers rendered inside the map ────────────────────────────────────
 interface DotFeature {
   id: string
@@ -302,6 +311,29 @@ function infraIcon(item: InfrastructureItem) {
   })
 }
 
+function suggestionIcon(rank: number) {
+  return L.divIcon({
+    className: 'urbanmind-suggestion-icon',
+    html: `<div style="width:34px;height:34px;border-radius:50%;background:radial-gradient(circle at 30% 30%,rgba(0,255,156,0.22),rgba(0,212,255,0.18));border:1px solid #00D4FF;box-shadow:0 0 22px rgba(0,212,255,0.78);display:grid;place-items:center;color:#D9FBFF;font:800 13px Inter,system-ui;">${rank}</div>`,
+    iconSize: [34, 34],
+    iconAnchor: [17, 17],
+  })
+}
+
+function coverageRadiusForCategory(category: InfrastructureCategory) {
+  const radii: Partial<Record<InfrastructureCategory, number>> = {
+    hospital: 2600,
+    clinic: 1800,
+    school: 1100,
+    park: 900,
+    transit_stop: 650,
+    fire_station: 1900,
+    police_station: 1700,
+    community_center: 900,
+  }
+  return radii[category] ?? null
+}
+
 function isLayerVisible(item: InfrastructureItem, activeLayers: Set<string>, showAIRecommendations: boolean) {
   if (item.status === 'proposed') return activeLayers.has('Proposed infrastructure')
   if (item.status === 'ai_recommended') return showAIRecommendations && activeLayers.has('AI Recommendations')
@@ -417,6 +449,7 @@ export function MapContainer() {
   const planning = useSimulationStore((s) => s.planning)
   const addInfrastructure = useSimulationStore((s) => s.addInfrastructure)
   const selectInfrastructure = useSimulationStore((s) => s.selectInfrastructure)
+  const applyRecommendedPlan = useSimulationStore((s) => s.applyRecommendedPlan)
   const scenario = useScenarioStore((s) => s.activeScenario)
   const fetchExplanation = useAIStore((s) => s.fetchExplanation)
   const notify = useNotification((s) => s.notify)
@@ -454,6 +487,29 @@ export function MapContainer() {
     },
     [selectedOverrideZone, addUserZone, addInfrastructure, notify]
   )
+
+  const placeSuggestedInfrastructure = useCallback((suggestionId: string) => {
+    const suggestion = planning.placementSuggestions.find((item) => item.id === suggestionId)
+    if (!suggestion) return
+    const [lng, lat] = suggestion.coordinates
+    addInfrastructure({
+      id: `user-${suggestion.id}-${Date.now()}`,
+      name: `Proposed ${suggestion.category.replace(/_/g, ' ')} at ${suggestion.title}`,
+      category: suggestion.category,
+      status: 'proposed',
+      source: 'user_added',
+      coordinates: [lng, lat],
+      geometryType: 'Point',
+      geometry: { type: 'Point', coordinates: [lng, lat] },
+      reason: suggestion.reason,
+      costEstimate: suggestion.costEstimate,
+      impactScore: 82,
+      confidence: suggestion.confidence,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    })
+    notify('success', `Placed suggested ${suggestion.category.replace(/_/g, ' ')}. UrbanMind scored this as a high-confidence location.`, 2800)
+  }, [addInfrastructure, notify, planning.placementSuggestions])
 
   const handleHover = useCallback(
     (dot: DotFeature | null, x: number, y: number) => {
@@ -573,6 +629,23 @@ export function MapContainer() {
     return [...planning.infrastructure, ...aiPreview].filter((item) => isLayerVisible(item, activeLayers, planning.hasAnalyzed))
   }, [activeLayers, planning.aiRecommendations, planning.hasAnalyzed, planning.hasAppliedAIPlan, planning.infrastructure, showPlanning])
 
+  const selectedDistrictCenter = useMemo(() => {
+    const district = planning.districtProfiles.find((item) => item.id === planning.selectedDistrictId)
+    return district?.center ?? null
+  }, [planning.districtProfiles, planning.selectedDistrictId])
+
+  const activeSuggestionCategory = selectedOverrideZone ? TOOL_ZONE_TO_CATEGORY[selectedOverrideZone] : null
+  const visibleSuggestions = useMemo(() => {
+    if (!isOverrideModeActive || !activeSuggestionCategory || !planning.hasAnalyzed) return []
+    if (!['clinic', 'school'].includes(activeSuggestionCategory)) return []
+    return planning.placementSuggestions.filter((suggestion) => suggestion.category === activeSuggestionCategory).slice(0, 3)
+  }, [activeSuggestionCategory, isOverrideModeActive, planning.hasAnalyzed, planning.placementSuggestions])
+
+  const coverageInfrastructure = useMemo(
+    () => visibleInfrastructure.filter((item) => item.geometryType === 'Point' && coverageRadiusForCategory(item.category)),
+    [visibleInfrastructure]
+  )
+
   const initialCenter: [number, number] = city
     ? [city.center_lat, city.center_lng]
     : [40.71, -74.01]
@@ -665,6 +738,7 @@ export function MapContainer() {
             />
 
             {city && <CityFlyController city={city} />}
+            <DistrictFlyController center={selectedDistrictCenter} />
             <MapClickHandler
               active={isOverrideModeActive}
               zoneTypeId={selectedOverrideZone}
@@ -702,6 +776,27 @@ export function MapContainer() {
                 </Popup>
               </Circle>
             ))}
+            {showPlanning && planning.equityLens && planning.districtProfiles.map((district) => (
+              <CircleMarker
+                key={`equity-${district.id}`}
+                center={district.center}
+                radius={Math.max(8, district.severity * 14)}
+                pathOptions={{
+                  color: district.severity > 0.8 ? '#FF5A3D' : '#FFB800',
+                  fillColor: district.severity > 0.8 ? '#FF5A3D' : '#FFB800',
+                  fillOpacity: 0.2,
+                  weight: 1,
+                  opacity: 0.8,
+                }}
+              >
+                <Popup>
+                  <strong>{district.name}</strong><br />
+                  Population served/affected: {district.populationAffected.toLocaleString()}<br />
+                  Recommended fix: {district.recommendedFix}<br />
+                  Score: {district.beforeScore} → {district.afterScore}
+                </Popup>
+              </CircleMarker>
+            ))}
             {showPlanning && activeLayers.has('Growth Pressure') && planning.hasAnalyzed && planning.growthPressureZones.map((zone: GrowthPressureZone) => (
               <Circle
                 key={zone.id}
@@ -724,6 +819,26 @@ export function MapContainer() {
                 </Popup>
               </Circle>
             ))}
+            {showPlanning && planning.hasAnalyzed && coverageInfrastructure.map((item) => {
+              const [lng, lat] = item.coordinates as GeoJSON.Position
+              const radius = coverageRadiusForCategory(item.category)
+              if (!radius) return null
+              return (
+                <Circle
+                  key={`coverage-${item.id}`}
+                  center={[lat, lng]}
+                  radius={item.status === 'proposed' ? radius * 1.08 : radius}
+                  pathOptions={{
+                    color: item.status === 'proposed' ? '#00D4FF' : CATEGORY_COLOR[item.category],
+                    fillColor: item.status === 'proposed' ? '#00D4FF' : CATEGORY_COLOR[item.category],
+                    fillOpacity: item.status === 'proposed' ? 0.075 : 0.035,
+                    weight: item.status === 'proposed' ? 1.8 : 1,
+                    opacity: item.status === 'proposed' ? 0.58 : 0.28,
+                    dashArray: item.status === 'proposed' ? '7 5' : '4 6',
+                  }}
+                />
+              )
+            })}
             {visibleInfrastructure.map((item) => {
               if (item.geometryType === 'LineString') {
                 const coords = item.coordinates as GeoJSON.Position[]
@@ -749,7 +864,7 @@ export function MapContainer() {
                     Confidence: {Math.round(item.confidence * 100)}%
                     {item.status === 'ai_recommended' && !planning.hasAppliedAIPlan && (
                       <button
-                        onClick={() => useSimulationStore.getState().applyAIPlan(scenario)}
+                        onClick={() => planning.cityId === 'fremon' ? applyRecommendedPlan() : useSimulationStore.getState().applyAIPlan(scenario)}
                         style={{ display: 'block', marginTop: 8, border: '1px solid rgba(0,212,255,0.35)', borderRadius: 6, padding: '5px 8px', color: '#00D4FF', background: 'rgba(0,212,255,0.08)' }}
                       >
                         Apply Recommendation
@@ -778,12 +893,33 @@ export function MapContainer() {
                     Confidence: {Math.round(item.confidence * 100)}%
                     {item.status === 'ai_recommended' && !planning.hasAppliedAIPlan && (
                       <button
-                        onClick={() => useSimulationStore.getState().applyAIPlan(scenario)}
+                        onClick={() => planning.cityId === 'fremon' ? applyRecommendedPlan() : useSimulationStore.getState().applyAIPlan(scenario)}
                         style={{ display: 'block', marginTop: 8, border: '1px solid rgba(0,212,255,0.35)', borderRadius: 6, padding: '5px 8px', color: '#00D4FF', background: 'rgba(0,212,255,0.08)' }}
                       >
                         Apply Recommendation
                       </button>
                     )}
+                  </Popup>
+                </Marker>
+              )
+            })}
+            {visibleSuggestions.map((suggestion) => {
+              const [lng, lat] = suggestion.coordinates
+              return (
+                <Marker key={suggestion.id} position={[lat, lng]} icon={suggestionIcon(suggestion.rank)}>
+                  <Popup>
+                    <strong>Suggested Location #{suggestion.rank}</strong><br />
+                    {suggestion.title}<br />
+                    Expected impact: {suggestion.expectedImpact}<br />
+                    Cost: ${(suggestion.costEstimate / 1_000_000).toFixed(0)}M<br />
+                    Confidence: {Math.round(suggestion.confidence * 100)}%<br />
+                    {suggestion.reason}
+                    <button
+                      onClick={() => placeSuggestedInfrastructure(suggestion.id)}
+                      style={{ display: 'block', marginTop: 8, border: '1px solid rgba(0,255,156,0.35)', borderRadius: 6, padding: '5px 8px', color: '#00FF9C', background: 'rgba(0,255,156,0.08)' }}
+                    >
+                      Place Here
+                    </button>
                   </Popup>
                 </Marker>
               )
@@ -830,7 +966,7 @@ export function MapContainer() {
                 {mapError ? 'Demo map fallback active' : 'Loading map context'}
               </div>
               <p style={{ marginTop: 8, fontSize: 11, lineHeight: 1.5, color: 'var(--color-text-muted)' }}>
-                {mapError ? 'Base tiles are unavailable, but Fremont demo layers and scoring remain usable.' : 'Preparing city infrastructure layers.'}
+                {mapError ? 'Base tiles are unavailable, but seeded planning layers and scoring remain usable.' : 'Loading city map and infrastructure layers...'}
               </p>
               {mapError && (
                 <button onClick={() => { setMapError(false); setMapLoading(true) }} style={{ marginTop: 10, border: '1px solid rgba(0,212,255,0.3)', borderRadius: 6, padding: '6px 10px', color: 'var(--color-accent-cyan)', background: 'rgba(0,212,255,0.06)', fontSize: 11 }}>
