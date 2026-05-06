@@ -12,8 +12,9 @@ export function ActionsPanel() {
       <div
         className="rounded-lg p-3 text-center"
         style={{
-          background: 'rgba(0,212,255,0.04)',
+          background: 'var(--color-bg-hover)',
           border: '1px solid var(--color-border-subtle)',
+          boxShadow: 'var(--shadow-inset)',
         }}
       >
         <div
@@ -37,7 +38,7 @@ export function ActionsPanel() {
             className="font-mono text-[9px] tracking-widest uppercase mb-2 flex items-center gap-1.5"
             style={{ color: 'var(--color-text-muted)' }}
           >
-            <span className="inline-block w-2 h-px" style={{ background: 'var(--color-accent-cyan)', opacity: 0.4 }} />
+            <span className="inline-block w-2 h-px" style={{ background: 'var(--color-border-subtle)' }} />
             Zone Distribution
           </div>
           <ZoneDistribution actions={lastActions} />
@@ -50,7 +51,7 @@ export function ActionsPanel() {
           className="font-mono text-[9px] tracking-widest uppercase mb-2 flex items-center gap-1.5"
           style={{ color: 'var(--color-text-muted)' }}
         >
-          <span className="inline-block w-2 h-px" style={{ background: 'var(--color-accent-cyan)', opacity: 0.4 }} />
+          <span className="inline-block w-2 h-px" style={{ background: 'var(--color-border-subtle)' }} />
           Recent Actions ({lastActions.length})
         </div>
         <div className="space-y-1.5 max-h-64 overflow-y-auto">
@@ -70,8 +71,9 @@ export function ActionsPanel() {
                 transition={{ delay: i * 0.03 }}
                 className="flex items-center gap-2 py-1.5 px-2 rounded"
                 style={{
-                  background: 'rgba(0,212,255,0.03)',
-                  border: '1px solid rgba(0,212,255,0.06)',
+                  background: 'var(--color-bg-hover)',
+                  border: '1px solid var(--color-border-subtle)',
+                  boxShadow: 'var(--shadow-sm)',
                 }}
               >
                 <div
@@ -136,7 +138,7 @@ function ZoneDistribution({ actions }: { actions: AgentAction[] }) {
             </div>
             <div
               className="flex-1 h-0.5 rounded-full overflow-hidden"
-              style={{ background: 'rgba(0,212,255,0.08)' }}
+              style={{ background: 'var(--color-bg-hover)', boxShadow: 'var(--shadow-inset)' }}
             >
               <div
                 className="h-full rounded-full"

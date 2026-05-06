@@ -10,7 +10,7 @@ export const STATIC_CITIES: CityProfile[] = [
       { name: 'East Education Gap', lat: 37.548, lng: -121.936, zone_type_id: 'EDU_HIGH', category: 'District', data_source: 'projected', w_deg: 0.018, h_deg: 0.012 },
       { name: 'South Emergency Gap', lat: 37.500, lng: -121.990, zone_type_id: 'HEALTH_CLINIC', category: 'District', data_source: 'projected', w_deg: 0.018, h_deg: 0.012 },
       { name: 'Central Green Space Gap', lat: 37.552, lng: -121.990, zone_type_id: 'PARK_SMALL', category: 'District', data_source: 'projected', w_deg: 0.018, h_deg: 0.012 },
-      { name: 'West Congestion Zone', lat: 37.548, lng: -122.038, zone_type_id: 'ROAD_ARTERIAL', category: 'District', data_source: 'projected', w_deg: 0.018, h_deg: 0.012 },
+      { name: 'West Congestion Zone', lat: 37.548, lng: -122.038, zone_type_id: 'SMART_TRAFFIC_LIGHT', category: 'District', data_source: 'projected', w_deg: 0.018, h_deg: 0.012 },
       { name: 'Innovation District', lat: 37.565, lng: -121.956, zone_type_id: 'COM_OFFICE_PLAZA', category: 'District', data_source: 'projected', w_deg: 0.016, h_deg: 0.011 },
       { name: 'New Housing Expansion Zone', lat: 37.512, lng: -121.945, zone_type_id: 'RES_MIXED_USE', category: 'District', data_source: 'projected', w_deg: 0.018, h_deg: 0.012 },
     ]
@@ -40,11 +40,11 @@ export const STATIC_CITIES: CityProfile[] = [
   ),
   city('austin', 'Austin, TX', 'United States', 30.2672, -97.7431, 11, 'Humid subtropical', 980000, 92000, 2.1,
     'Austin preset for rapid growth, housing, transit, and emergency-service scenario comparison.',
-    'Rapid growth, heat, roadway congestion, and affordability pressure',
+    'Rapid growth, heat, commute pressure, and affordability constraints',
     [-97.94, 30.1, -97.56, 30.52],
   ),
   city('phoenix', 'Phoenix, AZ', 'United States', 33.4484, -112.0740, 10, 'Hot desert', 1650000, 68000, 1.4,
-    'Phoenix preset for heat resilience, water, road congestion, and distributed service access planning.',
+    'Phoenix preset for heat resilience, water, commute pressure, and distributed service access planning.',
     'Extreme heat, water demand, freeway dependence, and outward growth',
     [-112.32, 33.28, -111.82, 33.75],
   ),
@@ -112,7 +112,7 @@ export const STATIC_CITIES: CityProfile[] = [
     ]
   ),
   city('lagos', 'Lagos', 'Nigeria', 6.50, 3.39, 13, 'Tropical savanna', 15000000, 6200, 3.2,
-    'Rapid population growth demands flood-safe housing, power, roads, and health access.',
+    'Rapid population growth demands flood-safe housing, power, mobility, and health access.',
     'Lagoon systems, wetlands, informal settlement pressure, coastal flood exposure',
     [3.1, 6.39, 3.69, 6.7],
     [

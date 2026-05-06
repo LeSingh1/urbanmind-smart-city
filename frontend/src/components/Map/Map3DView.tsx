@@ -9,17 +9,17 @@ import { useScenarioStore } from '@/stores/scenarioStore'
 import { getZoneColor } from '@/utils/colorUtils'
 import type { Landmark } from '@/types/city.types'
 
-// MapLibre style: dark CartoDB raster base + free vector buildings from OpenFreeMap
+// MapLibre style: light CartoDB raster base + free vector buildings from OpenFreeMap
 const buildStyle = (): maplibregl.StyleSpecification => ({
   version: 8,
   glyphs: 'https://demotiles.maplibre.org/font/{fontstack}/{range}.pbf',
   sources: {
-    'carto-dark': {
+    'carto-light': {
       type: 'raster',
       tiles: [
-        'https://a.basemaps.cartocdn.com/dark_nolabels/{z}/{x}/{y}@2x.png',
-        'https://b.basemaps.cartocdn.com/dark_nolabels/{z}/{x}/{y}@2x.png',
-        'https://c.basemaps.cartocdn.com/dark_nolabels/{z}/{x}/{y}@2x.png',
+        'https://a.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}@2x.png',
+        'https://b.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}@2x.png',
+        'https://c.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}@2x.png',
       ],
       tileSize: 256,
       attribution: '© OSM © CARTO',
@@ -32,8 +32,8 @@ const buildStyle = (): maplibregl.StyleSpecification => ({
     },
   },
   layers: [
-    { id: 'background', type: 'background', paint: { 'background-color': '#0d1117' } },
-    { id: 'raster-base', type: 'raster', source: 'carto-dark', paint: { 'raster-opacity': 0.9 } },
+    { id: 'background', type: 'background', paint: { 'background-color': '#e0e5ec' } },
+    { id: 'raster-base', type: 'raster', source: 'carto-light', paint: { 'raster-opacity': 0.92 } },
     {
       id: 'buildings-3d',
       type: 'fill-extrusion',
@@ -44,14 +44,14 @@ const buildStyle = (): maplibregl.StyleSpecification => ({
         'fill-extrusion-color': [
           'interpolate', ['linear'],
           ['coalesce', ['get', 'height'], ['get', 'render_height'], 5],
-          0, '#1a2235',
-          20, '#22304a',
-          60, '#2d3f60',
-          150, '#394d72',
+          0,   '#d1d9e6',
+          20,  '#c4ccdb',
+          60,  '#b5bece',
+          150, '#a3b1c6',
         ],
         'fill-extrusion-height': ['coalesce', ['get', 'height'], ['get', 'render_height'], 5],
         'fill-extrusion-base': ['coalesce', ['get', 'min_height'], 0],
-        'fill-extrusion-opacity': 0.88,
+        'fill-extrusion-opacity': 0.9,
       },
     } as maplibregl.LayerSpecification,
   ],
@@ -202,9 +202,9 @@ export function Map3DView() {
         popupRef.current!
           .setLngLat(coords)
           .setHTML(
-            `<div style="font-family:monospace;font-size:11px;padding:6px 10px;background:#0d1117;border:1px solid rgba(0,212,255,0.25);border-radius:8px;color:#e2e8f0;white-space:nowrap">
-              <strong style="color:#00d4ff">${name}</strong><br/>
-              <span style="color:#64748b">${props.category ?? props.zone_type_id ?? ''}</span>
+            `<div style="font-family:monospace;font-size:11px;padding:6px 10px;background:#e0e5ec;border:1px solid #babecc;border-radius:8px;color:#2d3436;white-space:nowrap;box-shadow:4px 4px 8px #babecc,-4px -4px 8px #ffffff">
+              <strong style="color:#ff4757">${name}</strong><br/>
+              <span style="color:#636e72">${props.category ?? props.zone_type_id ?? ''}</span>
             </div>`
           )
           .addTo(map)
@@ -305,8 +305,11 @@ export function Map3DView() {
             title={btn.title}
             onClick={btn.onClick}
             style={{
-              width: 32, height: 32, borderRadius: 6, border: '1px solid rgba(0,212,255,0.2)',
-              background: 'rgba(13,17,23,0.85)', color: 'rgba(0,212,255,0.8)',
+              width: 32, height: 32, borderRadius: 6,
+              border: '1px solid var(--color-border-subtle)',
+              background: 'var(--color-bg-panel)',
+              color: 'var(--color-text-secondary)',
+              boxShadow: 'var(--shadow-sm)',
               fontSize: 14, cursor: 'pointer', display: 'grid', placeItems: 'center',
               transition: 'all 150ms ease',
             }}

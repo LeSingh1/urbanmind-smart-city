@@ -1,714 +1,226 @@
-import { motion } from 'framer-motion'
-import { Building2, Check, Copy, DollarSign, Eye, MonitorPlay, RotateCcw, Save, Sparkles, Swords, Trophy } from 'lucide-react'
+import { Building2, Sparkles, Swords } from 'lucide-react'
 import { useCityStore } from '@/stores/cityStore'
 import { useSimulationStore } from '@/stores/simulationStore'
-import { useAIStore } from '@/stores/aiStore'
 import { useScenarioStore } from '@/stores/scenarioStore'
-import { getZoneColor } from '@/utils/colorUtils'
-import type { AgentAction, ZoneExplanation } from '@/types/simulation.types'
 
 export function RightPanel() {
-  const { selectedCity } = useCityStore()
+  const selectedCity = useCityStore((state) => state.selectedCity)
+  const activeScenario = useScenarioStore((state) => state.activeScenario)
   const {
-    lastActions,
-    metricsHistory,
     planning,
     applyAIPlan,
     applyRecommendedPlan,
     comparePlans,
-    saveScenario,
-    loadScenario,
-    duplicateScenario,
-    resetScenario,
-    setDemoMode,
-    setPlanningConstraint,
-    setBudgetLevel,
-    setTimelineYear,
-    toggleEquityLens,
-    togglePresentationMode,
-    nextPresentationStep,
-    previousPresentationStep,
     selectDistrict,
   } = useSimulationStore()
-  const { lastExplanations } = useAIStore()
-  const activeScenario = useScenarioStore((s) => s.activeScenario)
 
-  const currentMetrics = metricsHistory.at(-1) ?? null
-  const latestExplanation: ZoneExplanation | undefined = lastExplanations[0]
+  const applyPlan = () => {
+    if (planning.cityId === 'fremon') applyRecommendedPlan()
+    else applyAIPlan(activeScenario)
+  }
 
   return (
-    <div
-      className="w-[340px] flex flex-col overflow-hidden shrink-0"
+    <aside
+      className="w-[350px] shrink-0 overflow-y-auto"
       style={{
-        background: 'linear-gradient(180deg, rgba(17,24,39,0.88), rgba(8,13,22,0.96))',
-        borderLeft: '1px solid rgba(0,212,255,0.12)',
-        backdropFilter: 'blur(18px)',
-        boxShadow: '-16px 0 46px rgba(0,0,0,0.2)',
+        background: 'var(--color-bg-sidebar)',
+        borderLeft: '1px solid var(--color-border-subtle)',
+        boxShadow: '-16px 0 46px rgba(0,0,0,0.18)',
       }}
     >
-      {/* City info */}
-      <Section label="City Info">
-        {selectedCity ? (
-          <div>
-            <div className="flex items-center gap-2 mb-3">
-              <div
-                className="w-8 h-8 rounded-lg flex items-center justify-center"
-                style={{
-                  background: 'rgba(0,212,255,0.08)',
-                  border: '1px solid rgba(0,212,255,0.2)',
-                }}
+      <div className="space-y-4 p-4">
+        <Section title="Selected City">
+          {selectedCity ? (
+            <div className="flex items-center gap-3 rounded-xl p-3" style={{ background: 'var(--color-bg-card)', border: '1px solid var(--color-border-subtle)' }}>
+              <div className="grid h-10 w-10 place-items-center rounded-xl" style={{ color: 'var(--color-accent-cyan)', background: 'var(--color-bg-hover)' }}>
+                <Building2 size={18} />
+              </div>
+              <div className="min-w-0">
+                <div className="truncate text-sm font-semibold" style={{ color: 'var(--color-text-primary)' }}>{selectedCity.name}</div>
+                <div className="text-xs" style={{ color: 'var(--color-text-secondary)' }}>{selectedCity.population_current.toLocaleString()} residents</div>
+              </div>
+            </div>
+          ) : (
+            <EmptyState title="No city selected" body="Choose a city to begin." />
+          )}
+        </Section>
+
+        <Section title="Infrastructure Planning Copilot">
+          {planning.hasAnalyzed ? (
+            <div className="rounded-2xl p-4" style={{ background: 'var(--color-bg-hover)', border: '1px solid var(--color-border-subtle)', boxShadow: 'var(--shadow-sm)' }}>
+              <div className="mb-3 flex items-start gap-3">
+                <div className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl" style={{ color: 'var(--color-accent-cyan)', border: '1px solid rgba(0,212,255,0.28)' }}>
+                  <Sparkles size={20} />
+                </div>
+                <div>
+                  <div className="font-mono text-[10px] uppercase tracking-widest" style={{ color: 'var(--color-accent-cyan)' }}>Top Recommendation</div>
+                  <div className="mt-1 text-base font-semibold leading-snug" style={{ color: 'var(--color-text-primary)' }}>{planning.topRecommendation.title}</div>
+                  <div className="mt-1 text-xs" style={{ color: 'var(--color-text-secondary)' }}>{planning.topRecommendation.zoneName}</div>
+                </div>
+              </div>
+              <p className="text-sm leading-relaxed" style={{ color: 'var(--color-text-secondary)' }}>{planning.topRecommendation.reason}</p>
+              <div className="mt-3 grid grid-cols-2 gap-2">
+                <Impact label="Emergency" value={`+${planning.topRecommendation.expectedImpact.emergencyAccess}`} />
+                <Impact label="City Health" value={`+${planning.topRecommendation.expectedImpact.cityHealth}`} />
+                <Impact label="Cost" value={`$${(planning.topRecommendation.estimatedCost / 1_000_000).toFixed(0)}M`} />
+                <Impact label="Confidence" value={`${Math.round(planning.topRecommendation.confidence * 100)}%`} />
+              </div>
+              <button
+                onClick={applyPlan}
+                disabled={planning.hasAppliedAIPlan}
+                className="mt-3 w-full rounded-xl py-2.5 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-45"
+                style={{ color: 'var(--color-accent-green)', border: '1px solid rgba(0,184,148,0.34)', background: 'rgba(0,184,148,0.08)' }}
               >
-                <Building2 size={14} style={{ color: 'var(--color-accent-cyan)' }} />
-              </div>
-              <div>
-                <div
-                  className="font-display font-medium text-xs"
-                  style={{ color: 'var(--color-text-primary)' }}
-                >
-                  {selectedCity.name}
-                </div>
-                <div
-                  className="font-mono text-[10px]"
-                  style={{ color: 'var(--color-text-muted)' }}
-                >
-                  {selectedCity.country}
-                </div>
-              </div>
+                {planning.hasAppliedAIPlan ? 'Plan Applied' : 'Apply Recommended Plan'}
+              </button>
             </div>
-            <DataGrid rows={[
-              ['Population', selectedCity.population_current.toLocaleString()],
-              ['Climate', selectedCity.climate_zone],
-            ]} />
-          </div>
-        ) : (
-          <p className="font-mono text-[10px]" style={{ color: 'var(--color-text-muted)' }}>
-            Select a city to begin
-          </p>
-        )}
-      </Section>
-
-      <Section label="Guided Demo">
-        <DemoStepper analyzed={planning.hasAnalyzed} applied={planning.hasAppliedAIPlan} reportOpen={planning.isReportOpen} />
-      </Section>
-
-      <Section label="Infrastructure Planning Copilot">
-        {planning.hasAnalyzed ? (
-          <div className="rounded-2xl p-4 scanline" style={{ background: 'linear-gradient(135deg, rgba(0,212,255,0.11), rgba(124,58,237,0.08), rgba(0,255,156,0.04))', border: '1px solid rgba(0,212,255,0.34)', boxShadow: '0 0 34px rgba(0,212,255,0.11)' }}>
-            <div className="flex items-start gap-3">
-              <div className="w-11 h-11 rounded-2xl grid place-items-center shrink-0" style={{ background: 'rgba(0,212,255,0.12)', border: '1px solid rgba(0,212,255,0.34)', color: 'var(--color-accent-cyan)', boxShadow: '0 0 24px rgba(0,212,255,0.18)' }}>
-                <Sparkles size={20} />
-              </div>
-              <div>
-                <div className="font-mono text-[9px] uppercase tracking-widest mb-1" style={{ color: 'var(--color-accent-cyan)' }}>Top Recommendation</div>
-                <div className="font-display text-base font-semibold" style={{ color: 'var(--color-text-primary)' }}>
-                  {planning.topRecommendation.title}
-                </div>
-                <div className="mt-1 font-mono text-[10px]" style={{ color: 'var(--color-text-muted)' }}>
-                  Location: {planning.topRecommendation.zoneName}
-                </div>
-              </div>
-            </div>
-            <p className="text-xs leading-relaxed my-3" style={{ color: 'var(--color-text-secondary)' }}>
-              {planning.topRecommendation.reason}
-            </p>
-            <div className="grid grid-cols-2 gap-2 mb-3">
-              <ImpactChip label="Emergency Access" value={`+${planning.topRecommendation.expectedImpact.emergencyAccess}`} />
-              <ImpactChip label="City Health" value={`+${planning.topRecommendation.expectedImpact.cityHealth}`} />
-              <ImpactChip label="Response Time" value={`${planning.topRecommendation.expectedImpact.averageResponseTime} min`} />
-              <ImpactChip label="Equity Score" value={`+${planning.topRecommendation.expectedImpact.equityScore ?? 7}`} />
-            </div>
-            <div className="mb-3">
-              <div className="flex justify-between mb-1">
-                <span className="font-mono text-[9px]" style={{ color: 'var(--color-text-muted)' }}>Confidence</span>
-                <span className="font-mono text-[9px]" style={{ color: 'var(--color-accent-green)' }}>{Math.round(planning.topRecommendation.confidence * 100)}%</span>
-              </div>
-              <div className="h-1.5 rounded-full overflow-hidden" style={{ background: 'rgba(255,255,255,0.08)' }}>
-                <motion.div className="h-full rounded-full" initial={{ width: 0 }} animate={{ width: `${planning.topRecommendation.confidence * 100}%` }} style={{ background: 'linear-gradient(90deg,var(--color-accent-cyan),var(--color-accent-green))' }} />
-              </div>
-            </div>
-            <DataGrid rows={[
-              ['Estimated Cost', `$${(planning.topRecommendation.estimatedCost / 1_000_000).toFixed(0)}M`],
-              ['Related Gap', planning.topRecommendation.zoneName],
-            ]} />
-            <button
-              onClick={() => planning.cityId === 'fremon' ? applyRecommendedPlan() : applyAIPlan(activeScenario)}
-              disabled={planning.hasAppliedAIPlan}
-              className="mt-3 w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-xs font-display font-semibold disabled:opacity-45"
-              style={{ background: 'linear-gradient(135deg, rgba(0,255,156,0.18), rgba(0,212,255,0.12))', color: 'var(--color-accent-green)', border: '1px solid rgba(0,255,156,0.34)' }}
-            >
-              <Sparkles size={13} />
-              {planning.hasAppliedAIPlan ? 'AI Plan Applied' : 'Apply Recommended Plan'}
-            </button>
-          </div>
-        ) : (
-          <EmptyState title="No analysis yet" body="Choose a city and growth scenario, then run infrastructure analysis." />
-        )}
-      </Section>
-
-      {planning.beforeScores && (
-        <Section label="Before and After Metrics">
-          <div className="grid gap-2">
-            {[
-              ['City Health', planning.beforeScores.cityHealth, planning.afterScores?.cityHealth],
-              ['15 Minute City', planning.beforeScores.fifteenMinuteCityScore ?? 54, planning.afterScores?.fifteenMinuteCityScore],
-              ['Emergency Access', planning.beforeScores.emergencyAccess, planning.afterScores?.emergencyAccess],
-              ['Transit Coverage', planning.beforeScores.transitCoverage, planning.afterScores?.transitCoverage],
-              ['Green Space', planning.beforeScores.greenSpace, planning.afterScores?.greenSpace],
-              ['Average Commute', planning.beforeScores.averageCommute, planning.afterScores?.averageCommute, true],
-              ['CO2 Estimate', planning.beforeScores.co2Estimate, planning.afterScores?.co2Estimate, true],
-            ].map(([label, before, after, inverse]) => (
-              <MetricCompare key={label as string} label={label as string} before={before as number} after={after as number | undefined} inverse={Boolean(inverse)} />
-            ))}
-          </div>
+          ) : (
+            <EmptyState title="No analysis yet" body="Click Analyze Infrastructure Gaps to reveal underserved zones and recommendations." />
+          )}
         </Section>
-      )}
 
-      {planning.impactSummary && (
-        <Section label="Impact Summary">
-          <div className="grid grid-cols-2 gap-2">
-            <ImpactChip label="Residents Served" value={planning.impactSummary.residentsServed.toLocaleString()} />
-            <ImpactChip label="Gaps Fixed" value={`${planning.impactSummary.gapsFixed}`} />
-            <ImpactChip label="Commute Reduction" value={`${planning.impactSummary.commuteReduction} min`} />
-            <ImpactChip label="Emergency Delta" value={`+${planning.impactSummary.emergencyDelta}`} />
-            <ImpactChip label="Green Access" value={`+${planning.impactSummary.greenAccessDelta}%`} />
-            <ImpactChip label="Budget Used" value={`$${(planning.impactSummary.budgetUsed / 1_000_000).toFixed(0)}M`} />
-          </div>
-        </Section>
-      )}
+        {planning.beforeScores && (
+          <Section title="Before / After Metrics">
+            <div className="grid gap-2">
+              <Metric label="City Health" before={planning.beforeScores.cityHealth} after={planning.afterScores?.cityHealth} />
+              <Metric label="Emergency Access" before={planning.beforeScores.emergencyAccess} after={planning.afterScores?.emergencyAccess} />
+              <Metric label="Transit Coverage" before={planning.beforeScores.transitCoverage} after={planning.afterScores?.transitCoverage} />
+              <Metric label="Green Space" before={planning.beforeScores.greenSpace} after={planning.afterScores?.greenSpace} />
+              <Metric label="15 Minute City" before={planning.beforeScores.fifteenMinuteCityScore ?? 54} after={planning.afterScores?.fifteenMinuteCityScore} />
+              <Metric label="Average Commute" before={planning.beforeScores.averageCommute} after={planning.afterScores?.averageCommute} inverse />
+            </div>
+          </Section>
+        )}
 
-      <Section label="Plan Battle">
-        <div className="space-y-2">
+        <Section title="Plan Battle">
           <button
             onClick={comparePlans}
             disabled={!planning.hasAnalyzed}
-            className="w-full flex items-center justify-center gap-2 rounded-xl py-2.5 text-xs font-display font-semibold disabled:opacity-40"
-            style={{ border: '1px solid rgba(124,58,237,0.35)', color: 'var(--color-accent-purple)', background: 'rgba(124,58,237,0.08)' }}
+            className="mb-2 flex w-full items-center justify-center gap-2 rounded-xl py-2.5 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-40"
+            style={{ color: 'var(--color-accent-purple)', border: '1px solid var(--color-border-subtle)', background: 'var(--color-bg-hover)' }}
           >
-            <Swords size={13} />
+            <Swords size={15} />
             Compare Plans
           </button>
           {planning.planBattlePlans.length === 0 ? (
-            <EmptyState title="No plan battle yet" body="Run analysis, then compare Balanced, Transit First, and Equity First plans." />
-          ) : planning.planBattlePlans.map((plan) => (
-            <div key={plan.id} className="rounded-2xl p-3" style={{ border: plan.isRecommended ? '1px solid rgba(0,255,156,0.35)' : '1px solid rgba(255,255,255,0.08)', background: plan.isRecommended ? 'linear-gradient(135deg, rgba(0,255,156,0.08), rgba(0,212,255,0.045))' : 'rgba(255,255,255,0.03)' }}>
-              <div className="flex items-start justify-between gap-2">
-                <div>
-                  <div className="font-display text-xs font-semibold" style={{ color: 'var(--color-text-primary)' }}>{plan.label}</div>
-                  <p className="mt-1 text-[10px] leading-relaxed" style={{ color: 'var(--color-text-muted)' }}>{plan.summary}</p>
-                </div>
-                {plan.isRecommended && <span className="rounded-full px-2 py-0.5 font-mono text-[8px] uppercase" style={{ color: 'var(--color-accent-green)', border: '1px solid rgba(0,255,156,0.3)', background: 'rgba(0,255,156,0.08)' }}>Recommended</span>}
-              </div>
-              <div className="mt-2 grid grid-cols-3 gap-1.5">
-                <MiniStat label="Health" value={plan.metrics.cityHealth} />
-                <MiniStat label="Cost" value={`$${plan.cost / 1_000_000}M`} />
-                <MiniStat label="Served" value={`${Math.round(plan.populationServed / 1000)}k`} />
-                <MiniStat label="Transit" value={plan.metrics.transitCoverage} />
-                <MiniStat label="Equity" value={plan.metrics.equityScore} />
-                <MiniStat label="Gaps" value={plan.gapsFixed} />
-              </div>
-              <p className="mt-2 text-[10px] leading-relaxed" style={{ color: plan.isRecommended ? 'var(--color-accent-green)' : 'var(--color-text-muted)' }}>
-                {plan.isRecommended ? plan.reason : plan.tradeoff}
-              </p>
-            </div>
-          ))}
-        </div>
-      </Section>
-
-      <Section label="Budget Optimizer">
-        <div className="grid grid-cols-3 gap-1.5">
-          {(['low', 'medium', 'high'] as const).map((level) => (
-            <button
-              key={level}
-              onClick={() => setBudgetLevel(level)}
-              className="rounded-lg py-2 text-[10px] capitalize"
-              style={{ border: planning.budgetLevel === level ? '1px solid rgba(0,255,156,0.35)' : '1px solid rgba(255,255,255,0.08)', color: planning.budgetLevel === level ? 'var(--color-accent-green)' : 'var(--color-text-muted)', background: planning.budgetLevel === level ? 'rgba(0,255,156,0.08)' : 'rgba(255,255,255,0.025)' }}
-            >
-              {level}
-            </button>
-          ))}
-        </div>
-        <div className="mt-2 rounded-xl p-3" style={{ background: 'rgba(0,0,0,0.18)', border: '1px solid rgba(0,255,156,0.14)' }}>
-          <DataGrid rows={[
-            ['Budget used', `$${(planning.budgetSummary.used / 1_000_000).toFixed(0)}M`],
-            ['Remaining', `$${(planning.budgetSummary.remaining / 1_000_000).toFixed(0)}M`],
-            ['Cost / impact', `$${planning.budgetSummary.costPerImpactPoint}M`],
-            ['Served / $1M', planning.budgetSummary.populationServedPerMillion.toLocaleString()],
-          ]} />
-          <div className="mt-2 font-mono text-[10px]" style={{ color: 'var(--color-accent-green)' }}>Best impact per dollar</div>
-        </div>
-      </Section>
-
-      <Section label="Timeline Simulation">
-        <div className="grid grid-cols-5 gap-1">
-          {([2026, 2028, 2030, 2032, 2036] as const).map((year) => (
-            <button key={year} onClick={() => setTimelineYear(year)} className="rounded-lg py-1.5 font-mono text-[9px]" style={{ color: year === planning.timelineYear ? 'var(--color-accent-cyan)' : 'var(--color-text-muted)', border: year === planning.timelineYear ? '1px solid rgba(0,212,255,0.35)' : '1px solid rgba(255,255,255,0.08)', background: year === planning.timelineYear ? 'rgba(0,212,255,0.08)' : 'rgba(255,255,255,0.025)' }}>{year}</button>
-          ))}
-        </div>
-        <p className="mt-2 text-[10px] leading-relaxed" style={{ color: 'var(--color-text-secondary)' }}>{planning.timelinePhase}</p>
-        <DataGrid rows={[['Population', planning.timelinePopulation.toLocaleString()], ['Pressure year', String(planning.timelineYear)]]} />
-      </Section>
-
-      <Section label="Equity Lens">
-        <button onClick={toggleEquityLens} className="w-full flex items-center justify-center gap-2 rounded-xl py-2 text-xs font-display font-semibold" style={{ color: planning.equityLens ? 'var(--color-accent-green)' : 'var(--color-text-muted)', border: planning.equityLens ? '1px solid rgba(0,255,156,0.35)' : '1px solid rgba(255,255,255,0.08)', background: planning.equityLens ? 'rgba(0,255,156,0.08)' : 'rgba(255,255,255,0.025)' }}>
-          <Eye size={13} />
-          {planning.equityLens ? 'Equity Lens On' : 'Enable Equity Lens'}
-        </button>
-        <div className="mt-2 grid grid-cols-2 gap-2">
-          <ImpactChip label="Low access zones improved" value={`${planning.underservedZones.filter((zone) => zone.isImproved).length}`} />
-          <ImpactChip label="Most underserved" value="South" />
-          <ImpactChip label="Equity before" value={`${planning.beforeScores?.equityScore ?? 49}`} />
-          <ImpactChip label="Equity after" value={`${planning.afterScores?.equityScore ?? 86}`} />
-        </div>
-      </Section>
-
-      {planning.placementFeedback && (
-        <Section label="Planning Conflict Detector">
-          <div className="rounded-xl p-3" style={{ border: planning.placementFeedback.type === 'good' ? '1px solid rgba(0,255,156,0.28)' : '1px solid rgba(255,184,0,0.28)', background: planning.placementFeedback.type === 'good' ? 'rgba(0,255,156,0.06)' : 'rgba(255,184,0,0.06)' }}>
-            <div className="font-display text-sm font-semibold" style={{ color: planning.placementFeedback.type === 'good' ? 'var(--color-accent-green)' : 'var(--color-accent-warning)' }}>{planning.placementFeedback.title}</div>
-            <p className="mt-1 text-[11px] leading-relaxed" style={{ color: 'var(--color-text-secondary)' }}>{planning.placementFeedback.message}</p>
-          </div>
-        </Section>
-      )}
-
-      <Section label="Current Gaps">
-        {planning.hasAnalyzed ? (
-          <div className="space-y-2">
-            {planning.underservedZones.slice(0, 4).map((gap) => (
-              <div key={gap.id} className="rounded-xl p-2.5" style={{ background: gap.isImproved ? 'rgba(0,255,156,0.055)' : 'rgba(255,90,61,0.055)', border: gap.isImproved ? '1px solid rgba(0,255,156,0.16)' : '1px solid rgba(255,90,61,0.18)' }}>
-                <div className="flex justify-between gap-2">
-                  <span className="font-display text-[11px] font-semibold" style={{ color: 'var(--color-text-primary)' }}>{gap.name}</span>
-                  <span className="font-mono text-[9px]" style={{ color: gap.isImproved ? 'var(--color-accent-green)' : 'var(--color-accent-warning)' }}>{gap.isImproved ? 'Improved' : `${Math.round(gap.severity * 100)}%`}</span>
-                </div>
-                <p className="mt-1 text-[10px] leading-relaxed" style={{ color: 'var(--color-text-muted)' }}>{gap.reason}</p>
-              </div>
-            ))}
-          </div>
-        ) : (
-          <EmptyState title="No gaps detected" body="Run analysis to reveal underserved zones." />
-        )}
-      </Section>
-
-      {planning.districtProfiles.length > 0 && (
-        <Section label="District Cards">
-          <div className="space-y-2">
-            {planning.districtProfiles.slice(0, 7).map((district) => (
-              <button
-                key={district.id}
-                onClick={() => selectDistrict(district.id)}
-                className="w-full rounded-xl p-2.5 text-left"
-                style={{ background: planning.selectedDistrictId === district.id ? 'rgba(0,212,255,0.08)' : 'rgba(255,255,255,0.025)', border: planning.selectedDistrictId === district.id ? '1px solid rgba(0,212,255,0.35)' : '1px solid rgba(255,255,255,0.07)' }}
-              >
-                <div className="flex justify-between gap-2">
-                  <span className="font-display text-[11px] font-semibold" style={{ color: 'var(--color-text-primary)' }}>{district.name}</span>
-                  <span className="font-mono text-[9px]" style={{ color: district.severity > 0.8 ? 'var(--color-accent-danger)' : 'var(--color-accent-warning)' }}>{Math.round(district.severity * 100)}%</span>
-                </div>
-                <p className="mt-1 text-[10px]" style={{ color: 'var(--color-text-muted)' }}>{district.mainIssue} · {district.populationAffected.toLocaleString()} affected</p>
-                <div className="mt-1 font-mono text-[9px]" style={{ color: 'var(--color-accent-cyan)' }}>{district.recommendedFix} · {district.beforeScore} → {district.afterScore}</div>
-              </button>
-            ))}
-          </div>
-        </Section>
-      )}
-
-      <Section label="Presentation Mode">
-        <button onClick={togglePresentationMode} className="w-full flex items-center justify-center gap-2 rounded-xl py-2 text-xs font-display font-semibold" style={{ border: '1px solid rgba(0,212,255,0.3)', color: 'var(--color-accent-cyan)', background: 'rgba(0,212,255,0.07)' }}>
-          <MonitorPlay size={13} />
-          {planning.presentationMode ? 'Exit Presentation Mode' : 'Enter Presentation Mode'}
-        </button>
-        {planning.presentationMode && (
-          <div className="mt-2 rounded-xl p-3" style={{ border: '1px solid rgba(0,212,255,0.15)', background: 'rgba(0,212,255,0.035)' }}>
-            <div className="font-display text-sm font-semibold" style={{ color: 'var(--color-text-primary)' }}>{['Problem', 'City growth scenario', 'Current infrastructure gaps', 'AI generated plans', 'Apply recommended plan', 'Before and after results', 'Final report'][planning.presentationStep]}</div>
-            <div className="mt-2 flex gap-2">
-              <button onClick={previousPresentationStep} className="flex-1 rounded-lg py-1.5 text-[10px]" style={{ border: '1px solid rgba(255,255,255,0.08)', color: 'var(--color-text-muted)' }}>Previous</button>
-              <button onClick={nextPresentationStep} className="flex-1 rounded-lg py-1.5 text-[10px]" style={{ border: '1px solid rgba(0,212,255,0.28)', color: 'var(--color-accent-cyan)' }}>Next</button>
-            </div>
-          </div>
-        )}
-      </Section>
-
-      <Section label="Why This Plan Wins">
-        <details className="rounded-xl p-3" style={{ border: '1px solid rgba(0,212,255,0.14)', background: 'rgba(255,255,255,0.025)' }}>
-          <summary className="cursor-pointer flex items-center gap-2 font-display text-xs font-semibold" style={{ color: 'var(--color-accent-cyan)' }}><Trophy size={13} />Judge Scorecard</summary>
-          <div className="mt-3 grid gap-2">
-            {[
-              ['Impact', '9.4'],
-              ['Technical Depth', '8.8'],
-              ['Creativity', '9.1'],
-              ['Usability', '9.3'],
-              ['Scalability', '8.5'],
-            ].map(([label, value]) => <MetricCompare key={label} label={label} before={0} after={Number(value) * 10} />)}
-            <p className="text-[10px] leading-relaxed" style={{ color: 'var(--color-text-muted)' }}>
-              Uses editable map layers, scoring engine, plan comparison, budget constraints, and scenario simulation.
-            </p>
-          </div>
-        </details>
-      </Section>
-
-      {/* Legacy AI insight */}
-      {false && planning.hasAnalyzed && (
-        <Section label="AI Recommendation">
-          <div className="rounded-lg p-3" style={{ background: 'rgba(0,212,255,0.06)', border: '1px solid rgba(0,212,255,0.2)' }}>
-            <div className="font-display text-xs font-semibold mb-1" style={{ color: 'var(--color-text-primary)' }}>
-              {planning.topRecommendation.title}
-            </div>
-            <p className="text-[10px] leading-relaxed mb-2" style={{ color: 'var(--color-text-secondary)' }}>
-              {planning.topRecommendation.reason}
-            </p>
-            <DataGrid rows={[
-              ['Impact', `City Health +${planning.topRecommendation.expectedImpact.cityHealth}`],
-              ['Cost', `$${(planning.topRecommendation.estimatedCost / 1_000_000).toFixed(0)}M`],
-              ['Confidence', `${Math.round(planning.topRecommendation.confidence * 100)}%`],
-            ]} />
-            <button
-              onClick={() => applyAIPlan(activeScenario)}
-              disabled={planning.hasAppliedAIPlan}
-              className="mt-3 w-full flex items-center justify-center gap-1.5 py-2 rounded-lg text-[10px] font-display font-semibold disabled:opacity-40"
-              style={{ background: 'rgba(0,255,156,0.08)', color: 'var(--color-accent-green)', border: '1px solid rgba(0,255,156,0.3)' }}
-            >
-              <Sparkles size={11} />
-              {planning.hasAppliedAIPlan ? 'AI Plan Applied' : 'Apply AI Plan'}
-            </button>
-          </div>
-        </Section>
-      )}
-
-      <Section label="Constraints">
-        <div className="space-y-2">
-          <SliderRow label="Budget" value={planning.budget / 1_000_000} min={25} max={250} suffix="M" onChange={(value) => setPlanningConstraint('budget', value * 1_000_000)} />
-          <SliderRow label="Service Radius" value={planning.serviceRadius} min={600} max={2400} suffix="m" onChange={(value) => setPlanningConstraint('serviceRadius', value)} />
-          <SliderRow label="Climate Priority" value={planning.climatePriority} min={0} max={100} suffix="" onChange={(value) => setPlanningConstraint('climatePriority', value)} />
-          <SliderRow label="Equity Priority" value={planning.equityPriority} min={0} max={100} suffix="" onChange={(value) => setPlanningConstraint('equityPriority', value)} />
-          <div className="grid grid-cols-4 gap-1">
-            {[5, 10, 20, 50].map((year) => (
-              <button key={year} className="rounded-md py-1 font-mono text-[9px]" style={{ border: year === planning.horizonYears ? '1px solid rgba(0,212,255,0.35)' : '1px solid var(--color-border-subtle)', color: year === planning.horizonYears ? 'var(--color-accent-cyan)' : 'var(--color-text-muted)' }}>
-                {year}Y
-              </button>
-            ))}
-          </div>
-        </div>
-      </Section>
-
-      <Section label="Demo Mode">
-        <label className="flex items-start gap-2 cursor-pointer">
-          <input type="checkbox" checked={planning.demoMode} onChange={(event) => setDemoMode(event.target.checked)} style={{ marginTop: 2, accentColor: 'var(--color-accent-cyan)' }} />
-          <span className="text-[10px] leading-relaxed" style={{ color: 'var(--color-text-secondary)' }}>
-            Demo Mode: Reliable seeded city data for hackathon presentation.
-          </span>
-        </label>
-      </Section>
-
-      <Section label="Scenario Files">
-        <div className="grid grid-cols-2 gap-1.5 mb-2">
-          <button onClick={saveScenario} className="flex items-center justify-center gap-1 rounded-lg py-1.5 text-[10px]" style={{ border: '1px solid rgba(0,212,255,0.25)', color: 'var(--color-accent-cyan)' }}><Save size={10} />Save</button>
-          <button onClick={resetScenario} className="flex items-center justify-center gap-1 rounded-lg py-1.5 text-[10px]" style={{ border: '1px solid var(--color-border-subtle)', color: 'var(--color-text-muted)' }}><RotateCcw size={10} />Reset</button>
-        </div>
-        <div className="space-y-1 max-h-28 overflow-y-auto">
-          {planning.savedScenarios.length === 0 ? (
-            <p className="font-mono text-[9px]" style={{ color: 'var(--color-text-muted)' }}>No saved scenarios yet.</p>
-          ) : planning.savedScenarios.slice(-4).reverse().map((saved) => (
-            <div key={saved.id} className="rounded-md p-2" style={{ border: '1px solid var(--color-border-subtle)' }}>
-              <div className="font-mono text-[9px] truncate" style={{ color: 'var(--color-text-secondary)' }}>{saved.city} · {saved.growthRate}% · {saved.timeHorizon}Y</div>
-              <div className="flex gap-1 mt-1">
-                <button onClick={() => loadScenario(saved.id)} className="text-[9px]" style={{ color: 'var(--color-accent-cyan)' }}>Load</button>
-                <button onClick={() => duplicateScenario(saved.id)} className="flex items-center gap-0.5 text-[9px]" style={{ color: 'var(--color-text-muted)' }}><Copy size={8} />Duplicate</button>
-              </div>
-            </div>
-          ))}
-        </div>
-      </Section>
-
-      <Section label="Assumptions">
-        <ul className="space-y-1 text-[10px] leading-relaxed" style={{ color: 'var(--color-text-muted)' }}>
-          <li>Population growth is simulated.</li>
-          <li>Infrastructure data may be incomplete.</li>
-          <li>Scores are estimates for early-stage scenario comparison.</li>
-          <li>UrbanMind does not replace zoning, environmental review, engineering, or public approval.</li>
-        </ul>
-      </Section>
-
-      {/* AI insight */}
-      {latestExplanation && (
-        <Section label="AI Insight">
-          <div
-            className="rounded-lg p-3"
-            style={{
-              background: 'rgba(124,58,237,0.06)',
-              border: '1px solid rgba(124,58,237,0.2)',
-            }}
-          >
-            <div className="flex items-center gap-1.5 mb-2">
-              <div
-                className="w-2.5 h-2.5 rounded-sm shrink-0"
-                style={{ background: getZoneColor(latestExplanation.zone_type_id) }}
-              />
-              <span
-                className="font-display font-medium text-[10px]"
-                style={{ color: 'var(--color-accent-purple)' }}
-              >
-                {latestExplanation.zone_display_name}
-              </span>
-              <span
-                className="font-mono text-[9px] ml-auto"
-                style={{ color: 'var(--color-text-muted)' }}
-              >
-                Y{latestExplanation.year}
-              </span>
-            </div>
-            <p className="text-[10px] leading-relaxed" style={{ color: 'var(--color-text-secondary)' }}>
-              {latestExplanation.explanation_text}
-            </p>
-          </div>
-        </Section>
-      )}
-
-      {/* Recent actions */}
-      <Section label="Recent Actions" flex>
-        <div className="space-y-1.5 overflow-y-auto flex-1">
-          {lastActions.length === 0 ? (
-            <p className="font-mono text-[10px]" style={{ color: 'var(--color-text-muted)' }}>
-              No actions yet
-            </p>
+            <EmptyState title="No comparison yet" body="Run analysis, then compare the seeded planning options." />
           ) : (
-            lastActions.slice(0, 15).map((action: AgentAction, i: number) => (
-              <motion.div
-                key={`${action.x}-${action.y}-${i}`}
-                initial={{ opacity: 0, x: 10 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ duration: 0.25, delay: i * 0.03 }}
-                className="flex items-center gap-2 py-1 px-2 rounded"
-                style={{ background: 'rgba(0,212,255,0.03)', border: '1px solid rgba(0,212,255,0.06)' }}
-              >
-                <div
-                  className="w-2 h-2 rounded-sm shrink-0"
-                  style={{ background: getZoneColor(action.zone_type_id) }}
-                />
-                <span
-                  className="font-display text-[10px] flex-1 truncate"
-                  style={{ color: 'var(--color-text-secondary)' }}
-                >
-                  {action.zone_display_name}
-                </span>
-                <span
-                  className="font-mono text-[9px] shrink-0"
-                  style={{
-                    color: action.sps_score > 0.7
-                      ? 'var(--color-accent-green)'
-                      : action.sps_score > 0.4
-                      ? 'var(--color-accent-warning)'
-                      : 'var(--color-accent-danger)',
-                  }}
-                >
-                  {action.sps_score.toFixed(2)}
-                </span>
-              </motion.div>
-            ))
+            <div className="grid gap-2">
+              {planning.planBattlePlans.map((plan) => (
+                <div key={plan.id} className="rounded-xl p-3" style={{ background: 'var(--color-bg-card)', border: plan.isRecommended ? '1px solid rgba(0,184,148,0.42)' : '1px solid var(--color-border-subtle)' }}>
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="text-sm font-semibold" style={{ color: 'var(--color-text-primary)' }}>{plan.label}</div>
+                    {plan.isRecommended && <span className="rounded-full px-2 py-0.5 font-mono text-[9px] uppercase" style={{ color: 'var(--color-accent-green)', border: '1px solid rgba(0,184,148,0.3)' }}>Recommended</span>}
+                  </div>
+                  <div className="mt-2 grid grid-cols-3 gap-1.5">
+                    <Impact label="Health" value={String(plan.metrics.cityHealth)} />
+                    <Impact label="Cost" value={`$${plan.cost / 1_000_000}M`} />
+                    <Impact label="Gaps" value={String(plan.gapsFixed)} />
+                  </div>
+                  <p className="mt-2 text-xs leading-relaxed" style={{ color: plan.isRecommended ? 'var(--color-accent-green)' : 'var(--color-text-secondary)' }}>
+                    {plan.isRecommended ? plan.reason : plan.tradeoff}
+                  </p>
+                </div>
+              ))}
+            </div>
           )}
-        </div>
-      </Section>
+        </Section>
 
-      {/* City vitals */}
-      {currentMetrics && (
-        <div
-          className="p-3 shrink-0"
-          style={{ borderTop: '1px solid var(--color-border-subtle)' }}
-        >
-          <SectionLabel>City Vitals</SectionLabel>
-          <div className="space-y-2 mt-2">
-            <VitalBar
-              label="Transit"
-              value={currentMetrics.mobility_transit_coverage}
-              max={100}
-              color="var(--color-accent-cyan)"
-            />
-            <VitalBar
-              label="Healthcare"
-              value={currentMetrics.equity_hosp_coverage}
-              max={100}
-              color="var(--color-accent-purple)"
-            />
-            <VitalBar
-              label="Green Space"
-              value={Math.min(100, currentMetrics.env_green_ratio * 2.5)}
-              max={100}
-              color="var(--color-accent-green)"
-            />
-          </div>
-        </div>
-      )}
-    </div>
+        {planning.placementFeedback && (
+          <Section title="Placement Feedback">
+            <div className="rounded-xl p-3" style={{ border: planning.placementFeedback.type === 'good' ? '1px solid rgba(0,184,148,0.34)' : '1px solid rgba(253,203,110,0.34)', background: planning.placementFeedback.type === 'good' ? 'rgba(0,184,148,0.07)' : 'rgba(253,203,110,0.07)' }}>
+              <div className="text-sm font-semibold" style={{ color: planning.placementFeedback.type === 'good' ? 'var(--color-accent-green)' : 'var(--color-accent-warning)' }}>{planning.placementFeedback.title}</div>
+              <p className="mt-1 text-xs leading-relaxed" style={{ color: 'var(--color-text-secondary)' }}>{planning.placementFeedback.message}</p>
+            </div>
+          </Section>
+        )}
+
+        <Section title="Current Gaps">
+          {planning.hasAnalyzed ? (
+            <div className="grid gap-2">
+              {planning.underservedZones.slice(0, 5).map((gap) => (
+                <div key={gap.id} className="rounded-xl p-3" style={{ background: gap.isImproved ? 'rgba(0,184,148,0.08)' : 'rgba(225,112,85,0.08)', border: gap.isImproved ? '1px solid rgba(0,184,148,0.25)' : '1px solid rgba(225,112,85,0.25)' }}>
+                  <div className="flex justify-between gap-2">
+                    <span className="text-sm font-semibold" style={{ color: 'var(--color-text-primary)' }}>{gap.name}</span>
+                    <span className="font-mono text-[10px]" style={{ color: gap.isImproved ? 'var(--color-accent-green)' : 'var(--color-accent-warning)' }}>{gap.isImproved ? 'Improved' : `${Math.round(gap.severity * 100)}%`}</span>
+                  </div>
+                  <p className="mt-1 text-xs leading-relaxed" style={{ color: 'var(--color-text-secondary)' }}>{gap.reason}</p>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <EmptyState title="No gaps detected" body="Analysis results will appear here." />
+          )}
+        </Section>
+
+        {planning.districtProfiles.length > 0 && (
+          <Section title="Districts">
+            <div className="grid gap-2">
+              {planning.districtProfiles.slice(0, 7).map((district) => (
+                <button
+                  key={district.id}
+                  onClick={() => selectDistrict(district.id)}
+                  className="rounded-xl p-3 text-left"
+                  style={{ background: planning.selectedDistrictId === district.id ? 'var(--color-bg-hover)' : 'var(--color-bg-card)', border: planning.selectedDistrictId === district.id ? '1px solid rgba(0,212,255,0.35)' : '1px solid var(--color-border-subtle)' }}
+                >
+                  <div className="flex justify-between gap-2">
+                    <span className="text-sm font-semibold" style={{ color: 'var(--color-text-primary)' }}>{district.name}</span>
+                    <span className="font-mono text-[10px]" style={{ color: 'var(--color-accent-warning)' }}>{Math.round(district.severity * 100)}%</span>
+                  </div>
+                  <p className="mt-1 text-xs" style={{ color: 'var(--color-text-secondary)' }}>{district.mainIssue} · {district.populationAffected.toLocaleString()} affected</p>
+                  <div className="mt-1 font-mono text-[10px]" style={{ color: 'var(--color-accent-cyan)' }}>{district.recommendedFix} · {district.beforeScore} to {district.afterScore}</div>
+                </button>
+              ))}
+            </div>
+          </Section>
+        )}
+      </div>
+    </aside>
   )
 }
 
-function DemoStepper({ analyzed, applied, reportOpen }: { analyzed: boolean; applied: boolean; reportOpen: boolean }) {
-  const steps = [
-    ['Choose city', true],
-    ['Choose growth scenario', true],
-    ['Analyze current infrastructure', analyzed],
-    ['View underserved zones', analyzed],
-    ['Review AI recommendations', analyzed],
-    ['Apply AI plan', applied],
-    ['Compare before and after', applied],
-    ['Export report', reportOpen],
-  ] as const
-  const current = steps.findIndex(([, done]) => !done)
+function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <div className="space-y-1.5">
-      {steps.map(([label, done], index) => {
-        const active = current === index || (current === -1 && index === steps.length - 1)
-        return (
-          <div key={label} className="flex items-center gap-2">
-            <span
-              className="w-4 h-4 rounded-full grid place-items-center font-mono text-[8px] shrink-0"
-              style={{
-                background: done ? 'rgba(0,255,156,0.12)' : active ? 'rgba(0,212,255,0.12)' : 'rgba(255,255,255,0.04)',
-                border: done ? '1px solid rgba(0,255,156,0.35)' : active ? '1px solid rgba(0,212,255,0.35)' : '1px solid var(--color-border-subtle)',
-                color: done ? 'var(--color-accent-green)' : active ? 'var(--color-accent-cyan)' : 'var(--color-text-muted)',
-              }}
-            >
-              {done ? <Check size={9} /> : index + 1}
-            </span>
-            <span className="font-display text-[10px]" style={{ color: active ? 'var(--color-accent-cyan)' : done ? 'var(--color-text-secondary)' : 'var(--color-text-muted)' }}>{label}</span>
-          </div>
-        )
-      })}
-    </div>
-  )
-}
-
-function ImpactChip({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="rounded-xl p-2.5" style={{ background: 'rgba(0,0,0,0.2)', border: '1px solid rgba(0,212,255,0.13)' }}>
-      <div className="font-mono text-[8px] uppercase tracking-widest" style={{ color: 'var(--color-text-muted)' }}>{label}</div>
-      <div className="font-mono text-sm font-bold mt-0.5" style={{ color: 'var(--color-accent-green)' }}>{value}</div>
-    </div>
-  )
-}
-
-function MiniStat({ label, value }: { label: string; value: number | string }) {
-  return (
-    <div className="rounded-lg p-2" style={{ background: 'rgba(0,0,0,0.18)', border: '1px solid rgba(255,255,255,0.07)' }}>
-      <div className="font-mono text-[8px] uppercase tracking-widest" style={{ color: 'var(--color-text-muted)' }}>{label}</div>
-      <div className="font-mono text-xs font-bold mt-0.5" style={{ color: 'var(--color-text-primary)' }}>{value}</div>
-    </div>
+    <section>
+      <h2 className="mb-2 font-mono text-[11px] uppercase tracking-widest" style={{ color: 'var(--color-text-muted)' }}>{title}</h2>
+      {children}
+    </section>
   )
 }
 
 function EmptyState({ title, body }: { title: string; body: string }) {
   return (
-    <div className="rounded-xl p-4 text-center" style={{ background: 'rgba(255,255,255,0.025)', border: '1px dashed rgba(0,212,255,0.16)' }}>
-      <div className="font-display text-sm font-semibold" style={{ color: 'var(--color-text-secondary)' }}>{title}</div>
-      <p className="mt-1 text-[11px] leading-relaxed" style={{ color: 'var(--color-text-muted)' }}>{body}</p>
+    <div className="rounded-xl p-4 text-center" style={{ background: 'var(--color-bg-card)', border: '1px dashed var(--color-border-subtle)' }}>
+      <div className="text-sm font-semibold" style={{ color: 'var(--color-text-secondary)' }}>{title}</div>
+      <p className="mt-1 text-xs leading-relaxed" style={{ color: 'var(--color-text-muted)' }}>{body}</p>
     </div>
   )
 }
 
-function MetricCompare({ label, before, after, inverse = false }: { label: string; before: number; after?: number; inverse?: boolean }) {
+function Impact({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-lg p-2" style={{ background: 'rgba(0,0,0,0.16)', border: '1px solid var(--color-border-subtle)' }}>
+      <div className="font-mono text-[9px] uppercase tracking-widest" style={{ color: 'var(--color-text-muted)' }}>{label}</div>
+      <div className="mt-0.5 font-mono text-sm font-bold" style={{ color: 'var(--color-text-primary)' }}>{value}</div>
+    </div>
+  )
+}
+
+function Metric({ label, before, after, inverse = false }: { label: string; before: number; after?: number; inverse?: boolean }) {
   const currentAfter = after ?? before
   const delta = Math.round((currentAfter - before) * 10) / 10
   const improved = inverse ? delta < 0 : delta > 0
-  const unchanged = Math.abs(delta) < 0.01
+  const unchanged = Math.abs(delta) < 0.1
   return (
-    <div className="rounded-xl p-2.5" style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.07)' }}>
-      <div className="flex justify-between gap-2 mb-1">
-        <span className="font-display text-[11px]" style={{ color: 'var(--color-text-secondary)' }}>{label}</span>
-        <span className="font-mono text-[10px]" style={{ color: unchanged ? 'var(--color-text-muted)' : improved ? 'var(--color-accent-green)' : 'var(--color-accent-danger)' }}>
+    <div className="rounded-xl p-3" style={{ background: 'var(--color-bg-card)', border: '1px solid var(--color-border-subtle)' }}>
+      <div className="flex items-center justify-between gap-2">
+        <span className="text-sm" style={{ color: 'var(--color-text-secondary)' }}>{label}</span>
+        <span className="font-mono text-[11px]" style={{ color: unchanged ? 'var(--color-text-muted)' : improved ? 'var(--color-accent-green)' : 'var(--color-accent-danger)' }}>
           {delta > 0 ? '+' : ''}{delta}
         </span>
       </div>
-      <div className="flex items-center gap-2">
-        <span className="font-mono text-[10px]" style={{ color: 'var(--color-text-muted)' }}>{before}</span>
-        <div className="flex-1 h-1 rounded-full overflow-hidden" style={{ background: 'rgba(255,255,255,0.08)' }}>
-          <motion.div className="h-full rounded-full" initial={{ width: '18%' }} animate={{ width: `${Math.min(100, Math.max(8, currentAfter))}%` }} style={{ background: improved || unchanged ? 'var(--color-accent-cyan)' : 'var(--color-accent-danger)' }} />
-        </div>
-        <span className="font-mono text-[10px]" style={{ color: after ? 'var(--color-text-primary)' : 'var(--color-text-muted)' }}>{currentAfter}</span>
-      </div>
-    </div>
-  )
-}
-
-function SliderRow({ label, value, min, max, suffix, onChange }: { label: string; value: number; min: number; max: number; suffix: string; onChange: (value: number) => void }) {
-  return (
-    <label className="block">
-      <div className="flex justify-between mb-1">
-        <span className="font-mono text-[9px]" style={{ color: 'var(--color-text-muted)' }}>{label}</span>
-        <span className="font-mono text-[9px]" style={{ color: 'var(--color-accent-cyan)' }}>{Math.round(value)}{suffix}</span>
-      </div>
-      <input aria-label={label} type="range" min={min} max={max} value={value} onChange={(event) => onChange(Number(event.target.value))} className="w-full" style={{ accentColor: 'var(--color-accent-cyan)' }} />
-    </label>
-  )
-}
-
-function Section({
-  label,
-  children,
-  flex = false,
-}: {
-  label: string
-  children: React.ReactNode
-  flex?: boolean
-}) {
-  return (
-    <div
-      className={`p-3 shrink-0 ${flex ? 'flex flex-col flex-1 overflow-hidden' : ''}`}
-      style={{ borderBottom: '1px solid var(--color-border-subtle)' }}
-    >
-      <SectionLabel>{label}</SectionLabel>
-      <div className={`mt-2 ${flex ? 'flex flex-col flex-1 overflow-hidden' : ''}`}>
-        {children}
-      </div>
-    </div>
-  )
-}
-
-function SectionLabel({ children }: { children: React.ReactNode }) {
-  return (
-    <div
-      className="font-mono text-[9px] tracking-widest uppercase flex items-center gap-1.5"
-      style={{ color: 'var(--color-text-muted)' }}
-    >
-      <span
-        className="inline-block w-2 h-px"
-        style={{ background: 'var(--color-accent-cyan)', opacity: 0.5 }}
-      />
-      {children}
-    </div>
-  )
-}
-
-function DataGrid({ rows }: { rows: [string, string][] }) {
-  return (
-    <div className="grid grid-cols-2 gap-x-2 gap-y-1">
-      {rows.map(([key, val]) => (
-        <div key={key} className="contents">
-          <span className="font-mono text-[9px]" style={{ color: 'var(--color-text-muted)' }}>
-            {key}
-          </span>
-          <span className="font-mono text-[9px]" style={{ color: 'var(--color-text-secondary)' }}>
-            {val}
-          </span>
-        </div>
-      ))}
-    </div>
-  )
-}
-
-function VitalBar({ label, value, max, color }: { label: string; value: number; max: number; color: string }) {
-  const pct = Math.min(100, (value / max) * 100)
-  return (
-    <div>
-      <div className="flex justify-between mb-1">
-        <span className="font-mono text-[9px]" style={{ color: 'var(--color-text-muted)' }}>{label}</span>
-        <span className="font-mono text-[9px]" style={{ color }}>
-          {value.toFixed(0)}%
-        </span>
-      </div>
-      <div className="h-0.5 rounded-full overflow-hidden" style={{ background: 'var(--color-bg-card)' }}>
-        <motion.div
-          className="h-full rounded-full"
-          style={{ background: color }}
-          animate={{ width: `${pct}%` }}
-          transition={{ duration: 0.5, ease: 'easeOut' }}
-        />
+      <div className="mt-1 font-mono text-lg font-bold" style={{ color: 'var(--color-text-primary)' }}>
+        {before} <span style={{ color: 'var(--color-text-muted)' }}>to</span> {currentAfter}
       </div>
     </div>
   )

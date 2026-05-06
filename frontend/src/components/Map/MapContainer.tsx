@@ -2,7 +2,7 @@ import { useEffect, useMemo, useCallback, useRef, useState } from 'react'
 import { MapContainer as LeafletMap, TileLayer, CircleMarker, Circle, Polyline, Marker, Popup, useMap, useMapEvents } from 'react-leaflet'
 import L from 'leaflet'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Box, Building2, Bus, Cross, Flame, GraduationCap, Home, Layers, Route, Shield, TreePine, Zap } from 'lucide-react'
+import { Box, Building2, Bus, Cross, Flame, GraduationCap, Home, Layers, Shield, TreePine, Zap } from 'lucide-react'
 import { useCityStore } from '@/stores/cityStore'
 import { useSimulationStore } from '@/stores/simulationStore'
 import type { UserPlacedZone } from '@/stores/simulationStore'
@@ -24,7 +24,6 @@ const SERVICE_RADII: Record<string, number> = {
   '--zone-health':      2000,
   '--zone-education':    800,
   '--zone-transit':      600,
-  '--zone-road':        1000,
   '--zone-government':  1200,
   '--zone-disaster':    1500,
   '--zone-utility':      800,
@@ -145,7 +144,7 @@ function DotLayer({ dots, onHover, onClick, highlightedToken }: DotLayerProps) {
 }
 
 const LAYER_GROUPS = [
-  { title: 'Existing real world infrastructure', items: ['Existing hospitals', 'Existing schools', 'Existing parks', 'Existing transit', 'Existing police stations', 'Existing fire stations', 'Existing Roads'] },
+  { title: 'Existing real world infrastructure', items: ['Existing hospitals', 'Existing schools', 'Existing parks', 'Existing transit', 'Existing police stations', 'Existing fire stations'] },
   { title: 'Proposed future scenario infrastructure', items: ['Proposed infrastructure'] },
   { title: 'AI recommended infrastructure', items: ['AI Recommendations'] },
   { title: 'Scenario overlays', items: ['Underserved zones', 'Growth Pressure', 'Heatmap Mode'] },
@@ -160,7 +159,6 @@ const CATEGORY_LAYER: Partial<Record<InfrastructureCategory, string>> = {
   transit_line: 'Existing transit',
   police_station: 'Existing police stations',
   fire_station: 'Existing fire stations',
-  road: 'Existing Roads',
 }
 
 const CATEGORY_COLOR: Record<InfrastructureCategory, string> = {
@@ -178,7 +176,7 @@ const CATEGORY_COLOR: Record<InfrastructureCategory, string> = {
   road: '#8B949E',
   bike_lane: '#8B949E',
   utility: '#F1C40F',
-  water: '#00D4FF',
+  water: '#ff4757',
   power: '#F59E0B',
   mixed_use: '#E67E22',
   community_center: '#2E86C1',
@@ -221,15 +219,13 @@ const TOOL_ZONE_TO_CATEGORY: Record<string, InfrastructureCategory> = {
   COM_OFFICE_PLAZA: 'commercial_zone',
   COM_SMALL_SHOP: 'commercial_zone',
   IND_WAREHOUSE: 'industrial_zone',
-  ROAD_ARTERIAL: 'road',
-  HIGHWAY_INTERCHANGE: 'road',
   ENV_TREE_CORRIDOR: 'park',
   POWER_SUBSTATION: 'utility',
 }
 
 function LayerControlPanel({ activeLayers, toggleLayer }: { activeLayers: Set<string>; toggleLayer: (layerId: string) => void }) {
   return (
-    <div style={{ position: 'absolute', top: 16, right: 16, zIndex: 18, width: 252, background: 'var(--color-bg-sidebar)', border: '1px solid var(--color-border-subtle)', borderRadius: 8, boxShadow: '0 8px 28px rgba(0,0,0,0.45)', overflow: 'hidden' }}>
+    <div style={{ position: 'absolute', top: 164, right: 16, zIndex: 18, width: 252, background: 'var(--color-bg-sidebar)', border: '1px solid var(--color-border-subtle)', borderRadius: 8, boxShadow: '0 8px 28px rgba(0,0,0,0.45)', overflow: 'hidden' }}>
       <div style={{ padding: '10px 12px', borderBottom: '1px solid var(--color-border-subtle)', display: 'flex', alignItems: 'center', gap: 8 }}>
         <Layers size={13} style={{ color: 'var(--color-accent-cyan)' }} />
         <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--color-text-secondary)' }}>Planning Layers</span>
@@ -250,7 +246,7 @@ function LayerControlPanel({ activeLayers, toggleLayer }: { activeLayers: Set<st
         ))}
         <div style={{ borderTop: '1px solid var(--color-border-subtle)', paddingTop: 8, display: 'grid', gap: 5 }}>
           <div style={{ fontSize: 9, color: 'var(--color-text-muted)', lineHeight: 1.45 }}>Data sources: MapLibre, OpenStreetMap, simulated growth model, UrbanMind scoring engine</div>
-          <div style={{ fontSize: 9, color: 'rgba(255,255,255,0.35)', lineHeight: 1.45 }}>UrbanMind is a decision support simulator, not a final planning authority.</div>
+          <div style={{ fontSize: 9, color: 'var(--color-text-muted)', lineHeight: 1.45 }}>UrbanMind is a decision support simulator, not a final planning authority.</div>
         </div>
       </div>
     </div>
@@ -268,7 +264,6 @@ function PlanningLegend() {
     ['housing_zone', <Home size={10} />, 'Housing'],
     ['commercial_zone', <Building2 size={10} />, 'Commercial'],
     ['industrial_zone', <Building2 size={10} />, 'Industrial'],
-    ['road', <Route size={10} />, 'Road'],
     ['utility', <Zap size={10} />, 'Utility'],
   ]
   return (
@@ -284,13 +279,13 @@ function PlanningLegend() {
       </div>
       <div style={{ borderTop: '1px solid var(--color-border-subtle)', marginTop: 8, paddingTop: 7, display: 'grid', gap: 4 }}>
         {[
-          ['Existing', 'rgba(255,255,255,0.55)'],
-          ['Proposed', '#00D4FF'],
-          ['AI Recommended', '#00D4FF'],
+          ['Existing', '#636e72'],
+          ['Proposed', '#ff4757'],
+          ['AI Recommended', '#ff4757'],
           ['Underserved Zone', '#FF5A3D'],
         ].map(([label, color]) => (
           <div key={label} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 9, color: 'var(--color-text-muted)' }}>
-            <span style={{ width: 12, height: 12, borderRadius: 4, border: `1px solid ${color}`, background: label === 'Underserved Zone' ? 'rgba(255,90,61,0.2)' : 'rgba(13,17,28,0.9)' }} />
+            <span style={{ width: 12, height: 12, borderRadius: 4, border: `1px solid ${color}`, background: label === 'Underserved Zone' ? 'rgba(255,90,61,0.12)' : `${color}22` }} />
             {label}
           </div>
         ))}
@@ -300,12 +295,13 @@ function PlanningLegend() {
 }
 
 function infraIcon(item: InfrastructureItem) {
-  const color = item.status === 'proposed' ? '#00D4FF' : CATEGORY_COLOR[item.category]
+  const isProposed = item.status === 'proposed'
   const isAi = item.status === 'ai_recommended'
-  const glow = item.status === 'proposed' || isAi ? 'box-shadow:0 0 18px rgba(0,212,255,0.85);border-color:#00D4FF;' : ''
+  const color = isProposed || isAi ? '#ff4757' : CATEGORY_COLOR[item.category]
+  const border = isProposed ? `1px dashed ${color}` : `1px solid ${color}`
   return L.divIcon({
     className: 'urbanmind-infra-icon',
-    html: `<div style="width:30px;height:30px;border-radius:10px;background:linear-gradient(135deg,rgba(11,17,28,0.96),rgba(31,41,55,0.9));border:${item.status === 'proposed' ? '1px dashed' : '1px solid'} ${color};${glow}display:grid;place-items:center;color:${color};font:800 15px Inter,system-ui;backdrop-filter:blur(8px);">${isAi ? '&#10022;' : CATEGORY_ICON[item.category]}</div>`,
+    html: `<div style="width:30px;height:30px;border-radius:10px;background:#e0e5ec;border:${border};box-shadow:4px 4px 8px #babecc,-4px -4px 8px #ffffff;display:grid;place-items:center;color:${color};font:800 15px Inter,system-ui;">${isAi ? '&#10022;' : CATEGORY_ICON[item.category]}</div>`,
     iconSize: [30, 30],
     iconAnchor: [15, 15],
   })
@@ -314,7 +310,7 @@ function infraIcon(item: InfrastructureItem) {
 function suggestionIcon(rank: number) {
   return L.divIcon({
     className: 'urbanmind-suggestion-icon',
-    html: `<div style="width:34px;height:34px;border-radius:50%;background:radial-gradient(circle at 30% 30%,rgba(0,255,156,0.22),rgba(0,212,255,0.18));border:1px solid #00D4FF;box-shadow:0 0 22px rgba(0,212,255,0.78);display:grid;place-items:center;color:#D9FBFF;font:800 13px Inter,system-ui;">${rank}</div>`,
+    html: `<div style="width:34px;height:34px;border-radius:50%;background:#e0e5ec;border:2px solid #ff4757;box-shadow:4px 4px 8px #babecc,-4px -4px 8px #ffffff;display:grid;place-items:center;color:#ff4757;font:800 13px Inter,system-ui;">${rank}</div>`,
     iconSize: [34, 34],
     iconAnchor: [17, 17],
   })
@@ -334,7 +330,45 @@ function coverageRadiusForCategory(category: InfrastructureCategory) {
   return radii[category] ?? null
 }
 
+function isValidCityPlacement(city: { bbox: number[] }, lat: number, lng: number) {
+  const [west, south, east, north] = city.bbox
+  return lng >= west && lng <= east && lat >= south && lat <= north
+}
+
+function describePlacement(category: InfrastructureCategory, lat: number, lng: number, zones: UnderservedZone[]) {
+  const relevantGap: Partial<Record<InfrastructureCategory, string[]>> = {
+    clinic: ['hospital_access', 'emergency_access'],
+    hospital: ['hospital_access', 'emergency_access'],
+    school: ['school_access'],
+    park: ['park_access', 'green_space'],
+    transit_stop: ['transit_access'],
+    transit_line: ['transit_access'],
+    housing_zone: ['housing_access'],
+    mixed_use: ['housing_access', 'transit_access'],
+  }
+  const gapTypes = relevantGap[category] ?? []
+  const ranked = zones
+    .filter((zone) => gapTypes.includes(zone.gapType))
+    .map((zone) => ({
+      zone,
+      distance: Math.hypot(lat - zone.center[0], lng - zone.center[1]),
+    }))
+    .sort((a, b) => a.distance - b.distance)
+  const nearest = ranked[0]?.zone ?? zones[0]
+  const locationName = nearest?.name ?? 'selected district'
+  const impactScore = category === 'clinic' || category === 'hospital' ? 78
+    : category === 'school' ? 76
+    : category === 'park' ? 70
+    : category === 'transit_stop' || category === 'transit_line' ? 73
+    : 62
+  const reason = nearest
+    ? `Placed near ${locationName} because this district shows ${nearest.gapType.replace(/_/g, ' ')} pressure under the selected growth scenario.`
+    : `Placed inside the selected city planning area to improve ${category.replace(/_/g, ' ')} access.`
+  return { locationName, impactScore, reason }
+}
+
 function isLayerVisible(item: InfrastructureItem, activeLayers: Set<string>, showAIRecommendations: boolean) {
+  if (item.category === 'road') return false
   if (item.status === 'proposed') return activeLayers.has('Proposed infrastructure')
   if (item.status === 'ai_recommended') return showAIRecommendations && activeLayers.has('AI Recommendations')
   const layer = CATEGORY_LAYER[item.category]
@@ -359,15 +393,20 @@ function EmptyMapOverlay() {
       }}
     >
       <motion.div
-        animate={{ opacity: [0.3, 0.7, 0.3] }}
+        animate={{ opacity: [0.4, 0.8, 0.4] }}
         transition={{ duration: 3, repeat: Infinity, ease: 'easeInOut' }}
         style={{
           fontFamily: 'var(--font-mono)',
           fontSize: 11,
           letterSpacing: '0.25em',
           textTransform: 'uppercase',
-          color: 'rgba(0,212,255,0.5)',
+          color: 'var(--color-text-muted)',
           textAlign: 'center',
+          background: 'var(--color-bg-panel)',
+          padding: '8px 18px',
+          borderRadius: 8,
+          boxShadow: 'var(--shadow-sm)',
+          border: '1px solid var(--color-border-subtle)',
         }}
       >
         Select a city to begin
@@ -377,57 +416,13 @@ function EmptyMapOverlay() {
 }
 
 // ─── Dot count badge ─────────────────────────────────────────────────────────
-function DotCountBadge({ count, isLive }: { count: number; isLive: boolean }) {
-  return (
-    <AnimatePresence>
-      {count > 0 && (
-        <motion.div
-          key={count}
-          initial={{ opacity: 0, y: -4 }}
-          animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0, y: 4 }}
-          transition={{ duration: 0.25 }}
-          style={{
-            position: 'absolute',
-            top: 12,
-            left: '50%',
-            transform: 'translateX(-50%)',
-            zIndex: 15,
-            display: 'flex',
-            alignItems: 'center',
-            gap: 6,
-            padding: '4px 10px',
-            borderRadius: 999,
-            background: 'rgba(11,17,28,0.82)',
-            border: '1px solid rgba(0,212,255,0.2)',
-            backdropFilter: 'blur(10px)',
-            fontFamily: 'var(--font-mono)',
-            fontSize: 10,
-            letterSpacing: '0.15em',
-            color: 'rgba(0,212,255,0.7)',
-            pointerEvents: 'none',
-          }}
-        >
-          {isLive && (
-            <motion.span
-              style={{ width: 5, height: 5, borderRadius: '50%', background: 'var(--color-accent-cyan)', display: 'inline-block' }}
-              animate={{ opacity: [1, 0.3, 1] }}
-              transition={{ duration: 1.2, repeat: Infinity }}
-            />
-          )}
-          {count} {isLive ? 'ZONES' : 'LANDMARKS'}
-        </motion.div>
-      )}
-    </AnimatePresence>
-  )
-}
-
 // ─── Main component ──────────────────────────────────────────────────────────
 export function MapContainer() {
   const [hovered, setHovered] = useState<{ x: number; y: number; properties: any } | null>(null)
   const [serviceArea, setServiceArea] = useState<ServiceArea | null>(null)
   const [mapLoading, setMapLoading] = useState(true)
   const [mapError, setMapError] = useState(false)
+  const [layersPanelOpen, setLayersPanelOpen] = useState(false)
 
   const city = useCityStore((s) => s.selectedCity)
   const frame = useSimulationStore((s) => s.currentFrame)
@@ -457,6 +452,10 @@ export function MapContainer() {
   const handlePlaceZone = useCallback(
     (lat: number, lng: number) => {
       if (!selectedOverrideZone) return
+      if (!city || !isValidCityPlacement(city, lat, lng)) {
+        notify('warning', 'Place proposed infrastructure inside the selected city planning area.', 2800)
+        return
+      }
       const zone: UserPlacedZone = {
         id: `user-${Date.now()}`,
         lat,
@@ -467,6 +466,7 @@ export function MapContainer() {
       const category = TOOL_ZONE_TO_CATEGORY[selectedOverrideZone] ?? 'housing_zone'
       const label = selectedOverrideZone.replace(/_/g, ' ').toLowerCase().replace(/\b\w/g, (c) => c.toUpperCase())
       const infrastructureId = `user-${Date.now()}`
+      const placement = describePlacement(category, lat, lng, planning.underservedZones)
       addInfrastructure({
         id: infrastructureId,
         name: `Proposed ${label}`,
@@ -476,16 +476,16 @@ export function MapContainer() {
         coordinates: [lng, lat],
         geometryType: 'Point',
         geometry: { type: 'Point', coordinates: [lng, lat] },
-        reason: `Fills a local ${category.replace(/_/g, ' ')} access gap in the selected scenario.`,
+        reason: placement.reason,
         costEstimate: category === 'hospital' ? 120_000_000 : category === 'school' ? 36_000_000 : category === 'park' ? 8_000_000 : 12_000_000,
-        impactScore: category === 'clinic' || category === 'school' ? 76 : 62,
+        impactScore: placement.impactScore,
         confidence: 0.72,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       })
-      notify('success', `Proposed ${label} added. Expected impact is estimated from local gap scoring.`, 2800)
+      notify('success', `Proposed ${label} added near ${placement.locationName}.`, 2800)
     },
-    [selectedOverrideZone, addUserZone, addInfrastructure, notify]
+    [selectedOverrideZone, city, planning.underservedZones, addUserZone, addInfrastructure, notify]
   )
 
   const placeSuggestedInfrastructure = useCallback((suggestionId: string) => {
@@ -557,7 +557,7 @@ export function MapContainer() {
         zone_type_id: zone,
         zone_display_name: displayName,
         city_name: city?.name ?? 'the city',
-        surrounding_context: placementReason ?? 'Nearby zones, road access, service coverage, terrain conditions, and forecast growth pressure.',
+        surrounding_context: placementReason ?? 'Nearby service coverage, transit access, terrain conditions, and forecast growth pressure.',
         metrics_delta: frame?.metrics_snapshot ?? {},
         scenario_goal: scenario,
       }).then((text) => updateDrawer({ explanation_text: text }))
@@ -621,7 +621,6 @@ export function MapContainer() {
   }, [city, frame, isRunning, isPaused, detailedGrid, userZones])
 
   const showDots = activeLayers.has('Zones')
-  const isLive = (isRunning || isPaused || detailedGrid) && !!frame
   const showPlanning = Boolean(city)
   const visibleInfrastructure = useMemo(() => {
     if (!showPlanning) return []
@@ -668,16 +667,46 @@ export function MapContainer() {
         height: 'calc(100% - 24px)',
         margin: 12,
         overflow: 'hidden',
-        background: 'linear-gradient(135deg,#0d1117,#080D16)',
-        border: '1px solid rgba(0,212,255,0.18)',
-        borderRadius: 22,
-        boxShadow: '0 22px 70px rgba(0,0,0,0.45), 0 0 42px rgba(0,212,255,0.08)',
+        background: 'var(--color-bg-app)',
+        borderRadius: 16,
+        border: '1px solid var(--color-border-subtle)',
+        boxShadow: 'var(--shadow-lg)',
       }}
     >
       <div style={{ position: 'absolute', top: 14, left: 16, zIndex: 16, pointerEvents: 'none' }}>
-        <div className="font-mono text-[10px] uppercase tracking-widest" style={{ color: 'rgba(0,212,255,0.72)' }}>Live Planning Canvas</div>
-        <div className="mt-1 text-xs" style={{ color: 'rgba(255,255,255,0.55)' }}>Service gaps, growth pressure, and proposed infrastructure</div>
+        <div className="font-mono text-[10px] uppercase tracking-widest" style={{ color: 'var(--color-text-secondary)' }}>Live Planning Canvas</div>
+        <div className="mt-1 text-xs" style={{ color: 'var(--color-text-muted)' }}>Service gaps, growth pressure, and proposed infrastructure</div>
       </div>
+      {/* Layers toggle */}
+      {showPlanning && (
+        <motion.button
+          onClick={() => setLayersPanelOpen((v) => !v)}
+          whileHover={{ scale: 1.08 }}
+          whileTap={{ scale: 0.94 }}
+          title="Toggle planning layers"
+          style={{
+          position: 'absolute',
+          top: 72,
+          right: 16,
+            zIndex: 20,
+            width: 38,
+            height: 38,
+            borderRadius: 8,
+            border: layersPanelOpen
+              ? '1px solid var(--color-border-active)'
+              : '1px solid var(--color-border-subtle)',
+            background: 'var(--color-bg-panel)',
+            color: layersPanelOpen ? 'var(--color-accent-cyan)' : 'var(--color-text-muted)',
+            display: 'grid',
+            placeItems: 'center',
+            cursor: 'pointer',
+            transition: 'all 200ms ease',
+            boxShadow: layersPanelOpen ? 'var(--shadow-pressed)' : 'var(--shadow-sm)',
+          }}
+        >
+          <Layers size={16} />
+        </motion.button>
+      )}
       {/* 2D / 3D toggle */}
       <motion.button
         onClick={toggle3D}
@@ -686,22 +715,22 @@ export function MapContainer() {
         title={is3DMode ? 'Switch to 2D map' : 'Switch to 3D map'}
         style={{
           position: 'absolute',
-          bottom: 80,
+          top: 118,
           right: 16,
           zIndex: 20,
           width: 38,
           height: 38,
           borderRadius: 8,
           border: is3DMode
-            ? '1px solid rgba(0,212,255,0.6)'
-            : '1px solid rgba(0,212,255,0.2)',
-          background: is3DMode ? 'rgba(0,212,255,0.15)' : 'rgba(13,17,23,0.82)',
+            ? '1px solid var(--color-border-active)'
+            : '1px solid var(--color-border-subtle)',
+          background: 'var(--color-bg-panel)',
           color: is3DMode ? 'var(--color-accent-cyan)' : 'var(--color-text-muted)',
           display: 'grid',
           placeItems: 'center',
           cursor: 'pointer',
           transition: 'all 200ms ease',
-          backdropFilter: 'blur(8px)',
+          boxShadow: is3DMode ? 'var(--shadow-pressed)' : 'var(--shadow-sm)',
         }}
       >
         <Box size={16} />
@@ -713,7 +742,8 @@ export function MapContainer() {
         <Map3DView />
       ) : (
         // Absolute wrapper ensures the map fills the entire <main>
-        <div style={{ position: 'absolute', inset: 0, borderRadius: 22, overflow: 'hidden' }}>
+        // isolation: isolate prevents Leaflet's high z-index panes from leaking outside
+        <div style={{ position: 'absolute', inset: 0, isolation: 'isolate', borderRadius: 16, overflow: 'hidden' }}>
           <LeafletMap
             key={city?.id ?? 'default'}          // remount when city changes
             center={initialCenter}
@@ -724,9 +754,9 @@ export function MapContainer() {
             maxBoundsViscosity={0.85}
             minZoom={10}
           >
-            {/* Dark CartoDB basemap */}
+            {/* Light CartoDB basemap */}
             <TileLayer
-              url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
+              url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"
               attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a> &copy; <a href="https://carto.com/">CARTO</a>'
               maxZoom={20}
               subdomains="abcd"
@@ -782,8 +812,8 @@ export function MapContainer() {
                 center={district.center}
                 radius={Math.max(8, district.severity * 14)}
                 pathOptions={{
-                  color: district.severity > 0.8 ? '#FF5A3D' : '#FFB800',
-                  fillColor: district.severity > 0.8 ? '#FF5A3D' : '#FFB800',
+                  color: district.severity > 0.8 ? '#FF5A3D' : '#fdcb6e',
+                  fillColor: district.severity > 0.8 ? '#FF5A3D' : '#fdcb6e',
                   fillOpacity: 0.2,
                   weight: 1,
                   opacity: 0.8,
@@ -803,8 +833,8 @@ export function MapContainer() {
                 center={zone.center}
                 radius={activeLayers.has('Heatmap Mode') ? zone.radiusMeters * 1.2 : zone.radiusMeters}
                 pathOptions={{
-                  color: zone.pressure === 'high' ? '#FFB800' : '#00D4FF',
-                  fillColor: zone.pressure === 'high' ? '#FFB800' : '#00D4FF',
+                  color: zone.pressure === 'high' ? '#fdcb6e' : '#ff4757',
+                  fillColor: zone.pressure === 'high' ? '#fdcb6e' : '#ff4757',
                   fillOpacity: activeLayers.has('Heatmap Mode') ? (zone.pressure === 'high' ? 0.24 : 0.16) : 0.1,
                   weight: 1.2,
                   opacity: 0.55,
@@ -829,8 +859,8 @@ export function MapContainer() {
                   center={[lat, lng]}
                   radius={item.status === 'proposed' ? radius * 1.08 : radius}
                   pathOptions={{
-                    color: item.status === 'proposed' ? '#00D4FF' : CATEGORY_COLOR[item.category],
-                    fillColor: item.status === 'proposed' ? '#00D4FF' : CATEGORY_COLOR[item.category],
+                    color: item.status === 'proposed' ? '#ff4757' : CATEGORY_COLOR[item.category],
+                    fillColor: item.status === 'proposed' ? '#ff4757' : CATEGORY_COLOR[item.category],
                     fillOpacity: item.status === 'proposed' ? 0.075 : 0.035,
                     weight: item.status === 'proposed' ? 1.8 : 1,
                     opacity: item.status === 'proposed' ? 0.58 : 0.28,
@@ -847,7 +877,7 @@ export function MapContainer() {
                     key={item.id}
                     positions={coords.map(([lng, lat]) => [lat, lng] as [number, number])}
                     pathOptions={{
-                      color: item.status === 'proposed' || item.status === 'ai_recommended' ? '#00D4FF' : CATEGORY_COLOR[item.category],
+                      color: item.status === 'proposed' || item.status === 'ai_recommended' ? '#ff4757' : CATEGORY_COLOR[item.category],
                       weight: item.status === 'proposed' || item.status === 'ai_recommended' ? 5 : 3,
                       opacity: item.status === 'ai_recommended' ? 0.65 : 0.85,
                       dashArray: item.status === 'ai_recommended' ? '8 7' : undefined,
@@ -865,7 +895,7 @@ export function MapContainer() {
                     {item.status === 'ai_recommended' && !planning.hasAppliedAIPlan && (
                       <button
                         onClick={() => planning.cityId === 'fremon' ? applyRecommendedPlan() : useSimulationStore.getState().applyAIPlan(scenario)}
-                        style={{ display: 'block', marginTop: 8, border: '1px solid rgba(0,212,255,0.35)', borderRadius: 6, padding: '5px 8px', color: '#00D4FF', background: 'rgba(0,212,255,0.08)' }}
+                        style={{ display: 'block', marginTop: 8, border: '1px solid var(--color-border-active)', borderRadius: 6, padding: '5px 8px', color: 'var(--color-accent-cyan)', background: 'var(--color-bg-hover)' }}
                       >
                         Apply Recommendation
                       </button>
@@ -894,7 +924,7 @@ export function MapContainer() {
                     {item.status === 'ai_recommended' && !planning.hasAppliedAIPlan && (
                       <button
                         onClick={() => planning.cityId === 'fremon' ? applyRecommendedPlan() : useSimulationStore.getState().applyAIPlan(scenario)}
-                        style={{ display: 'block', marginTop: 8, border: '1px solid rgba(0,212,255,0.35)', borderRadius: 6, padding: '5px 8px', color: '#00D4FF', background: 'rgba(0,212,255,0.08)' }}
+                        style={{ display: 'block', marginTop: 8, border: '1px solid var(--color-border-active)', borderRadius: 6, padding: '5px 8px', color: 'var(--color-accent-cyan)', background: 'var(--color-bg-hover)' }}
                       >
                         Apply Recommendation
                       </button>
@@ -916,7 +946,7 @@ export function MapContainer() {
                     {suggestion.reason}
                     <button
                       onClick={() => placeSuggestedInfrastructure(suggestion.id)}
-                      style={{ display: 'block', marginTop: 8, border: '1px solid rgba(0,255,156,0.35)', borderRadius: 6, padding: '5px 8px', color: '#00FF9C', background: 'rgba(0,255,156,0.08)' }}
+                      style={{ display: 'block', marginTop: 8, border: '1px solid rgba(0,184,148,0.4)', borderRadius: 6, padding: '5px 8px', color: 'var(--color-accent-green)', background: 'rgba(0,184,148,0.08)' }}
                     >
                       Place Here
                     </button>
@@ -947,10 +977,6 @@ export function MapContainer() {
         {!city && <EmptyMapOverlay />}
       </AnimatePresence>
 
-      {showDots && (
-        <DotCountBadge count={dots.length} isLive={isLive} />
-      )}
-
       {hovered && !isOverrideModeActive && <ExplanationTooltip hover={hovered} />}
 
       <AnimatePresence>
@@ -959,7 +985,7 @@ export function MapContainer() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            style={{ position: 'absolute', inset: 0, zIndex: 6, pointerEvents: mapError ? 'auto' : 'none', display: 'grid', placeItems: 'center', background: mapError ? 'linear-gradient(135deg,#0d1117,#111827)' : 'rgba(13,17,23,0.35)' }}
+            style={{ position: 'absolute', inset: 0, zIndex: 6, pointerEvents: mapError ? 'auto' : 'none', display: 'grid', placeItems: 'center', background: mapError ? 'var(--color-bg-app)' : 'transparent' }}
           >
             <div style={{ width: 280, border: '1px solid var(--color-border-subtle)', borderRadius: 8, background: 'var(--color-bg-sidebar)', padding: 16, textAlign: 'center' }}>
               <div style={{ fontFamily: 'var(--font-mono)', fontSize: 10, letterSpacing: '0.14em', textTransform: 'uppercase', color: mapError ? 'var(--color-accent-warning)' : 'var(--color-accent-cyan)' }}>
@@ -969,7 +995,7 @@ export function MapContainer() {
                 {mapError ? 'Base tiles are unavailable, but seeded planning layers and scoring remain usable.' : 'Loading city map and infrastructure layers...'}
               </p>
               {mapError && (
-                <button onClick={() => { setMapError(false); setMapLoading(true) }} style={{ marginTop: 10, border: '1px solid rgba(0,212,255,0.3)', borderRadius: 6, padding: '6px 10px', color: 'var(--color-accent-cyan)', background: 'rgba(0,212,255,0.06)', fontSize: 11 }}>
+                <button onClick={() => { setMapError(false); setMapLoading(true) }} style={{ marginTop: 10, border: '1px solid var(--color-border-subtle)', borderRadius: 6, padding: '6px 10px', color: 'var(--color-accent-cyan)', background: 'var(--color-bg-hover)', fontSize: 11 }}>
                   Retry tiles
                 </button>
               )}
@@ -978,7 +1004,7 @@ export function MapContainer() {
         )}
       </AnimatePresence>
 
-      {showPlanning && <LayerControlPanel activeLayers={activeLayers} toggleLayer={toggleLayer} />}
+      {showPlanning && layersPanelOpen && <LayerControlPanel activeLayers={activeLayers} toggleLayer={toggleLayer} />}
       {showPlanning && <PlanningLegend />}
 
       {/* Override-mode cursor banner */}

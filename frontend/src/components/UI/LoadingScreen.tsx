@@ -8,22 +8,27 @@ export function LoadingScreen() {
       exit={{ opacity: 0, scale: 0.98 }}
       transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
     >
-      {/* HUD grid background */}
+      {/* Blueprint grid */}
       <div
-        className="absolute inset-0 animate-grid-pulse"
+        className="absolute inset-0 pointer-events-none"
         style={{
           backgroundImage:
-            'linear-gradient(rgba(0,212,255,0.04) 1px, transparent 1px), linear-gradient(90deg, rgba(0,212,255,0.04) 1px, transparent 1px)',
-          backgroundSize: '50px 50px',
+            'linear-gradient(var(--color-border-subtle) 1px, transparent 1px), linear-gradient(90deg, var(--color-border-subtle) 1px, transparent 1px)',
+          backgroundSize: '48px 48px',
+          opacity: 0.18,
         }}
       />
 
-      {/* Scan line */}
+      {/* Top-left light hotspot */}
       <div
-        className="absolute left-0 right-0 h-px pointer-events-none animate-scan-down"
+        className="absolute pointer-events-none"
         style={{
-          background: 'linear-gradient(90deg, transparent, rgba(0,212,255,0.4), transparent)',
-          top: 0,
+          top: -80,
+          left: -80,
+          width: 400,
+          height: 400,
+          borderRadius: '50%',
+          background: 'radial-gradient(circle, rgba(255,255,255,0.3) 0%, transparent 70%)',
         }}
       />
 
@@ -36,14 +41,14 @@ export function LoadingScreen() {
         {/* City icon */}
         <motion.div
           className="flex justify-center mb-6"
-          animate={{ filter: ['drop-shadow(0 0 8px rgba(0,212,255,0.4))', 'drop-shadow(0 0 24px rgba(0,212,255,0.8))', 'drop-shadow(0 0 8px rgba(0,212,255,0.4))'] }}
+          animate={{ filter: ['drop-shadow(0 2px 4px rgba(0,0,0,0.12))', 'drop-shadow(0 4px 8px rgba(0,0,0,0.18))', 'drop-shadow(0 2px 4px rgba(0,0,0,0.12))'] }}
           transition={{ duration: 2, repeat: Infinity }}
         >
           <svg width={64} height={52} viewBox="0 0 64 52" aria-hidden="true">
             <defs>
               <linearGradient id="loading-grad" x1="0" y1="0" x2="1" y2="1">
-                <stop offset="0%" stopColor="#00D4FF" />
-                <stop offset="100%" stopColor="#7C3AED" />
+                <stop offset="0%" stopColor="#ff4757" />
+                <stop offset="100%" stopColor="#d63031" />
               </linearGradient>
             </defs>
             <path d="M4 48V26h8V12h10v36h6V20h9v28h5V6h12v42h4v4H2v-4h2z" fill="url(#loading-grad)" />
@@ -55,10 +60,8 @@ export function LoadingScreen() {
           className="font-display font-bold tracking-widest uppercase mb-1"
           style={{
             fontSize: 36,
-            background: 'linear-gradient(135deg, #00D4FF 0%, #7C3AED 100%)',
-            WebkitBackgroundClip: 'text',
-            WebkitTextFillColor: 'transparent',
-            backgroundClip: 'text',
+            color: 'var(--color-text-primary)',
+            filter: 'drop-shadow(0 1px 0 #ffffff)',
             letterSpacing: '0.18em',
           }}
         >
@@ -66,21 +69,20 @@ export function LoadingScreen() {
         </h1>
         <p
           className="font-mono text-xs tracking-widest uppercase mb-8"
-          style={{ color: 'var(--color-accent-cyan)', opacity: 0.6, letterSpacing: '0.3em' }}
+          style={{ color: 'var(--color-text-muted)', letterSpacing: '0.3em' }}
         >
           AI · City Simulation Engine
         </p>
 
         {/* Progress bar */}
         <div
-          className="w-64 h-0.5 rounded-full overflow-hidden mx-auto mb-4"
-          style={{ background: 'rgba(0,212,255,0.1)' }}
+          className="w-64 rounded-full overflow-hidden mx-auto mb-4"
+          style={{ height: 6, boxShadow: 'var(--shadow-inset)', background: 'var(--color-bg-hover)' }}
         >
           <motion.div
             className="h-full rounded-full"
             style={{
-              background: 'linear-gradient(90deg, var(--color-accent-cyan), var(--color-accent-purple))',
-              boxShadow: '0 0 8px rgba(0,212,255,0.6)',
+              background: 'linear-gradient(90deg, var(--color-accent-cyan), #d63031)',
             }}
             initial={{ width: '0%' }}
             animate={{ width: '100%' }}

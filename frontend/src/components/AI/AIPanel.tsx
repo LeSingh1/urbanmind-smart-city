@@ -20,9 +20,9 @@ export function AIPanel() {
       <div
         className="rounded-lg p-3"
         style={{
-          background: 'linear-gradient(135deg, rgba(0,212,255,0.09), rgba(124,58,237,0.08))',
-          border: '1px solid rgba(0,212,255,0.24)',
-          boxShadow: planning.hasAnalyzed ? '0 0 24px rgba(0,212,255,0.08)' : 'none',
+          background: 'var(--color-bg-hover)',
+          border: '1px solid var(--color-border-subtle)',
+          boxShadow: planning.hasAnalyzed ? 'var(--shadow-sm)' : 'none',
         }}
       >
         <div className="font-mono text-[9px] tracking-widest uppercase mb-2" style={{ color: 'var(--color-accent-cyan)' }}>
@@ -54,7 +54,7 @@ export function AIPanel() {
             onClick={() => planning.cityId === 'fremon' ? applyRecommendedPlan() : applyAIPlan(activeScenario)}
             disabled={!planning.hasAnalyzed || planning.hasAppliedAIPlan}
             className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-[11px] font-display font-semibold disabled:opacity-40"
-            style={{ background: 'rgba(0,255,156,0.08)', color: 'var(--color-accent-green)', border: '1px solid rgba(0,255,156,0.3)' }}
+            style={{ background: 'rgba(0,184,148,0.08)', color: 'var(--color-accent-green)', border: '1px solid rgba(0,184,148,0.4)' }}
           >
             <Sparkles size={12} />
             {planning.hasAppliedAIPlan ? 'Plan Applied' : 'Apply AI Plan'}
@@ -64,7 +64,7 @@ export function AIPanel() {
           onClick={openReport}
           disabled={!planning.hasAnalyzed}
           className="mt-2 w-full flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-[11px] font-display font-semibold disabled:opacity-40"
-          style={{ background: 'rgba(124,58,237,0.08)', color: 'var(--color-accent-purple)', border: '1px solid rgba(124,58,237,0.3)' }}
+          style={{ background: 'var(--color-bg-hover)', color: 'var(--color-accent-purple)', border: '1px solid var(--color-border-subtle)' }}
         >
           <FileText size={12} />
           Generate Planning Report
@@ -107,8 +107,9 @@ export function AIPanel() {
           animate={{ opacity: 1, y: 0 }}
           className="rounded-lg p-3"
           style={{
-            background: 'rgba(124,58,237,0.06)',
-            border: '1px solid rgba(124,58,237,0.2)',
+            background: 'var(--color-bg-hover)',
+            border: '1px solid var(--color-border-subtle)',
+            boxShadow: 'var(--shadow-inset)',
           }}
         >
           <div className="flex items-center justify-between mb-2">
@@ -119,7 +120,7 @@ export function AIPanel() {
               />
               <span
                 className="font-display text-xs font-medium"
-                style={{ color: 'var(--color-accent-purple)' }}
+                style={{ color: 'var(--color-accent-cyan)' }}
               >
                 {latestExplanation.zone_display_name}
               </span>
@@ -196,7 +197,7 @@ export function AIPanel() {
 
 function Impact({ label, value }: { label: string; value: string; positive?: boolean }) {
   return (
-    <div style={{ background: 'rgba(0,0,0,0.18)', border: '1px solid rgba(0,212,255,0.12)', borderRadius: 8, padding: 8 }}>
+    <div style={{ background: 'var(--color-bg-hover)', border: '1px solid var(--color-border-subtle)', borderRadius: 8, padding: 8 }}>
       <div className="font-mono text-[9px]" style={{ color: 'var(--color-text-muted)' }}>{label}</div>
       <div className="font-mono font-bold text-sm" style={{ color: 'var(--color-accent-green)' }}>{value}</div>
     </div>
@@ -268,10 +269,10 @@ function PlanningReport({ onClose }: { onClose: () => void }) {
           </button>
         </div>
         <div className="flex gap-2 px-5 py-3" style={{ borderBottom: '1px solid var(--color-border-subtle)' }}>
-          <button onClick={copyReport} className="px-3 py-1.5 rounded-lg text-[11px]" style={{ border: '1px solid rgba(0,212,255,0.25)', color: 'var(--color-accent-cyan)' }}>Copy Report</button>
-          <button onClick={downloadJson} className="px-3 py-1.5 rounded-lg text-[11px]" style={{ border: '1px solid rgba(124,58,237,0.25)', color: 'var(--color-accent-purple)' }}>Download JSON</button>
+          <button onClick={copyReport} className="px-3 py-1.5 rounded-lg text-[11px]" style={{ border: '1px solid var(--color-border-subtle)', color: 'var(--color-accent-cyan)' }}>Copy Report</button>
+          <button onClick={downloadJson} className="px-3 py-1.5 rounded-lg text-[11px]" style={{ border: '1px solid var(--color-border-subtle)', color: 'var(--color-accent-purple)' }}>Download JSON</button>
           <button onClick={() => window.print()} className="px-3 py-1.5 rounded-lg text-[11px]" style={{ border: '1px solid var(--color-border-subtle)', color: 'var(--color-text-muted)' }}>Print Report</button>
-          <button onClick={copyPitch} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px]" style={{ border: '1px solid rgba(0,255,156,0.25)', color: 'var(--color-accent-green)' }}><Copy size={11} />Copy Pitch Summary</button>
+          <button onClick={copyPitch} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px]" style={{ border: '1px solid rgba(0,184,148,0.4)', color: 'var(--color-accent-green)' }}><Copy size={11} />Copy Pitch Summary</button>
         </div>
         <div id="urbanmind-report-body" className="p-5 space-y-4">
           <section>
@@ -279,7 +280,7 @@ function PlanningReport({ onClose }: { onClose: () => void }) {
             <p className="text-xs leading-relaxed" style={{ color: 'var(--color-text-secondary)' }}>
               UrbanMind identified emergency access, school access, transit coverage, green space, congestion, and housing pressure gaps under the selected growth scenario. The proposed plan estimates improved city health while prioritizing underserved zones.
             </p>
-            <div className="mt-3 rounded-lg p-3" style={{ border: '1px solid rgba(0,255,156,0.18)', background: 'rgba(0,255,156,0.045)' }}>
+            <div className="mt-3 rounded-lg p-3" style={{ border: '1px solid rgba(0,184,148,0.3)', background: 'rgba(0,184,148,0.06)' }}>
               <div className="font-mono text-[9px] uppercase tracking-widest mb-1" style={{ color: 'var(--color-accent-green)' }}>Pitch Summary</div>
               <p className="text-xs leading-relaxed" style={{ color: 'var(--color-text-secondary)' }}>{pitchSummary}</p>
             </div>
@@ -297,7 +298,7 @@ function PlanningReport({ onClose }: { onClose: () => void }) {
               <h3 className="font-mono text-[10px] tracking-widest uppercase mb-2" style={{ color: 'var(--color-accent-cyan)' }}>Plan Comparison</h3>
               <div className="grid grid-cols-3 gap-2">
                 {planning.planBattlePlans.map((plan) => (
-                  <div key={plan.id} className="rounded-lg p-3" style={{ border: plan.isRecommended ? '1px solid rgba(0,255,156,0.25)' : '1px solid var(--color-border-subtle)', background: plan.isRecommended ? 'rgba(0,255,156,0.045)' : 'rgba(255,255,255,0.02)' }}>
+                  <div key={plan.id} className="rounded-lg p-3" style={{ border: '1px solid var(--color-border-subtle)', background: 'var(--color-bg-card)' }}>
                     <div className="font-display text-xs font-semibold" style={{ color: 'var(--color-text-primary)' }}>{plan.label}</div>
                     <DataLine label="City Health" value={String(plan.metrics.cityHealth)} />
                     <DataLine label="Cost" value={`$${(plan.cost / 1_000_000).toFixed(0)}M`} />
@@ -351,7 +352,7 @@ function PlanningReport({ onClose }: { onClose: () => void }) {
             <h3 className="font-mono text-[10px] tracking-widest uppercase mb-2" style={{ color: 'var(--color-accent-cyan)' }}>Proposed Additions</h3>
             <div className="grid grid-cols-2 gap-2">
               {(proposed.length ? proposed : planning.aiRecommendations).map((item) => (
-                <div key={item.id} className="rounded-lg p-2" style={{ border: '1px solid rgba(0,212,255,0.14)', background: 'rgba(0,212,255,0.04)' }}>
+                <div key={item.id} className="rounded-lg p-2" style={{ border: '1px solid var(--color-border-subtle)', background: 'var(--color-bg-hover)' }}>
                   <div className="font-display text-xs" style={{ color: 'var(--color-text-primary)' }}>{item.name}</div>
                   <div className="font-mono text-[9px]" style={{ color: 'var(--color-text-muted)' }}>{item.category.replace(/_/g, ' ')} · ${(item.costEstimate / 1_000_000).toFixed(1)}M</div>
                 </div>
@@ -372,7 +373,7 @@ function PlanningReport({ onClose }: { onClose: () => void }) {
                 ['Equity', before.equityScore, after.equityScore],
                 ['Cost', 0, after.totalEstimatedCost / 1_000_000],
               ].map(([label, b, a]) => (
-                <div key={label as string} className="rounded-lg p-3" style={{ border: '1px solid var(--color-border-subtle)', background: 'rgba(255,255,255,0.02)' }}>
+                <div key={label as string} className="rounded-lg p-3" style={{ border: '1px solid var(--color-border-subtle)', background: 'var(--color-bg-card)' }}>
                   <div className="font-mono text-[9px]" style={{ color: 'var(--color-text-muted)' }}>{label}</div>
                   <div className="font-mono text-xs" style={{ color: 'var(--color-text-primary)' }}>{Number(b).toFixed(label === 'Commute' ? 1 : 0)} → {Number(a).toFixed(label === 'Commute' || label === 'Cost' ? 1 : 0)}</div>
                 </div>
@@ -407,7 +408,7 @@ function PlanningReport({ onClose }: { onClose: () => void }) {
               Validate assumptions with city GIS data, refine service radii, consult agencies and community stakeholders, and run formal traffic, environmental, zoning, and budget reviews.
             </p>
           </section>
-          <div className="rounded-lg p-4 text-center" style={{ border: '1px dashed rgba(0,212,255,0.18)', color: 'var(--color-text-muted)', fontSize: 11 }}>
+          <div className="rounded-lg p-4 text-center" style={{ border: '1px dashed var(--color-border-subtle)', color: 'var(--color-text-muted)', fontSize: 11 }}>
             Map preview placeholder: current Fremont infrastructure gaps and proposed scenario layers.
           </div>
         </div>
@@ -418,7 +419,7 @@ function PlanningReport({ onClose }: { onClose: () => void }) {
 
 function DataLine({ label, value }: { label: string; value: string }) {
   return (
-    <div className="flex justify-between gap-4 py-1 text-xs" style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+    <div className="flex justify-between gap-4 py-1 text-xs" style={{ borderBottom: '1px solid var(--color-border-subtle)' }}>
       <span style={{ color: 'var(--color-text-muted)' }}>{label}</span>
       <span style={{ color: 'var(--color-text-secondary)' }}>{value}</span>
     </div>

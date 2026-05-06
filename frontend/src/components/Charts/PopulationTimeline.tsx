@@ -52,8 +52,8 @@ export function PopulationTimeline() {
             <stop offset="100%" stopColor="var(--color-accent-purple)" />
           </linearGradient>
           <linearGradient id="pop-area-grad" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="rgba(0,212,255,0.18)" />
-            <stop offset="100%" stopColor="rgba(0,212,255,0)" />
+            <stop offset="0%" stopColor="rgba(255,71,87,0.14)" />
+            <stop offset="100%" stopColor="rgba(255,71,87,0)" />
           </linearGradient>
         </defs>
         <g transform={`translate(${margin.left},${margin.top})`}>
@@ -71,16 +71,15 @@ export function PopulationTimeline() {
           ))}
           <path d={area(projection) ?? ''} fill="url(#pop-area-grad)" />
           <path d={line(projection) ?? ''} fill="none" stroke="url(#pop-line-grad)" strokeWidth="2"
-            style={{ filter: 'drop-shadow(0 0 4px rgba(0,212,255,0.5))' }} />
+            style={{ filter: 'drop-shadow(0 1px 2px rgba(0,0,0,0.15))' }} />
           <path d={line(baseline) ?? ''} fill="none" stroke="var(--chart-line-baseline)"
             strokeWidth="1" strokeDasharray="5 6" opacity={0.5} />
           <line x1={x(currentYear)} x2={x(currentYear)} y1={0} y2={innerH}
             stroke="var(--color-accent-cyan)" strokeDasharray="2 4" opacity={0.7} />
           {eventActions.map((action, index) => (
             <g key={`${action.year}-${index}`} transform={`translate(${x(action.year)},0)`}>
-              <line y1={0} y2={innerH} stroke="rgba(124,58,237,0.4)" strokeDasharray="1 4" />
-              <circle cy={8} r={3} fill="var(--color-accent-purple)"
-                style={{ filter: 'drop-shadow(0 0 4px rgba(124,58,237,0.8))' }} />
+              <line y1={0} y2={innerH} stroke="rgba(253,203,110,0.5)" strokeDasharray="1 4" />
+              <circle cy={8} r={3} fill="var(--color-accent-warning)" />
             </g>
           ))}
           <g transform={`translate(0,${innerH})`}>
@@ -93,7 +92,7 @@ export function PopulationTimeline() {
             <g transform={`translate(${x(hover.year)},0)`}>
               <line y1={0} y2={innerH} stroke="var(--color-accent-cyan)" opacity={0.5} strokeWidth={1} />
               <rect x={8} y={10} width={160} height={68} rx={6}
-                fill="rgba(13,26,46,0.95)" stroke="rgba(0,212,255,0.3)" />
+                fill="#e0e5ec" stroke="#babecc" />
               <text x={16} y={30} fill="var(--color-accent-cyan)" fontSize="11"
                 fontWeight="700" fontFamily="JetBrains Mono, monospace">
                 YEAR {hover.year}

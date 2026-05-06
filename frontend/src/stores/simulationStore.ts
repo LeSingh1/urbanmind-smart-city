@@ -200,9 +200,10 @@ export const useSimulationStore = create<SimulationStore>((set, get) => ({
   removeUserZone: (id) => set((state) => ({ userZones: state.userZones.filter((z) => z.id !== id) })),
 
   analyzeDemo: (cityId, scenarioId) => {
-    if (cityId === 'fremon' || get().planning.cityMode === 'generated') {
+    if (cityId === 'fremon') {
       const beforeScores = { ...FREMON_BASE_METRICS }
-      const frame = scoresToFrame(beforeScores, 2026, FREMON_EXISTING_INFRASTRUCTURE, FREMON_UNDERSERVED_ZONES)
+      const baseInfrastructure = withoutRoadInfrastructure(FREMON_EXISTING_INFRASTRUCTURE)
+      const frame = scoresToFrame(beforeScores, 2026, baseInfrastructure, FREMON_UNDERSERVED_ZONES)
       set((state) => ({
         sessionId: state.sessionId ?? 'offline',
         isRunning: false,
@@ -227,7 +228,7 @@ export const useSimulationStore = create<SimulationStore>((set, get) => ({
           cityId: 'fremon',
           growthPercent: FREMON_GROWTH_PERCENT,
           horizonYears: FREMON_HORIZON_YEARS,
-          infrastructure: FREMON_EXISTING_INFRASTRUCTURE.map((item) => ({ ...item })),
+          infrastructure: baseInfrastructure.map((item) => ({ ...item })),
           underservedZones: FREMON_UNDERSERVED_ZONES.map((zone) => ({ ...zone, improved: false, isImproved: false })),
           growthPressureZones: FREMON_GROWTH_PRESSURE_ZONES.map((zone) => ({ ...zone })),
           aiRecommendations: budgetRecommendations(state.planning.budgetLevel).map((item) => ({ ...item })),
@@ -254,7 +255,7 @@ export const useSimulationStore = create<SimulationStore>((set, get) => ({
       return
     }
     const shift = cityShift(cityId)
-    const infrastructure = shiftInfrastructure(FREMONT_EXISTING_INFRASTRUCTURE, shift)
+    const infrastructure = withoutRoadInfrastructure(shiftInfrastructure(FREMONT_EXISTING_INFRASTRUCTURE, shift))
     const underservedZones = shiftZones(FREMONT_UNDERSERVED_ZONES, shift).map((zone) => ({ ...zone, isImproved: false, improved: false }))
     const growthPressureZones = shiftGrowthZones(FREMONT_GROWTH_PRESSURE_ZONES, shift)
     const scenario = normalizeScenario(scenarioId)
@@ -289,7 +290,7 @@ export const useSimulationStore = create<SimulationStore>((set, get) => ({
         infrastructure,
         underservedZones,
         growthPressureZones,
-        aiRecommendations: shiftInfrastructure(FREMONT_AI_RECOMMENDATIONS, shift),
+        aiRecommendations: withoutRoadInfrastructure(shiftInfrastructure(FREMONT_AI_RECOMMENDATIONS, shift)),
         beforeScores,
         afterScores: null,
         hasAnalyzed: true,
@@ -303,7 +304,7 @@ export const useSimulationStore = create<SimulationStore>((set, get) => ({
   applyAIPlan: (scenarioId = 'balanced') => set((state) => {
     if (!state.planning.hasAnalyzed || state.planning.hasAppliedAIPlan) return state
     const applied = state.planning.aiRecommendations.map((item) => ({ ...item, status: 'proposed' as const }))
-    const infrastructure = [...state.planning.infrastructure, ...applied]
+    const infrastructure = withoutRoadInfrastructure([...state.planning.infrastructure, ...applied])
     const underservedZones = markImprovedZones(state.planning.underservedZones, applied.map((item) => item.id))
     const afterScores = calculatePlanningScores(infrastructure, underservedZones, state.planning.growthPercent, normalizeScenario(scenarioId))
     const frame = scoresToFrame(afterScores, state.planning.horizonYears, infrastructure, underservedZones)
@@ -356,7 +357,7 @@ export const useSimulationStore = create<SimulationStore>((set, get) => ({
       .filter((item) => featureIds.includes(item.id))
       .map((item) => ({ ...item, status: 'proposed' as const }))
     const infrastructure = [
-      ...state.planning.infrastructure.filter((item) => !FREMON_AI_RECOMMENDATIONS.some((rec) => rec.id === item.id)),
+      ...state.planning.infrastructure.filter((item) => !FREMON_AI_RECOMMENDATIONS.some((rec) => rec.id === item.id) && item.category !== 'road'),
       ...applied,
     ]
     const underservedZones = markFremonImprovedZones(applied.map((item) => item.id))
@@ -432,15 +433,24 @@ export const useSimulationStore = create<SimulationStore>((set, get) => ({
     const timeline = FREMON_TIMELINE[year]
     if (!timeline) return state
     const pressureScale = timeline.pressure
-    const growthPressureZones = state.planning.growthPressureZones.map((zone) => ({
+    const growthBase = state.planning.cityId === 'fremon'
+      ? FREMON_GROWTH_PRESSURE_ZONES
+      : state.planning.growthPressureZones
+    const growthPressureZones = growthBase.map((zone) => ({
       ...zone,
       radiusMeters: Math.round(zone.radiusMeters * pressureScale),
       projectedGrowthPercent: Math.round(zone.projectedGrowthPercent * pressureScale),
     }))
-    const underservedZones = state.planning.underservedZones.map((zone) => ({
+    const improvedIds = new Set(state.planning.underservedZones.filter((zone) => zone.isImproved || zone.improved).map((zone) => zone.id))
+    const underservedBase = state.planning.cityId === 'fremon'
+      ? FREMON_UNDERSERVED_ZONES
+      : state.planning.underservedZones
+    const underservedZones = underservedBase.map((zone) => ({
       ...zone,
-      radiusMeters: zone.isImproved ? zone.radiusMeters : Math.round(zone.radiusMeters * pressureScale),
-      severity: zone.isImproved ? zone.severity : Math.min(0.98, zone.severity * pressureScale),
+      isImproved: improvedIds.has(zone.id),
+      improved: improvedIds.has(zone.id),
+      radiusMeters: improvedIds.has(zone.id) ? Math.round(zone.radiusMeters * 0.55) : Math.round(zone.radiusMeters * pressureScale),
+      severity: improvedIds.has(zone.id) ? zone.severity : Math.min(0.98, zone.severity * pressureScale),
     }))
     const metrics = state.planning.hasAppliedAIPlan ? state.planning.afterScores ?? timeline.metrics : timeline.metrics
     const frame = scoresToFrame(metrics, year, state.planning.infrastructure, underservedZones)
@@ -467,7 +477,8 @@ export const useSimulationStore = create<SimulationStore>((set, get) => ({
   selectDistrict: (id) => set((state) => ({ planning: { ...state.planning, selectedDistrictId: id } })),
 
   addInfrastructure: (item) => set((state) => {
-    const infrastructure = [...state.planning.infrastructure, item]
+    if (item.category === 'road') return state
+    const infrastructure = withoutRoadInfrastructure([...state.planning.infrastructure, item])
     const underservedZones = state.planning.underservedZones.map((zone) =>
       item.category === 'clinic' && (zone.gapType === 'hospital_access' || zone.gapType === 'emergency_access')
         ? { ...zone, isImproved: true, improved: true, afterScore: Math.min(100, zone.beforeScore + 18) }
@@ -583,7 +594,7 @@ export const useSimulationStore = create<SimulationStore>((set, get) => ({
 }))
 
 function createInitialPlanningState(): PlanningState {
-  const infrastructure = FREMONT_EXISTING_INFRASTRUCTURE.map((item) => ({ ...item }))
+  const infrastructure = withoutRoadInfrastructure(FREMONT_EXISTING_INFRASTRUCTURE).map((item) => ({ ...item }))
   const underservedZones = FREMONT_UNDERSERVED_ZONES.map((zone) => ({ ...zone, isImproved: false }))
   return {
     cityId: 'fremont',
@@ -592,7 +603,7 @@ function createInitialPlanningState(): PlanningState {
     infrastructure,
     underservedZones,
     growthPressureZones: FREMONT_GROWTH_PRESSURE_ZONES,
-    aiRecommendations: FREMONT_AI_RECOMMENDATIONS.map((item) => ({ ...item })),
+    aiRecommendations: withoutRoadInfrastructure(FREMONT_AI_RECOMMENDATIONS).map((item) => ({ ...item })),
     topRecommendation: FREMONT_TOP_RECOMMENDATION,
     beforeScores: null,
     afterScores: null,
@@ -670,6 +681,10 @@ function shiftGrowthZones(zones: GrowthPressureZone[], shift: { lat: number; lng
     ...zone,
     center: [zone.center[0] + shift.lat, zone.center[1] + shift.lng],
   }))
+}
+
+function withoutRoadInfrastructure(items: InfrastructureItem[]): InfrastructureItem[] {
+  return items.filter((item) => item.category !== 'road')
 }
 
 function normalizeScenario(scenarioId: string): ScenarioId {
@@ -799,9 +814,6 @@ function detectPlacementFeedback(item: InfrastructureItem, planning: PlanningSta
   if (item.category === 'park' && near([37.552, -121.990], 0.045)) {
     return { type: 'good', title: 'Good Placement', message: 'This park expands 15 Minute City coverage in the central green-space gap.' }
   }
-  if (item.category === 'road') {
-    return { type: 'warning', title: 'Planning Conflict', message: 'New road capacity can increase congestion risk unless paired with transit, bike, or mixed-use access.' }
-  }
   return { type: 'good', title: 'Good Placement', message: 'This proposed infrastructure improves local access in the current scenario.' }
 }
 
@@ -817,10 +829,10 @@ export function categoryToZoneType(category: InfrastructureItem['category']) {
     police_station: 'GOV_POLICE_STATION',
     housing_zone: 'RES_MED_APARTMENT',
     commercial_zone: 'COM_OFFICE_PLAZA',
-    road: 'ROAD_ARTERIAL',
+    road: 'SMART_TRAFFIC_LIGHT',
     utility: 'POWER_SUBSTATION',
     industrial_zone: 'IND_WAREHOUSE',
-    bike_lane: 'ROAD_ARTERIAL',
+    bike_lane: 'BUS_STATION',
     water: 'WATER_COASTAL',
     power: 'POWER_SUBSTATION',
     mixed_use: 'RES_MED_APARTMENT',

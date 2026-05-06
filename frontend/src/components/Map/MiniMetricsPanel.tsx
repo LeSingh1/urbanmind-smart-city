@@ -58,46 +58,43 @@ function MetricCard({ label, value, unit, color, delay, formatter }: MetricCardP
         height: 68,
         borderRadius: 10,
         padding: '8px 10px',
-        background: 'rgba(13,17,23,0.88)',
-        border: `1px solid ${color}28`,
-        boxShadow: `0 0 14px ${color}10, 0 2px 8px rgba(0,0,0,0.45)`,
-        backdropFilter: 'blur(14px)',
+        background: 'var(--color-bg-panel)',
+        border: '1px solid var(--color-border-subtle)',
+        boxShadow: 'var(--shadow-sm)',
         textAlign: 'left',
         position: 'relative',
         overflow: 'hidden',
       }}
     >
-      {/* Corner glow */}
       <div
         style={{
           position: 'absolute',
-          top: -10,
-          right: -10,
-          width: 40,
-          height: 40,
-          borderRadius: '50%',
+          top: 0,
+          left: 0,
+          width: 3,
+          height: '100%',
           background: color,
-          opacity: 0.06,
-          filter: 'blur(12px)',
-          pointerEvents: 'none',
+          opacity: 0.7,
+          borderRadius: '10px 0 0 10px',
         }}
       />
 
       <div
         style={{
-          color: 'rgba(255,255,255,0.38)',
+          color: 'var(--color-text-muted)',
           fontSize: 9,
           fontFamily: 'var(--font-mono)',
           fontWeight: 700,
           textTransform: 'uppercase',
           letterSpacing: '0.1em',
           marginBottom: 4,
+          paddingLeft: 6,
         }}
       >
         {label}
       </div>
 
-      <div style={{ display: 'flex', alignItems: 'baseline', gap: 2 }}>
+      <div style={{ display: 'flex', alignItems: 'baseline', gap: 2, paddingLeft: 6 }}>
         <motion.span
           key={display}
           initial={{ opacity: 0.5 }}
@@ -114,7 +111,7 @@ function MetricCard({ label, value, unit, color, delay, formatter }: MetricCardP
           {display}
         </motion.span>
         {unit && (
-          <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.3)', fontFamily: 'var(--font-mono)' }}>
+          <span style={{ fontSize: 10, color: 'var(--color-text-muted)', fontFamily: 'var(--font-mono)' }}>
             {unit}
           </span>
         )}
@@ -137,7 +134,7 @@ export function MiniMetricsPanel() {
       label: 'Population',
       value: metrics?.pop_total ?? 0,
       unit: '',
-      color: '#00D4FF',
+      color: '#ff4757',
       delay: 0,
       formatter: compact,
     },
@@ -145,21 +142,21 @@ export function MiniMetricsPanel() {
       label: 'Commute',
       value: Math.round(metrics?.mobility_commute ?? 0),
       unit: 'min',
-      color: '#FFB800',
+      color: '#fdcb6e',
       delay: 0.05,
     },
     {
       label: 'Equity',
       value: Math.round(100 - (metrics?.equity_infra_gini ?? 0)),
       unit: '',
-      color: '#00FF9C',
+      color: '#00b894',
       delay: 0.1,
     },
     {
       label: 'CO₂',
       value: Math.round(metrics?.env_co2_est ?? 0),
       unit: 'kt',
-      color: '#FF6B6B',
+      color: '#e17055',
       delay: 0.15,
     },
   ]
@@ -173,8 +170,8 @@ export function MiniMetricsPanel() {
       whileHover={{ scale: 1.02 }}
       style={{
         position: 'absolute',
-        right: 14,
-        bottom: 14,
+        left: 16,
+        top: 72,
         zIndex: 10,
         display: 'grid',
         gridTemplateColumns: '1fr 1fr',
@@ -205,7 +202,7 @@ export function MiniMetricsPanel() {
               fontSize: 9,
               letterSpacing: '0.18em',
               textTransform: 'uppercase',
-              color: 'rgba(0,212,255,0.4)',
+              color: 'var(--color-text-muted)',
               marginTop: 2,
             }}
           >

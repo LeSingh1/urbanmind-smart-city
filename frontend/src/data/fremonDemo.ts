@@ -105,8 +105,6 @@ export const FREMON_EXISTING_INFRASTRUCTURE: InfrastructureItem[] = [
   point('fremon-police-core', 'Fremon Safety Center', 'police_station', [-121.986, 37.543], 'Public safety office near the civic core.', 0, 74, 0.86),
   point('fremon-innovation', 'Innovation District', 'commercial_zone', [-121.956, 37.565], 'Employment growth district with daytime population pressure.', 0, 68, 0.82),
   point('fremon-housing-expansion', 'New Housing Expansion Zone', 'housing_zone', [-121.945, 37.512], 'Projected housing growth needs schools, utilities, clinics, and emergency access.', 0, 65, 0.84),
-  line('fremon-west-arterial', 'West Arterial', 'road', [[-122.054, 37.548], [-122.02, 37.548], [-121.985, 37.545]], 'Primary commute corridor through the west congestion zone.', 0, 66, 0.78),
-  line('fremon-grid-spine', 'Central Grid Spine', 'road', [[-121.99, 37.506], [-121.99, 37.548], [-121.99, 37.59]], 'Generated north-south mobility spine for the simulated city grid.', 0, 70, 0.82),
 ]
 
 export const FREMON_AI_RECOMMENDATIONS: InfrastructureItem[] = [

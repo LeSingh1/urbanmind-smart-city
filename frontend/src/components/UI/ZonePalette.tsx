@@ -35,8 +35,6 @@ const ZONE_CATEGORIES: { label: string; zones: { id: string; label: string }[] }
   {
     label: 'Transport',
     zones: [
-      { id: 'ROAD_ARTERIAL',      label: 'Road Network' },
-      { id: 'HIGHWAY_INTERCHANGE',label: 'Highway Connection' },
       { id: 'BUS_STATION',        label: 'Public Transit Hub' },
       { id: 'TRAIN_STATION',      label: 'Train Station / Rail' },
     ],
@@ -71,10 +69,10 @@ const ZONE_CATEGORIES: { label: string; zones: { id: string; label: string }[] }
 
 export function ZonePalette({ compact = false }: { compact?: boolean }) {
   const { isOverrideModeActive, selectedOverrideZone, setOverrideZone } = useUIStore()
-  const { sessionId, planning, deleteInfrastructure, undoInfrastructure, saveScenario } = useSimulationStore()
+  const { planning, deleteInfrastructure, undoInfrastructure, saveScenario } = useSimulationStore()
 
   const toggleMode = () => {
-    setOverrideZone(isOverrideModeActive ? null : (selectedOverrideZone ?? 'RES_LOW_DETACHED'))
+    if (isOverrideModeActive) setOverrideZone(null)
   }
 
   return (
@@ -83,8 +81,9 @@ export function ZonePalette({ compact = false }: { compact?: boolean }) {
       <div
         className="rounded-lg p-3 text-xs leading-relaxed"
         style={{
-          background: 'rgba(0,212,255,0.04)',
+          background: 'var(--color-bg-hover)',
           border: '1px solid var(--color-border-subtle)',
+          boxShadow: 'var(--shadow-inset)',
           color: 'var(--color-text-muted)',
         }}
       >
@@ -100,7 +99,6 @@ export function ZonePalette({ compact = false }: { compact?: boolean }) {
           ['Add Park', 'PARK_SMALL'],
           ['Add Transit Stop', 'BUS_STATION'],
           ['Draw Transit Line', 'TRAIN_STATION'],
-          ['Draw Road', 'ROAD_ARTERIAL'],
           ['Draw Housing Zone', 'RES_MED_APARTMENT'],
           ['Draw Commercial Zone', 'COM_OFFICE_PLAZA'],
           ['Draw Mixed-Use Zone', 'RES_MIXED_USE'],
@@ -140,7 +138,7 @@ export function ZonePalette({ compact = false }: { compact?: boolean }) {
         <button
           onClick={saveScenario}
           className="flex items-center justify-center gap-1 py-1.5 rounded-lg text-[10px]"
-          style={{ border: '1px solid rgba(0,212,255,0.25)', color: 'var(--color-accent-cyan)' }}
+          style={{ border: '1px solid var(--color-border-active)', color: 'var(--color-accent-cyan)' }}
         >
           <Save size={10} /> Save
         </button>
@@ -149,19 +147,19 @@ export function ZonePalette({ compact = false }: { compact?: boolean }) {
       {/* Override mode toggle */}
       <motion.button
         onClick={toggleMode}
-        disabled={!sessionId}
+        disabled={!planning.hasAnalyzed || !isOverrideModeActive}
         whileHover={{ scale: 1.02 }}
         whileTap={{ scale: 0.97 }}
         className="w-full py-2 rounded-lg text-xs font-semibold font-display tracking-wide disabled:opacity-40 disabled:cursor-not-allowed"
         style={
           isOverrideModeActive
-            ? { background: 'rgba(255,184,0,0.08)', color: 'var(--color-accent-warning)', border: '1px solid rgba(255,184,0,0.3)' }
-            : { background: 'rgba(0,212,255,0.06)', color: 'var(--color-accent-cyan)', border: '1px solid rgba(0,212,255,0.25)' }
+            ? { background: 'var(--color-bg-hover)', color: 'var(--color-accent-warning)', border: '1px solid rgba(253,203,110,0.4)', boxShadow: 'var(--shadow-pressed)' }
+            : { background: 'var(--color-bg-hover)', color: 'var(--color-accent-cyan)', border: '1px solid var(--color-border-subtle)', boxShadow: 'var(--shadow-sm)' }
         }
       >
         {isOverrideModeActive
           ? <><X size={11} className="inline mr-1" />Exit Override Mode</>
-          : <><Crosshair size={11} className="inline mr-1" />Enter Override Mode</>}
+          : <><Crosshair size={11} className="inline mr-1" />Choose a tool above</>}
       </motion.button>
 
       {/* Zone categories */}
@@ -171,7 +169,7 @@ export function ZonePalette({ compact = false }: { compact?: boolean }) {
             className="font-mono text-[9px] tracking-widest uppercase mb-1.5 flex items-center gap-1.5"
             style={{ color: 'var(--color-text-muted)' }}
           >
-            <span className="inline-block w-2 h-px" style={{ background: 'var(--color-accent-cyan)', opacity: 0.4 }} />
+            <span className="inline-block w-2 h-px" style={{ background: 'var(--color-border-subtle)' }} />
             {label}
           </div>
           <div className="grid grid-cols-2 gap-1">

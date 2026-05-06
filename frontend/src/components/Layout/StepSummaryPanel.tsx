@@ -36,7 +36,7 @@ export function StepSummaryPanel() {
   return (
     <AnimatePresence>
       {visible && (
-        <motion.section initial={{ y: -24, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: -24, opacity: 0 }} style={{ position: 'fixed', top: 72, left: 344, right: 32, zIndex: 42, borderRadius: 10, padding: 14, background: 'rgba(17,24,39,0.94)', border: '1px solid rgba(96,165,250,0.28)', boxShadow: 'var(--shadow-md)' }}>
+        <motion.section initial={{ y: -24, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: -24, opacity: 0 }} style={{ position: 'fixed', top: 72, left: 344, right: 32, zIndex: 42, borderRadius: 10, padding: 14, background: 'var(--color-bg-panel)', border: '1px solid var(--color-border-subtle)', boxShadow: 'var(--shadow-md)' }}>
           <button className="icon-btn" onClick={() => setVisible(false)} style={{ position: 'absolute', right: 10, top: 10, width: 28, height: 28 }} aria-label="Dismiss annual summary"><X size={14} /></button>
           <strong style={{ color: 'white' }}>Year {frame?.year} - {city?.name}</strong>
           <ul style={{ margin: '8px 0 0', paddingLeft: 18, color: 'var(--color-text-secondary)', fontSize: 13 }}>{summary.map((item) => <li key={item}>{item}</li>)}</ul>
