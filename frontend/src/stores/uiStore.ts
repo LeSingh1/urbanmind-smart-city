@@ -32,7 +32,23 @@ interface UIStore {
 }
 
 export const useUIStore = create<UIStore>((set) => ({
-  activeLayers: new Set(['Zones', 'Roads', '3D Buildings']),
+  activeLayers: new Set([
+    'Existing hospitals',
+    'Existing schools',
+    'Existing parks',
+    'Existing transit',
+    'Existing police stations',
+    'Existing fire stations',
+    'Existing Roads',
+    'Proposed infrastructure',
+    'Underserved zones',
+    'Growth Pressure',
+    'Heatmap Mode',
+    'AI Recommendations',
+    'Zones',
+    'Roads',
+    '3D Buildings',
+  ]),
   activeTab: 'overview',
   isDashboardOpen: false,
   isDrawerOpen: false,

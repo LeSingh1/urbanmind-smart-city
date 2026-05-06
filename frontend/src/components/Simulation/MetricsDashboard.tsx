@@ -2,7 +2,7 @@ import { useRef, useEffect, useState, useCallback } from 'react'
 import { createPortal } from 'react-dom'
 import * as d3 from 'd3'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Maximize2, X, TrendingUp, TrendingDown, Minus } from 'lucide-react'
+import { Info, Maximize2, X, TrendingUp, TrendingDown, Minus } from 'lucide-react'
 import { useSimulationStore } from '@/stores/simulationStore'
 import { METRIC_CONFIGS, type MetricConfig } from '@/utils/metricsUtils'
 import type { MetricsSnapshot } from '@/types/city.types'
@@ -288,7 +288,7 @@ function ExpandedModal({ config, history, color, onClose }: ExpandedModalProps) 
   const trendColor = trendPositive === null ? 'rgba(255,255,255,0.3)' : trendPositive ? 'var(--color-accent-green)' : 'var(--color-accent-danger)'
 
   const description = METRIC_DESCRIPTIONS[String(config.key)] ?? `${config.label} tracks city performance in the ${config.category} category.`
-  const insight = PLANNING_INSIGHTS[String(config.key)] ?? `Monitor ${config.label} over time and adjust zone placements to maintain optimal levels.`
+  const insight = PLANNING_INSIGHTS[String(config.key)] ?? `Monitor ${config.label} over time and adjust zone placements to maintain reliable service levels.`
 
   return (
     <motion.div
@@ -597,12 +597,17 @@ function HealthGauge({ value }: { value: number }) {
 export function MetricsDashboard() {
   const [activeCategory, setActiveCategory] = useState<Category | 'all'>('all')
   const [expandedKey, setExpandedKey] = useState<string | null>(null)
+  const [showScoreHelp, setShowScoreHelp] = useState(false)
+  const [showAdvanced, setShowAdvanced] = useState(false)
   const metricsHistory = useSimulationStore((state) => state.metricsHistory)
+  const planning = useSimulationStore((state) => state.planning)
   const currentMetrics = metricsHistory.at(-1) ?? null
 
-  const visibleMetrics = METRIC_CONFIGS.filter(
-    (m) => activeCategory === 'all' || m.category === activeCategory
-  )
+  const mainMetricKeys = new Set(['mobility_transit_coverage', 'equity_hosp_coverage', 'econ_housing_afford', 'env_green_ratio', 'mobility_commute', 'env_co2_est'])
+  const visibleMetrics = METRIC_CONFIGS.filter((m) => {
+    const categoryMatch = activeCategory === 'all' || m.category === activeCategory
+    return categoryMatch && (showAdvanced || mainMetricKeys.has(String(m.key)))
+  })
 
   const expandedConfig = expandedKey ? METRIC_CONFIGS.find((c) => String(c.key) === expandedKey) ?? null : null
   const expandedColor = expandedConfig ? CATEGORY_COLORS[expandedConfig.category as Category] ?? 'var(--color-accent-cyan)' : 'var(--color-accent-cyan)'
@@ -613,6 +618,55 @@ export function MetricsDashboard() {
   return (
     <>
       <div className="p-3 space-y-3">
+        {/* Category filter */}
+        <div className="flex items-center justify-between">
+          <div className="font-mono text-[9px] tracking-widest uppercase" style={{ color: 'var(--color-text-muted)' }}>
+            {showAdvanced ? 'Advanced Metrics' : 'Demo Metrics'}
+          </div>
+          <button
+            onClick={() => setShowAdvanced((value) => !value)}
+            className="px-2 py-1 rounded-md text-[10px] font-display"
+            style={{ border: '1px solid rgba(0,212,255,0.22)', color: 'var(--color-accent-cyan)', background: 'rgba(0,212,255,0.05)' }}
+          >
+            {showAdvanced ? 'Show Core' : 'Advanced Metrics'}
+          </button>
+        </div>
+
+        {/* Category filter */}
+        {planning.beforeScores && (
+          <div
+            className="rounded-lg p-3"
+            style={{ background: 'rgba(0,212,255,0.04)', border: '1px solid rgba(0,212,255,0.12)' }}
+          >
+            <div className="flex items-center justify-between mb-2">
+              <div className="font-mono text-[9px] tracking-widest uppercase" style={{ color: 'var(--color-accent-cyan)' }}>
+                Before Plan / After AI Plan
+              </div>
+              <button onClick={() => setShowScoreHelp(true)} title="How scores are calculated" style={{ color: 'var(--color-text-muted)' }}>
+                <Info size={12} />
+              </button>
+            </div>
+            <div className="grid grid-cols-2 gap-2 mb-2">
+              <ScoreTile label="Current City Health" value={planning.beforeScores.cityHealth} />
+              <ScoreTile label="New City Health" value={planning.afterScores?.cityHealth ?? planning.beforeScores.cityHealth} active={Boolean(planning.afterScores)} />
+            </div>
+            <div className="space-y-1">
+              {planning.afterScores ? (
+                <>
+                  <Delta label="Emergency Access" before={planning.beforeScores.emergencyAccess} after={planning.afterScores.emergencyAccess} />
+                  <Delta label="Transit Coverage" before={planning.beforeScores.transitCoverage} after={planning.afterScores.transitCoverage} />
+                  <Delta label="Green Space" before={planning.beforeScores.greenSpace} after={planning.afterScores.greenSpace} />
+                  <Delta label="Average Commute" before={planning.beforeScores.averageCommute} after={planning.afterScores.averageCommute} inverse suffix=" min" />
+                  <Delta label="CO2 Estimate" before={planning.beforeScores.co2Estimate} after={planning.afterScores.co2Estimate} inverse suffix=" kt" />
+                  <Delta label="Equity Score" before={planning.beforeScores.equityScore} after={planning.afterScores.equityScore} />
+                </>
+              ) : (
+                <div className="font-mono text-[9px]" style={{ color: 'var(--color-text-muted)' }}>Apply the AI plan to compare score deltas.</div>
+              )}
+            </div>
+          </div>
+        )}
+
         {/* Category filter */}
         <div className="flex flex-wrap gap-1">
           <motion.button
@@ -702,6 +756,55 @@ export function MetricsDashboard() {
         </AnimatePresence>,
         document.body
       )}
+      {createPortal(
+        <AnimatePresence>
+          {showScoreHelp && (
+            <ScoreHelpModal onClose={() => setShowScoreHelp(false)} />
+          )}
+        </AnimatePresence>,
+        document.body
+      )}
     </>
+  )
+}
+
+function ScoreTile({ label, value, active = false }: { label: string; value: number; active?: boolean }) {
+  return (
+    <div className="rounded-lg p-2 text-center" style={{ background: active ? 'rgba(0,255,156,0.06)' : 'rgba(255,255,255,0.025)', border: active ? '1px solid rgba(0,255,156,0.22)' : '1px solid var(--color-border-subtle)' }}>
+      <div className="font-mono font-bold text-lg" style={{ color: active ? 'var(--color-accent-green)' : 'var(--color-text-primary)' }}>{value}</div>
+      <div className="font-mono text-[8px] tracking-widest uppercase" style={{ color: 'var(--color-text-muted)' }}>{label}</div>
+    </div>
+  )
+}
+
+function Delta({ label, before, after, inverse = false, suffix = '' }: { label: string; before: number; after: number; inverse?: boolean; suffix?: string }) {
+  const delta = Math.round((after - before) * 10) / 10
+  const good = inverse ? delta < 0 : delta > 0
+  return (
+    <div className="flex items-center justify-between font-mono text-[9px]">
+      <span style={{ color: 'var(--color-text-muted)' }}>{label}</span>
+      <span style={{ color: good ? 'var(--color-accent-green)' : delta === 0 ? 'var(--color-text-muted)' : 'var(--color-accent-danger)' }}>
+        {delta > 0 ? '+' : ''}{delta}{suffix}
+      </span>
+    </div>
+  )
+}
+
+function ScoreHelpModal({ onClose }: { onClose: () => void }) {
+  return (
+    <motion.div className="fixed inset-0 z-50 flex items-center justify-center p-6" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} style={{ background: 'rgba(0,0,0,0.72)', backdropFilter: 'blur(6px)' }} onClick={onClose}>
+      <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 12 }} className="p-5" style={{ width: 520, maxWidth: '94vw', background: 'var(--color-bg-panel)', border: '1px solid var(--color-border-subtle)', borderRadius: 10 }} onClick={(e) => e.stopPropagation()}>
+        <div className="flex justify-between items-center mb-3">
+          <h3 className="font-display font-semibold text-sm" style={{ color: 'var(--color-text-primary)' }}>How Scores Are Calculated</h3>
+          <button onClick={onClose} style={{ color: 'var(--color-text-muted)' }}><X size={14} /></button>
+        </div>
+        <p className="text-[11px] leading-relaxed mb-3" style={{ color: 'var(--color-text-secondary)' }}>
+          UrbanMind uses deterministic local scenario scoring for this demo. The formulas estimate access and pressure from seeded infrastructure, underserved zones, and the selected growth scenario. Real spatial calculations can replace these functions later.
+        </p>
+        <div className="font-mono text-[10px] leading-relaxed" style={{ color: 'var(--color-text-muted)' }}>
+          City Health = Transit Coverage 25% + Emergency Access 20% + Housing Access 20% + Walkability 15% + Green Space 10% + Congestion 10%. Emergency, transit, and green-space scores estimate zone coverage within practical service radii. Equity estimates whether gaps are concentrated or distributed.
+        </div>
+      </motion.div>
+    </motion.div>
   )
 }

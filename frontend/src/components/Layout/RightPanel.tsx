@@ -1,22 +1,35 @@
 import { motion } from 'framer-motion'
-import { Building2 } from 'lucide-react'
+import { Building2, Check, Copy, RotateCcw, Save, Sparkles } from 'lucide-react'
 import { useCityStore } from '@/stores/cityStore'
 import { useSimulationStore } from '@/stores/simulationStore'
 import { useAIStore } from '@/stores/aiStore'
+import { useScenarioStore } from '@/stores/scenarioStore'
 import { getZoneColor } from '@/utils/colorUtils'
 import type { AgentAction, ZoneExplanation } from '@/types/simulation.types'
 
 export function RightPanel() {
   const { selectedCity } = useCityStore()
-  const { lastActions, metricsHistory } = useSimulationStore()
+  const {
+    lastActions,
+    metricsHistory,
+    planning,
+    applyAIPlan,
+    saveScenario,
+    loadScenario,
+    duplicateScenario,
+    resetScenario,
+    setDemoMode,
+    setPlanningConstraint,
+  } = useSimulationStore()
   const { lastExplanations } = useAIStore()
+  const activeScenario = useScenarioStore((s) => s.activeScenario)
 
   const currentMetrics = metricsHistory.at(-1) ?? null
   const latestExplanation: ZoneExplanation | undefined = lastExplanations[0]
 
   return (
     <div
-      className="w-56 flex flex-col overflow-hidden shrink-0"
+      className="w-72 flex flex-col overflow-hidden shrink-0"
       style={{
         background: 'var(--color-bg-sidebar)',
         borderLeft: '1px solid var(--color-border-subtle)',
@@ -61,6 +74,91 @@ export function RightPanel() {
             Select a city to begin
           </p>
         )}
+      </Section>
+
+      <Section label="Demo Flow">
+        <DemoStepper analyzed={planning.hasAnalyzed} applied={planning.hasAppliedAIPlan} reportOpen={planning.isReportOpen} />
+      </Section>
+
+      {planning.hasAnalyzed && (
+        <Section label="AI Recommendation">
+          <div className="rounded-lg p-3" style={{ background: 'rgba(0,212,255,0.06)', border: '1px solid rgba(0,212,255,0.2)' }}>
+            <div className="font-display text-xs font-semibold mb-1" style={{ color: 'var(--color-text-primary)' }}>
+              {planning.topRecommendation.title}
+            </div>
+            <p className="text-[10px] leading-relaxed mb-2" style={{ color: 'var(--color-text-secondary)' }}>
+              {planning.topRecommendation.reason}
+            </p>
+            <DataGrid rows={[
+              ['Impact', `City Health +${planning.topRecommendation.expectedImpact.cityHealth}`],
+              ['Cost', `$${(planning.topRecommendation.estimatedCost / 1_000_000).toFixed(0)}M`],
+              ['Confidence', `${Math.round(planning.topRecommendation.confidence * 100)}%`],
+            ]} />
+            <button
+              onClick={() => applyAIPlan(activeScenario)}
+              disabled={planning.hasAppliedAIPlan}
+              className="mt-3 w-full flex items-center justify-center gap-1.5 py-2 rounded-lg text-[10px] font-display font-semibold disabled:opacity-40"
+              style={{ background: 'rgba(0,255,156,0.08)', color: 'var(--color-accent-green)', border: '1px solid rgba(0,255,156,0.3)' }}
+            >
+              <Sparkles size={11} />
+              {planning.hasAppliedAIPlan ? 'AI Plan Applied' : 'Apply AI Plan'}
+            </button>
+          </div>
+        </Section>
+      )}
+
+      <Section label="Constraints">
+        <div className="space-y-2">
+          <SliderRow label="Budget" value={planning.budget / 1_000_000} min={25} max={250} suffix="M" onChange={(value) => setPlanningConstraint('budget', value * 1_000_000)} />
+          <SliderRow label="Service Radius" value={planning.serviceRadius} min={600} max={2400} suffix="m" onChange={(value) => setPlanningConstraint('serviceRadius', value)} />
+          <SliderRow label="Climate Priority" value={planning.climatePriority} min={0} max={100} suffix="" onChange={(value) => setPlanningConstraint('climatePriority', value)} />
+          <SliderRow label="Equity Priority" value={planning.equityPriority} min={0} max={100} suffix="" onChange={(value) => setPlanningConstraint('equityPriority', value)} />
+          <div className="grid grid-cols-4 gap-1">
+            {[5, 10, 20, 50].map((year) => (
+              <button key={year} className="rounded-md py-1 font-mono text-[9px]" style={{ border: year === planning.horizonYears ? '1px solid rgba(0,212,255,0.35)' : '1px solid var(--color-border-subtle)', color: year === planning.horizonYears ? 'var(--color-accent-cyan)' : 'var(--color-text-muted)' }}>
+                {year}Y
+              </button>
+            ))}
+          </div>
+        </div>
+      </Section>
+
+      <Section label="Demo Mode">
+        <label className="flex items-start gap-2 cursor-pointer">
+          <input type="checkbox" checked={planning.demoMode} onChange={(event) => setDemoMode(event.target.checked)} style={{ marginTop: 2, accentColor: 'var(--color-accent-cyan)' }} />
+          <span className="text-[10px] leading-relaxed" style={{ color: 'var(--color-text-secondary)' }}>
+            Demo Mode: Reliable seeded city data for hackathon presentation.
+          </span>
+        </label>
+      </Section>
+
+      <Section label="Scenario Files">
+        <div className="grid grid-cols-2 gap-1.5 mb-2">
+          <button onClick={saveScenario} className="flex items-center justify-center gap-1 rounded-lg py-1.5 text-[10px]" style={{ border: '1px solid rgba(0,212,255,0.25)', color: 'var(--color-accent-cyan)' }}><Save size={10} />Save</button>
+          <button onClick={resetScenario} className="flex items-center justify-center gap-1 rounded-lg py-1.5 text-[10px]" style={{ border: '1px solid var(--color-border-subtle)', color: 'var(--color-text-muted)' }}><RotateCcw size={10} />Reset</button>
+        </div>
+        <div className="space-y-1 max-h-28 overflow-y-auto">
+          {planning.savedScenarios.length === 0 ? (
+            <p className="font-mono text-[9px]" style={{ color: 'var(--color-text-muted)' }}>No saved scenarios yet.</p>
+          ) : planning.savedScenarios.slice(-4).reverse().map((saved) => (
+            <div key={saved.id} className="rounded-md p-2" style={{ border: '1px solid var(--color-border-subtle)' }}>
+              <div className="font-mono text-[9px] truncate" style={{ color: 'var(--color-text-secondary)' }}>{saved.city} · {saved.growthRate}% · {saved.timeHorizon}Y</div>
+              <div className="flex gap-1 mt-1">
+                <button onClick={() => loadScenario(saved.id)} className="text-[9px]" style={{ color: 'var(--color-accent-cyan)' }}>Load</button>
+                <button onClick={() => duplicateScenario(saved.id)} className="flex items-center gap-0.5 text-[9px]" style={{ color: 'var(--color-text-muted)' }}><Copy size={8} />Duplicate</button>
+              </div>
+            </div>
+          ))}
+        </div>
+      </Section>
+
+      <Section label="Assumptions">
+        <ul className="space-y-1 text-[10px] leading-relaxed" style={{ color: 'var(--color-text-muted)' }}>
+          <li>Population growth is simulated.</li>
+          <li>Infrastructure data may be incomplete.</li>
+          <li>Scores are estimates for early-stage scenario comparison.</li>
+          <li>UrbanMind does not replace zoning, environmental review, engineering, or public approval.</li>
+        </ul>
       </Section>
 
       {/* AI insight */}
@@ -173,6 +271,54 @@ export function RightPanel() {
         </div>
       )}
     </div>
+  )
+}
+
+function DemoStepper({ analyzed, applied, reportOpen }: { analyzed: boolean; applied: boolean; reportOpen: boolean }) {
+  const steps = [
+    ['Choose city', true],
+    ['Choose growth scenario', true],
+    ['Analyze current infrastructure', analyzed],
+    ['View underserved zones', analyzed],
+    ['Review AI recommendations', analyzed],
+    ['Apply AI plan', applied],
+    ['Compare before and after', applied],
+    ['Export report', reportOpen],
+  ] as const
+  const current = steps.findIndex(([, done]) => !done)
+  return (
+    <div className="space-y-1.5">
+      {steps.map(([label, done], index) => {
+        const active = current === index || (current === -1 && index === steps.length - 1)
+        return (
+          <div key={label} className="flex items-center gap-2">
+            <span
+              className="w-4 h-4 rounded-full grid place-items-center font-mono text-[8px] shrink-0"
+              style={{
+                background: done ? 'rgba(0,255,156,0.12)' : active ? 'rgba(0,212,255,0.12)' : 'rgba(255,255,255,0.04)',
+                border: done ? '1px solid rgba(0,255,156,0.35)' : active ? '1px solid rgba(0,212,255,0.35)' : '1px solid var(--color-border-subtle)',
+                color: done ? 'var(--color-accent-green)' : active ? 'var(--color-accent-cyan)' : 'var(--color-text-muted)',
+              }}
+            >
+              {done ? <Check size={9} /> : index + 1}
+            </span>
+            <span className="font-display text-[10px]" style={{ color: active ? 'var(--color-accent-cyan)' : done ? 'var(--color-text-secondary)' : 'var(--color-text-muted)' }}>{label}</span>
+          </div>
+        )
+      })}
+    </div>
+  )
+}
+
+function SliderRow({ label, value, min, max, suffix, onChange }: { label: string; value: number; min: number; max: number; suffix: string; onChange: (value: number) => void }) {
+  return (
+    <label className="block">
+      <div className="flex justify-between mb-1">
+        <span className="font-mono text-[9px]" style={{ color: 'var(--color-text-muted)' }}>{label}</span>
+        <span className="font-mono text-[9px]" style={{ color: 'var(--color-accent-cyan)' }}>{Math.round(value)}{suffix}</span>
+      </div>
+      <input aria-label={label} type="range" min={min} max={max} value={value} onChange={(event) => onChange(Number(event.target.value))} className="w-full" style={{ accentColor: 'var(--color-accent-cyan)' }} />
+    </label>
   )
 }
 

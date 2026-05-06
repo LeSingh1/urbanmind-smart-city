@@ -64,7 +64,7 @@ export function LandingScreen({ onEnter }: Props) {
               className="font-mono text-sm tracking-widest uppercase mb-1"
               style={{ color: 'var(--color-accent-cyan)', opacity: 0.7, letterSpacing: '0.3em' }}
             >
-              AI · CITY SIMULATION
+              AI infrastructure planning simulator for growing cities.
             </motion.p>
 
             <motion.p
@@ -72,8 +72,7 @@ export function LandingScreen({ onEnter }: Props) {
               className="font-display mb-8 mt-4"
               style={{ color: 'var(--color-text-secondary)', fontSize: 15, lineHeight: 1.6 }}
             >
-              Plan how real cities evolve over 50 years.<br />
-              AI-powered. Data-driven. Year by year.
+              Find service gaps, test future infrastructure, and compare city expansion scenarios on real maps.
             </motion.p>
 
             {/* CTA Buttons */}
@@ -104,7 +103,7 @@ export function LandingScreen({ onEnter }: Props) {
             >
               <span className="inline-block w-1.5 h-1.5 rounded-full animate-glow-pulse" style={{ background: 'var(--color-accent-cyan)' }} />
               <span className="font-mono text-xs" style={{ color: 'var(--color-text-muted)', letterSpacing: '0.2em' }}>
-                9 CITIES · 5 SCENARIOS · 50-YEAR HORIZON
+                FREMONT DEMO · 5 SCENARIOS · INFRASTRUCTURE GAP ANALYSIS
               </span>
             </motion.div>
           </motion.div>
@@ -189,7 +188,7 @@ function CityGallery({ onClose, onEnter }: { onClose: () => void; onEnter: () =>
             Choose Your City
           </h2>
           <p className="font-mono text-xs tracking-widest uppercase" style={{ color: 'var(--color-text-muted)' }}>
-            Select a real city to begin the 50-year simulation
+            Choose a city and growth scenario to detect infrastructure gaps.
           </p>
         </motion.div>
 

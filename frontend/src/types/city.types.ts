@@ -11,6 +11,132 @@ export interface Landmark {
   h_deg?: number
 }
 
+export type InfrastructureCategory =
+  | 'hospital'
+  | 'clinic'
+  | 'school'
+  | 'park'
+  | 'transit_stop'
+  | 'transit_line'
+  | 'fire_station'
+  | 'police_station'
+  | 'housing_zone'
+  | 'commercial_zone'
+  | 'industrial_zone'
+  | 'road'
+  | 'bike_lane'
+  | 'utility'
+  | 'water'
+  | 'power'
+  | 'mixed_use'
+  | 'community_center'
+
+export type InfrastructureStatus = 'existing' | 'proposed' | 'ai_recommended' | 'improved' | 'removed'
+export type InfrastructureSource = 'openstreetmap' | 'demo_seed' | 'user_added' | 'ai_recommended' | 'simulation'
+export type GeometryType = 'Point' | 'LineString' | 'Polygon'
+
+export interface InfrastructureItem {
+  id: string
+  name: string
+  category: InfrastructureCategory
+  status: InfrastructureStatus
+  source: InfrastructureSource
+  coordinates: GeoJSON.Position | GeoJSON.Position[] | GeoJSON.Position[][]
+  geometryType: GeometryType
+  geometry?: GeoJSON.Geometry
+  reason: string
+  costEstimate: number
+  impactScore: number
+  confidence: number
+  createdAt: string
+  updatedAt?: string
+}
+
+export type UnderservedZoneType =
+  | 'hospital_access'
+  | 'school_access'
+  | 'park_access'
+  | 'transit_access'
+  | 'emergency_access'
+  | 'congestion'
+  | 'equity'
+  | 'housing_access'
+  | 'green_space'
+
+export interface UnderservedZone {
+  id: string
+  name: string
+  gapType: UnderservedZoneType
+  type?: UnderservedZoneType
+  geometry?: GeoJSON.Geometry
+  center: [number, number]
+  radiusMeters: number
+  severity: number
+  improvedBy: string[]
+  improved?: boolean
+  isImproved?: boolean
+  reason: string
+  beforeScore: number
+  afterScore?: number
+}
+
+export interface PlanningScores {
+  cityHealth: number
+  transitCoverage: number
+  emergencyAccess: number
+  housingAccess: number
+  greenSpace: number
+  walkability: number
+  congestion: number
+  congestionRisk: number
+  averageCommute: number
+  co2Estimate: number
+  equityScore: number
+  educationAccess: number
+  populationServed?: number
+  serviceGapCount?: number
+  totalEstimatedCost: number
+}
+
+export interface AIRecommendation {
+  id: string
+  title: string
+  zoneName: string
+  locationName?: string
+  infrastructureType: InfrastructureCategory
+  coordinates?: GeoJSON.Position
+  reason: string
+  expectedImpact: Record<string, number>
+  estimatedCost: number
+  costEstimate?: number
+  confidence: number
+  relatedGapIds?: string[]
+  featuresToAdd?: InfrastructureItem[]
+  itemIds: string[]
+}
+
+export interface GrowthPressureZone {
+  id: string
+  name: string
+  center: [number, number]
+  radiusMeters: number
+  pressure: 'medium' | 'high'
+  projectedGrowthPercent: number
+  reason: string
+}
+
+export interface SavedPlanningScenario {
+  id: string
+  city: string
+  growthRate: number
+  timeHorizon: number
+  scenarioType: ScenarioId
+  features: InfrastructureItem[]
+  metrics: PlanningScores | null
+  createdAt: string
+  updatedAt: string
+}
+
 export interface CityProfile {
   id: string
   name: string
@@ -63,4 +189,5 @@ export type ScenarioId =
   | 'max_growth'
   | 'climate_resilient'
   | 'equity_focused'
-  | 'historic'
+  | 'transit_first'
+  | 'emergency_ready'

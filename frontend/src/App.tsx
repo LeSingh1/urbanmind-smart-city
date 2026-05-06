@@ -214,7 +214,9 @@ function offlineActions(year: number, city: CityProfile): AgentAction[] {
 export default function App() {
   const [showLanding, setShowLanding] = useState(true)
   const fetchCities = useCityStore((state) => state.fetchCities)
+  const cities = useCityStore((state) => state.cities)
   const selectedCity = useCityStore((state) => state.selectedCity)
+  const selectCity = useCityStore((state) => state.selectCity)
   const sessionId = useSimulationStore((state) => state.sessionId)
   const isRunning = useSimulationStore((state) => state.isRunning)
   const isPaused = useSimulationStore((state) => state.isPaused)
@@ -225,6 +227,15 @@ export default function App() {
   useEffect(() => {
     fetchCities()
   }, [fetchCities])
+
+  useEffect(() => {
+    if (selectedCity || cities.length === 0) return
+    const fremont = cities.find((city) => city.id === 'fremont') ?? cities[0]
+    if (fremont) {
+      selectCity(fremont)
+      setShowLanding(false)
+    }
+  }, [cities, selectedCity, selectCity])
 
   // Offline simulation loop — adds new zone features to the map each year
   useEffect(() => {

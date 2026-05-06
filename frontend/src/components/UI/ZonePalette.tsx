@@ -1,5 +1,5 @@
 import { motion, AnimatePresence } from 'framer-motion'
-import { X, Crosshair } from 'lucide-react'
+import { X, Crosshair, Undo2, Save, Trash2 } from 'lucide-react'
 import { getZoneColor } from '@/utils/colorUtils'
 import { useUIStore } from '@/stores/uiStore'
 import { useSimulationStore } from '@/stores/simulationStore'
@@ -71,7 +71,7 @@ const ZONE_CATEGORIES: { label: string; zones: { id: string; label: string }[] }
 
 export function ZonePalette() {
   const { isOverrideModeActive, selectedOverrideZone, setOverrideZone } = useUIStore()
-  const sessionId = useSimulationStore((state) => state.sessionId)
+  const { sessionId, planning, deleteInfrastructure, undoInfrastructure, saveScenario } = useSimulationStore()
 
   const toggleMode = () => {
     setOverrideZone(isOverrideModeActive ? null : (selectedOverrideZone ?? 'RES_LOW_DETACHED'))
@@ -88,7 +88,62 @@ export function ZonePalette() {
           color: 'var(--color-text-muted)',
         }}
       >
-        Select a zone type below, then click anywhere on the map to place it.
+        Select a proposed infrastructure tool, then click the map to place it. New items are stored as GeoJSON-like scenario features.
+      </div>
+
+      <div className="grid grid-cols-2 gap-1">
+        {[
+          ['Select', ''],
+          ['Add Hospital', 'HEALTH_HOSPITAL'],
+          ['Add Clinic', 'HEALTH_CLINIC'],
+          ['Add School', 'EDU_HIGH'],
+          ['Add Park', 'PARK_SMALL'],
+          ['Add Transit Stop', 'BUS_STATION'],
+          ['Draw Transit Line', 'TRAIN_STATION'],
+          ['Draw Road', 'ROAD_ARTERIAL'],
+          ['Draw Housing Zone', 'RES_MED_APARTMENT'],
+          ['Draw Commercial Zone', 'COM_OFFICE_PLAZA'],
+          ['Draw Mixed-Use Zone', 'RES_MIXED_USE'],
+        ].map(([label, id]) => (
+          <button
+            key={id}
+            onClick={() => setOverrideZone(id || null)}
+            className="px-2 py-1.5 rounded-lg text-left"
+            style={{
+              border: selectedOverrideZone === id ? `1px solid ${getZoneColor(id)}66` : '1px solid var(--color-border-subtle)',
+              background: selectedOverrideZone === id ? `${getZoneColor(id)}18` : 'transparent',
+              color: selectedOverrideZone === id ? getZoneColor(id) : 'var(--color-text-secondary)',
+              fontSize: 10,
+            }}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+
+      <div className="grid grid-cols-3 gap-1">
+        <button
+          onClick={() => planning.selectedInfrastructureId && deleteInfrastructure(planning.selectedInfrastructureId)}
+          disabled={!planning.selectedInfrastructureId}
+          className="flex items-center justify-center gap-1 py-1.5 rounded-lg text-[10px] disabled:opacity-40"
+          style={{ border: '1px solid var(--color-border-subtle)', color: 'var(--color-text-muted)' }}
+        >
+          <Trash2 size={10} /> Delete
+        </button>
+        <button
+          onClick={undoInfrastructure}
+          className="flex items-center justify-center gap-1 py-1.5 rounded-lg text-[10px]"
+          style={{ border: '1px solid var(--color-border-subtle)', color: 'var(--color-text-muted)' }}
+        >
+          <Undo2 size={10} /> Undo
+        </button>
+        <button
+          onClick={saveScenario}
+          className="flex items-center justify-center gap-1 py-1.5 rounded-lg text-[10px]"
+          style={{ border: '1px solid rgba(0,212,255,0.25)', color: 'var(--color-accent-cyan)' }}
+        >
+          <Save size={10} /> Save
+        </button>
       </div>
 
       {/* Override mode toggle */}

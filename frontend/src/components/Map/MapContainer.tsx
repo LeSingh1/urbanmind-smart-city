@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useCallback, useRef, useState } from 'react'
-import { MapContainer as LeafletMap, TileLayer, CircleMarker, Circle, useMap, useMapEvents } from 'react-leaflet'
+import { MapContainer as LeafletMap, TileLayer, CircleMarker, Circle, Polyline, Marker, Popup, useMap, useMapEvents } from 'react-leaflet'
 import L from 'leaflet'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Box } from 'lucide-react'
+import { Box, Building2, Bus, Cross, Flame, GraduationCap, Home, Layers, Route, Shield, TreePine, Zap } from 'lucide-react'
 import { useCityStore } from '@/stores/cityStore'
 import { useSimulationStore } from '@/stores/simulationStore'
 import type { UserPlacedZone } from '@/stores/simulationStore'
@@ -17,6 +17,7 @@ import { SplitScreenView } from '@/components/Layout/SplitScreenView'
 import { ZoneLegend } from './ZoneLegend'
 import { Map3DView } from './Map3DView'
 import type { Landmark } from '@/types/city.types'
+import type { GrowthPressureZone, InfrastructureCategory, InfrastructureItem, UnderservedZone } from '@/types/city.types'
 
 // Service coverage radii in metres per zone token
 const SERVICE_RADII: Record<string, number> = {
@@ -134,6 +135,179 @@ function DotLayer({ dots, onHover, onClick, highlightedToken }: DotLayerProps) {
   )
 }
 
+const LAYER_GROUPS = [
+  { title: 'Existing real world infrastructure', items: ['Existing hospitals', 'Existing schools', 'Existing parks', 'Existing transit', 'Existing police stations', 'Existing fire stations', 'Existing Roads'] },
+  { title: 'Proposed future scenario infrastructure', items: ['Proposed infrastructure'] },
+  { title: 'AI recommended infrastructure', items: ['AI Recommendations'] },
+  { title: 'Scenario overlays', items: ['Underserved zones', 'Growth Pressure', 'Heatmap Mode'] },
+]
+
+const CATEGORY_LAYER: Partial<Record<InfrastructureCategory, string>> = {
+  hospital: 'Existing hospitals',
+  clinic: 'Existing hospitals',
+  school: 'Existing schools',
+  park: 'Existing parks',
+  transit_stop: 'Existing transit',
+  transit_line: 'Existing transit',
+  police_station: 'Existing police stations',
+  fire_station: 'Existing fire stations',
+  road: 'Existing Roads',
+}
+
+const CATEGORY_COLOR: Record<InfrastructureCategory, string> = {
+  hospital: '#E74C3C',
+  clinic: '#E74C3C',
+  school: '#2E86C1',
+  park: '#27AE60',
+  transit_stop: '#8E44AD',
+  transit_line: '#8E44AD',
+  fire_station: '#E74C3C',
+  police_station: '#5D4E75',
+  housing_zone: '#E67E22',
+  commercial_zone: '#F1C40F',
+  industrial_zone: '#64748B',
+  road: '#8B949E',
+  bike_lane: '#8B949E',
+  utility: '#F1C40F',
+  water: '#00D4FF',
+  power: '#F59E0B',
+  mixed_use: '#E67E22',
+  community_center: '#2E86C1',
+}
+
+const CATEGORY_ICON: Record<InfrastructureCategory, string> = {
+  hospital: '+',
+  clinic: '+',
+  school: 'S',
+  park: 'T',
+  transit_stop: 'B',
+  transit_line: 'T',
+  fire_station: 'F',
+  police_station: 'P',
+  housing_zone: 'H',
+  commercial_zone: 'C',
+  industrial_zone: 'I',
+  road: 'R',
+  bike_lane: 'B',
+  utility: 'U',
+  water: 'W',
+  power: 'P',
+  mixed_use: 'M',
+  community_center: 'C',
+}
+
+const TOOL_ZONE_TO_CATEGORY: Record<string, InfrastructureCategory> = {
+  HEALTH_HOSPITAL: 'hospital',
+  HEALTH_CLINIC: 'clinic',
+  EDU_ELEMENTARY: 'school',
+  EDU_HIGH: 'school',
+  PARK_SMALL: 'park',
+  BUS_STATION: 'transit_stop',
+  TRAIN_STATION: 'transit_stop',
+  DIS_FIRE_STATION: 'fire_station',
+  GOV_POLICE_STATION: 'police_station',
+  RES_MED_APARTMENT: 'housing_zone',
+  RES_MIXED_USE: 'mixed_use',
+  RES_AFFORDABLE: 'housing_zone',
+  COM_OFFICE_PLAZA: 'commercial_zone',
+  COM_SMALL_SHOP: 'commercial_zone',
+  IND_WAREHOUSE: 'industrial_zone',
+  ROAD_ARTERIAL: 'road',
+  HIGHWAY_INTERCHANGE: 'road',
+  ENV_TREE_CORRIDOR: 'park',
+  POWER_SUBSTATION: 'utility',
+}
+
+function LayerControlPanel({ activeLayers, toggleLayer }: { activeLayers: Set<string>; toggleLayer: (layerId: string) => void }) {
+  return (
+    <div style={{ position: 'absolute', top: 16, right: 16, zIndex: 18, width: 252, background: 'var(--color-bg-sidebar)', border: '1px solid var(--color-border-subtle)', borderRadius: 8, boxShadow: '0 8px 28px rgba(0,0,0,0.45)', overflow: 'hidden' }}>
+      <div style={{ padding: '10px 12px', borderBottom: '1px solid var(--color-border-subtle)', display: 'flex', alignItems: 'center', gap: 8 }}>
+        <Layers size={13} style={{ color: 'var(--color-accent-cyan)' }} />
+        <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--color-text-secondary)' }}>Planning Layers</span>
+      </div>
+      <div style={{ padding: 10, display: 'grid', gap: 10 }}>
+        {LAYER_GROUPS.map((group) => (
+          <div key={group.title}>
+            <div style={{ fontFamily: 'var(--font-mono)', fontSize: 8, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--color-text-muted)', marginBottom: 5 }}>{group.title}</div>
+            <div style={{ display: 'grid', gap: 4 }}>
+              {group.items.map((item) => (
+                <label key={item} style={{ display: 'flex', alignItems: 'center', gap: 7, fontSize: 10, color: 'var(--color-text-secondary)', cursor: 'pointer' }}>
+                  <input type="checkbox" checked={activeLayers.has(item)} onChange={() => toggleLayer(item)} style={{ accentColor: 'var(--color-accent-cyan)' }} />
+                  {item}
+                </label>
+              ))}
+            </div>
+          </div>
+        ))}
+        <div style={{ borderTop: '1px solid var(--color-border-subtle)', paddingTop: 8, display: 'grid', gap: 5 }}>
+          <div style={{ fontSize: 9, color: 'var(--color-text-muted)', lineHeight: 1.45 }}>Data sources: MapLibre, OpenStreetMap, simulated growth model, UrbanMind scoring engine</div>
+          <div style={{ fontSize: 9, color: 'rgba(255,255,255,0.35)', lineHeight: 1.45 }}>UrbanMind is a decision support simulator, not a final planning authority.</div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function PlanningLegend() {
+  const items: Array<[InfrastructureCategory, React.ReactNode, string]> = [
+    ['clinic', <Cross size={10} />, 'Hospital / clinic'],
+    ['school', <GraduationCap size={10} />, 'School'],
+    ['park', <TreePine size={10} />, 'Park'],
+    ['transit_stop', <Bus size={10} />, 'Transit'],
+    ['police_station', <Shield size={10} />, 'Police'],
+    ['fire_station', <Flame size={10} />, 'Fire'],
+    ['housing_zone', <Home size={10} />, 'Housing'],
+    ['commercial_zone', <Building2 size={10} />, 'Commercial'],
+    ['industrial_zone', <Building2 size={10} />, 'Industrial'],
+    ['road', <Route size={10} />, 'Road'],
+    ['utility', <Zap size={10} />, 'Utility'],
+  ]
+  return (
+    <div style={{ position: 'absolute', bottom: 16, right: 16, zIndex: 12, background: 'var(--color-bg-sidebar)', border: '1px solid var(--color-border-subtle)', borderRadius: 8, padding: 10, width: 180 }}>
+      <div style={{ fontFamily: 'var(--font-mono)', fontSize: 9, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--color-text-muted)', marginBottom: 7 }}>Infrastructure Legend</div>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 5 }}>
+        {items.map(([category, icon, label]) => (
+          <div key={category} style={{ display: 'flex', alignItems: 'center', gap: 5, color: 'var(--color-text-secondary)', fontSize: 9 }}>
+            <span style={{ width: 16, height: 16, borderRadius: 5, display: 'grid', placeItems: 'center', color: CATEGORY_COLOR[category], border: `1px solid ${CATEGORY_COLOR[category]}80` }}>{icon}</span>
+            <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{label}</span>
+          </div>
+        ))}
+      </div>
+      <div style={{ borderTop: '1px solid var(--color-border-subtle)', marginTop: 8, paddingTop: 7, display: 'grid', gap: 4 }}>
+        {[
+          ['Existing', 'rgba(255,255,255,0.55)'],
+          ['Proposed', '#00D4FF'],
+          ['AI Recommended', '#00D4FF'],
+          ['Underserved Zone', '#FF5A3D'],
+        ].map(([label, color]) => (
+          <div key={label} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 9, color: 'var(--color-text-muted)' }}>
+            <span style={{ width: 12, height: 12, borderRadius: 4, border: `1px solid ${color}`, background: label === 'Underserved Zone' ? 'rgba(255,90,61,0.2)' : 'rgba(13,17,28,0.9)' }} />
+            {label}
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+function infraIcon(item: InfrastructureItem) {
+  const color = item.status === 'proposed' ? '#00D4FF' : CATEGORY_COLOR[item.category]
+  const glow = item.status === 'proposed' ? 'box-shadow:0 0 14px rgba(0,212,255,0.85);border-color:#00D4FF;' : ''
+  return L.divIcon({
+    className: 'urbanmind-infra-icon',
+    html: `<div style="width:25px;height:25px;border-radius:7px;background:rgba(11,17,28,0.92);border:1px solid ${color};${glow}display:grid;place-items:center;color:${color};font:800 12px JetBrains Mono,monospace;">${CATEGORY_ICON[item.category]}</div>`,
+    iconSize: [25, 25],
+    iconAnchor: [12, 12],
+  })
+}
+
+function isLayerVisible(item: InfrastructureItem, activeLayers: Set<string>, showAIRecommendations: boolean) {
+  if (item.status === 'proposed') return activeLayers.has('Proposed infrastructure')
+  if (item.status === 'ai_recommended') return showAIRecommendations && activeLayers.has('AI Recommendations')
+  const layer = CATEGORY_LAYER[item.category]
+  return layer ? activeLayers.has(layer) : true
+}
+
 // ─── Animated overlay for "no city selected" state ──────────────────────────
 function EmptyMapOverlay() {
   return (
@@ -219,10 +393,13 @@ function DotCountBadge({ count, isLive }: { count: number; isLive: boolean }) {
 export function MapContainer() {
   const [hovered, setHovered] = useState<{ x: number; y: number; properties: any } | null>(null)
   const [serviceArea, setServiceArea] = useState<ServiceArea | null>(null)
+  const [mapLoading, setMapLoading] = useState(true)
+  const [mapError, setMapError] = useState(false)
 
   const city = useCityStore((s) => s.selectedCity)
   const frame = useSimulationStore((s) => s.currentFrame)
   const activeLayers = useUIStore((s) => s.activeLayers)
+  const toggleLayer = useUIStore((s) => s.toggleLayer)
   const isSplitScreen = useUIStore((s) => s.isSplitScreen)
   const detailedGrid = useUIStore((s) => s.detailedGrid)
   const isRunning = useSimulationStore((s) => s.isRunning)
@@ -236,6 +413,9 @@ export function MapContainer() {
   const toggle3D = useUIStore((s) => s.toggle3D)
   const userZones = useSimulationStore((s) => s.userZones)
   const addUserZone = useSimulationStore((s) => s.addUserZone)
+  const planning = useSimulationStore((s) => s.planning)
+  const addInfrastructure = useSimulationStore((s) => s.addInfrastructure)
+  const selectInfrastructure = useSimulationStore((s) => s.selectInfrastructure)
   const scenario = useScenarioStore((s) => s.activeScenario)
   const fetchExplanation = useAIStore((s) => s.fetchExplanation)
   const notify = useNotification((s) => s.notify)
@@ -250,10 +430,28 @@ export function MapContainer() {
         zone_type_id: selectedOverrideZone,
       }
       addUserZone(zone)
+      const category = TOOL_ZONE_TO_CATEGORY[selectedOverrideZone] ?? 'housing_zone'
       const label = selectedOverrideZone.replace(/_/g, ' ').toLowerCase().replace(/\b\w/g, (c) => c.toUpperCase())
-      notify('success', `Placed ${label} at (${lat.toFixed(4)}, ${lng.toFixed(4)})`, 2500)
+      const infrastructureId = `user-${Date.now()}`
+      addInfrastructure({
+        id: infrastructureId,
+        name: `Proposed ${label}`,
+        category,
+        status: 'proposed',
+        source: 'user_added',
+        coordinates: [lng, lat],
+        geometryType: 'Point',
+        geometry: { type: 'Point', coordinates: [lng, lat] },
+        reason: `Fills a local ${category.replace(/_/g, ' ')} access gap in the selected scenario.`,
+        costEstimate: category === 'hospital' ? 120_000_000 : category === 'school' ? 36_000_000 : category === 'park' ? 8_000_000 : 12_000_000,
+        impactScore: category === 'clinic' || category === 'school' ? 76 : 62,
+        confidence: 0.72,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      })
+      notify('success', `Proposed ${label} added. Expected impact is estimated from local gap scoring.`, 2800)
     },
-    [selectedOverrideZone, addUserZone, notify]
+    [selectedOverrideZone, addUserZone, addInfrastructure, notify]
   )
 
   const handleHover = useCallback(
@@ -367,6 +565,12 @@ export function MapContainer() {
 
   const showDots = activeLayers.has('Zones')
   const isLive = (isRunning || isPaused || detailedGrid) && !!frame
+  const showPlanning = city?.id === 'fremont'
+  const visibleInfrastructure = useMemo(() => {
+    if (!showPlanning) return []
+    const aiPreview = planning.hasAnalyzed && !planning.hasAppliedAIPlan ? planning.aiRecommendations : []
+    return [...planning.infrastructure, ...aiPreview].filter((item) => isLayerVisible(item, activeLayers, planning.hasAnalyzed))
+  }, [activeLayers, planning.aiRecommendations, planning.hasAnalyzed, planning.hasAppliedAIPlan, planning.infrastructure, showPlanning])
 
   const initialCenter: [number, number] = city
     ? [city.center_lat, city.center_lng]
@@ -444,6 +648,11 @@ export function MapContainer() {
               attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a> &copy; <a href="https://carto.com/">CARTO</a>'
               maxZoom={20}
               subdomains="abcd"
+              eventHandlers={{
+                load: () => setMapLoading(false),
+                tileerror: () => { setMapLoading(false); setMapError(true) },
+                loading: () => setMapLoading(true),
+              }}
             />
 
             {city && <CityFlyController city={city} />}
@@ -460,6 +669,116 @@ export function MapContainer() {
                 highlightedToken={highlightedZoneToken}
               />
             )}
+            {showPlanning && activeLayers.has('Underserved zones') && planning.hasAnalyzed && planning.underservedZones.map((zone: UnderservedZone) => (
+              <Circle
+                key={zone.id}
+                center={zone.center}
+                radius={zone.isImproved ? zone.radiusMeters * 0.55 : zone.radiusMeters}
+                pathOptions={{
+                  color: zone.isImproved ? 'var(--color-accent-green)' : '#FF5A3D',
+                  fillColor: zone.isImproved ? 'var(--color-accent-green)' : '#FF5A3D',
+                  fillOpacity: zone.isImproved ? 0.08 : 0.18 + zone.severity * 0.12,
+                  weight: zone.isImproved ? 1 : 2,
+                  opacity: zone.isImproved ? 0.45 : 0.8,
+                  dashArray: zone.isImproved ? '5 5' : undefined,
+                }}
+              >
+                <Popup>
+                  <strong>{zone.name}</strong><br />
+                  Gap type: {zone.gapType.replace(/_/g, ' ')}<br />
+                  Severity: {Math.round(zone.severity * 100)}%<br />
+                  Before score: {zone.beforeScore}<br />
+                  {zone.isImproved || zone.improved ? `After score: ${zone.afterScore ?? zone.beforeScore}` : zone.reason}<br />
+                  {zone.isImproved || zone.improved ? 'Improved by proposed infrastructure in the AI plan.' : null}
+                </Popup>
+              </Circle>
+            ))}
+            {showPlanning && activeLayers.has('Growth Pressure') && planning.hasAnalyzed && planning.growthPressureZones.map((zone: GrowthPressureZone) => (
+              <Circle
+                key={zone.id}
+                center={zone.center}
+                radius={activeLayers.has('Heatmap Mode') ? zone.radiusMeters * 1.2 : zone.radiusMeters}
+                pathOptions={{
+                  color: zone.pressure === 'high' ? '#FFB800' : '#00D4FF',
+                  fillColor: zone.pressure === 'high' ? '#FFB800' : '#00D4FF',
+                  fillOpacity: activeLayers.has('Heatmap Mode') ? (zone.pressure === 'high' ? 0.24 : 0.16) : 0.1,
+                  weight: 1.2,
+                  opacity: 0.55,
+                  dashArray: '7 5',
+                }}
+              >
+                <Popup>
+                  <strong>{zone.name}</strong><br />
+                  Growth pressure: {zone.pressure}<br />
+                  Projected growth: {zone.projectedGrowthPercent}%<br />
+                  {zone.reason}
+                </Popup>
+              </Circle>
+            ))}
+            {visibleInfrastructure.map((item) => {
+              if (item.geometryType === 'LineString') {
+                const coords = item.coordinates as GeoJSON.Position[]
+                return (
+                  <Polyline
+                    key={item.id}
+                    positions={coords.map(([lng, lat]) => [lat, lng] as [number, number])}
+                    pathOptions={{
+                      color: item.status === 'proposed' || item.status === 'ai_recommended' ? '#00D4FF' : CATEGORY_COLOR[item.category],
+                      weight: item.status === 'proposed' || item.status === 'ai_recommended' ? 5 : 3,
+                      opacity: item.status === 'ai_recommended' ? 0.65 : 0.85,
+                      dashArray: item.status === 'ai_recommended' ? '8 7' : undefined,
+                    }}
+                  >
+                  <Popup>
+                    <strong>{item.name}</strong><br />
+                    Category: {item.category.replace(/_/g, ' ')}<br />
+                    Status: {item.status.replace(/_/g, ' ')}<br />
+                    Source: {item.source.replace(/_/g, ' ')}<br />
+                    {item.reason}<br />
+                    {item.costEstimate ? `Cost estimate: $${(item.costEstimate / 1_000_000).toFixed(1)}M` : 'Nearest gap relevance: supports baseline coverage.'}<br />
+                    Expected impact: {item.impactScore}<br />
+                    Confidence: {Math.round(item.confidence * 100)}%
+                    {item.status === 'ai_recommended' && !planning.hasAppliedAIPlan && (
+                      <button
+                        onClick={() => useSimulationStore.getState().applyAIPlan(scenario)}
+                        style={{ display: 'block', marginTop: 8, border: '1px solid rgba(0,212,255,0.35)', borderRadius: 6, padding: '5px 8px', color: '#00D4FF', background: 'rgba(0,212,255,0.08)' }}
+                      >
+                        Apply Recommendation
+                      </button>
+                    )}
+                  </Popup>
+                </Polyline>
+                )
+              }
+              const [lng, lat] = item.coordinates as GeoJSON.Position
+              return (
+                <Marker
+                  key={item.id}
+                  position={[lat, lng]}
+                  icon={infraIcon(item)}
+                  eventHandlers={{ click: () => selectInfrastructure(item.id) }}
+                >
+                  <Popup>
+                    <strong>{item.name}</strong><br />
+                    Category: {item.category.replace(/_/g, ' ')}<br />
+                    Status: {item.status.replace(/_/g, ' ')}<br />
+                    Source: {item.source.replace(/_/g, ' ')}<br />
+                    {item.reason}<br />
+                    {item.costEstimate ? `Cost estimate: $${(item.costEstimate / 1_000_000).toFixed(1)}M` : 'Nearest gap relevance: supports baseline coverage.'}<br />
+                    Impact score: {item.impactScore}<br />
+                    Confidence: {Math.round(item.confidence * 100)}%
+                    {item.status === 'ai_recommended' && !planning.hasAppliedAIPlan && (
+                      <button
+                        onClick={() => useSimulationStore.getState().applyAIPlan(scenario)}
+                        style={{ display: 'block', marginTop: 8, border: '1px solid rgba(0,212,255,0.35)', borderRadius: 6, padding: '5px 8px', color: '#00D4FF', background: 'rgba(0,212,255,0.08)' }}
+                      >
+                        Apply Recommendation
+                      </button>
+                    )}
+                  </Popup>
+                </Marker>
+              )
+            })}
             {serviceArea && (
               <Circle
                 center={[serviceArea.lat, serviceArea.lng]}
@@ -488,6 +807,34 @@ export function MapContainer() {
       )}
 
       {hovered && !isOverrideModeActive && <ExplanationTooltip hover={hovered} />}
+
+      <AnimatePresence>
+        {(mapLoading || mapError) && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            style={{ position: 'absolute', inset: 0, zIndex: 6, pointerEvents: mapError ? 'auto' : 'none', display: 'grid', placeItems: 'center', background: mapError ? 'linear-gradient(135deg,#0d1117,#111827)' : 'rgba(13,17,23,0.35)' }}
+          >
+            <div style={{ width: 280, border: '1px solid var(--color-border-subtle)', borderRadius: 8, background: 'var(--color-bg-sidebar)', padding: 16, textAlign: 'center' }}>
+              <div style={{ fontFamily: 'var(--font-mono)', fontSize: 10, letterSpacing: '0.14em', textTransform: 'uppercase', color: mapError ? 'var(--color-accent-warning)' : 'var(--color-accent-cyan)' }}>
+                {mapError ? 'Demo map fallback active' : 'Loading map context'}
+              </div>
+              <p style={{ marginTop: 8, fontSize: 11, lineHeight: 1.5, color: 'var(--color-text-muted)' }}>
+                {mapError ? 'Base tiles are unavailable, but Fremont demo layers and scoring remain usable.' : 'Preparing city infrastructure layers.'}
+              </p>
+              {mapError && (
+                <button onClick={() => { setMapError(false); setMapLoading(true) }} style={{ marginTop: 10, border: '1px solid rgba(0,212,255,0.3)', borderRadius: 6, padding: '6px 10px', color: 'var(--color-accent-cyan)', background: 'rgba(0,212,255,0.06)', fontSize: 11 }}>
+                  Retry tiles
+                </button>
+              )}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {showPlanning && <LayerControlPanel activeLayers={activeLayers} toggleLayer={toggleLayer} />}
+      {showPlanning && <PlanningLegend />}
 
       {/* Override-mode cursor banner */}
       {isOverrideModeActive && selectedOverrideZone && (

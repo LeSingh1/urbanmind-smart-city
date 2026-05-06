@@ -13,15 +13,17 @@ export const scenarioColors: Record<ScenarioId, string> = {
   max_growth: '#C0392B',
   climate_resilient: '#17A589',
   equity_focused: '#8E44AD',
-  historic: '#6B7280',
+  transit_first: '#8E44AD',
+  emergency_ready: '#E74C3C',
 }
 
 export const scenarioLabels: Record<ScenarioId, string> = {
-  balanced: 'Balanced',
-  max_growth: 'Max Growth',
+  balanced: 'Balanced Growth',
+  max_growth: 'Max Housing Growth',
   climate_resilient: 'Climate Resilient',
   equity_focused: 'Equity Focused',
-  historic: 'Historic',
+  transit_first: 'Transit First',
+  emergency_ready: 'Emergency Ready',
 }
 
 export const useScenarioStore = create<ScenarioStore>((set) => ({

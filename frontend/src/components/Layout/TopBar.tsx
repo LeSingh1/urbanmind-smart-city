@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { motion } from 'framer-motion'
-import { Play, Pause, Download, Settings, RefreshCw, Zap, Scale, TrendingUp, Leaf, Users, Landmark, RotateCcw } from 'lucide-react'
+import { Play, Pause, Download, Settings, RefreshCw, Zap, Scale, TrendingUp, Leaf, Users, Train, RotateCcw, Search, Sparkles, FileText, Siren } from 'lucide-react'
 import { SettingsModal } from './SettingsModal'
 import { useSimulationStore } from '@/stores/simulationStore'
 import { useCityStore } from '@/stores/cityStore'
@@ -11,19 +11,20 @@ import { useNotification } from '@/hooks/useNotification'
 import { Logo } from '@/components/UI/LandingScreen'
 import type { ScenarioId } from '@/types/city.types'
 
-const SCENARIO_IDS: ScenarioId[] = ['balanced', 'max_growth', 'climate_resilient', 'equity_focused', 'historic']
+const SCENARIO_IDS: ScenarioId[] = ['balanced', 'max_growth', 'climate_resilient', 'equity_focused', 'transit_first', 'emergency_ready']
 
 const SCENARIO_ICONS: Record<ScenarioId, React.ElementType> = {
   balanced: Scale,
   max_growth: TrendingUp,
   climate_resilient: Leaf,
   equity_focused: Users,
-  historic: Landmark,
+  transit_first: Train,
+  emergency_ready: Siren,
 }
 
 export function TopBar() {
-  const { isRunning, isPaused, currentYear, sessionId, metricsHistory, frameHistory } = useSimulationStore()
-  const { selectedCity } = useCityStore()
+  const { isRunning, isPaused, currentYear, sessionId, metricsHistory, frameHistory, analyzeDemo, applyAIPlan, planning, openReport } = useSimulationStore()
+  const { selectedCity, cities, selectCity } = useCityStore()
   const { activeScenario, setScenario } = useScenarioStore()
   const { start, pause, resume } = useSimulation()
   const reset = useSimulationStore((s) => s.reset)
@@ -48,6 +49,17 @@ export function TopBar() {
     setStarting(true)
     await start(selectedCity.id, activeScenario)
     setStarting(false)
+  }
+
+  const handleAnalyze = () => {
+    if (!selectedCity) return
+    analyzeDemo(selectedCity.id, activeScenario)
+    notify('success', 'Infrastructure gaps detected for the 30% growth scenario.', 2800)
+  }
+
+  const handleApplyAIPlan = () => {
+    applyAIPlan(activeScenario)
+    notify('success', 'AI scenario infrastructure added to the proposed layer.', 2800)
   }
 
   const handleExport = () => {
@@ -83,12 +95,20 @@ export function TopBar() {
       <div className="flex items-center gap-3 shrink-0">
         <Logo />
         <div className="w-px h-5 opacity-30" style={{ background: 'var(--color-accent-cyan)' }} />
-        <span
+        <select
+          value={selectedCity?.id ?? ''}
+          onChange={(event) => {
+            const city = cities.find((item) => item.id === event.target.value)
+            if (city) selectCity(city)
+          }}
+          aria-label="City preset"
           className="font-mono text-xs tracking-widest uppercase"
-          style={{ color: 'var(--color-text-muted)', letterSpacing: '0.15em' }}
+          style={{ color: 'var(--color-text-secondary)', letterSpacing: '0.08em', background: 'var(--color-bg-panel)', border: '1px solid var(--color-border-subtle)', borderRadius: 8, padding: '6px 8px' }}
         >
-          {selectedCity?.name ?? '——'}
-        </span>
+          {cities
+            .filter((city) => ['fremont', 'san_jose', 'sacramento', 'austin', 'phoenix', 'stockton'].includes(city.id))
+            .map((city) => <option key={city.id} value={city.id}>{city.name}</option>)}
+        </select>
       </div>
 
       <div className="w-px h-8" style={{ background: 'var(--color-border-subtle)' }} />
@@ -126,6 +146,10 @@ export function TopBar() {
 
       {/* Year + Progress */}
       <div className="flex items-center gap-3">
+        <div className="text-center min-w-[74px] rounded-md px-2 py-1" style={{ border: '1px solid rgba(0,212,255,0.16)', background: 'rgba(0,212,255,0.04)' }}>
+          <div className="font-mono font-bold text-xs leading-none" style={{ color: 'var(--color-accent-cyan)' }}>30% / 10Y</div>
+          <div className="font-mono text-[8px] tracking-widest uppercase mt-1" style={{ color: 'var(--color-text-muted)' }}>Growth</div>
+        </div>
         <div className="text-center min-w-[40px]">
           <motion.div
             key={currentYear}
@@ -171,6 +195,42 @@ export function TopBar() {
 
       {/* Controls */}
       <div className="flex items-center gap-2">
+        <motion.button
+            onClick={handleAnalyze}
+            disabled={!selectedCity}
+            whileHover={{ scale: 1.03 }}
+            whileTap={{ scale: 0.97 }}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold font-display disabled:opacity-40 disabled:cursor-not-allowed"
+            style={{ background: 'rgba(0,212,255,0.08)', color: 'var(--color-accent-cyan)', border: '1px solid rgba(0,212,255,0.3)' }}
+          >
+            <Search size={13} />
+            Analyze Infrastructure Gaps
+        </motion.button>
+
+        <motion.button
+            onClick={handleApplyAIPlan}
+            disabled={!planning.hasAnalyzed || planning.hasAppliedAIPlan}
+            whileHover={{ scale: 1.03 }}
+            whileTap={{ scale: 0.97 }}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold font-display disabled:opacity-40 disabled:cursor-not-allowed"
+            style={{ background: 'rgba(0,255,156,0.08)', color: 'var(--color-accent-green)', border: '1px solid rgba(0,255,156,0.3)' }}
+          >
+            <Sparkles size={13} />
+            Apply AI Plan
+        </motion.button>
+
+        <motion.button
+            onClick={openReport}
+            disabled={!planning.hasAnalyzed}
+            whileHover={{ scale: 1.03 }}
+            whileTap={{ scale: 0.97 }}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold font-display disabled:opacity-40 disabled:cursor-not-allowed"
+            style={{ background: 'rgba(124,58,237,0.08)', color: 'var(--color-accent-purple)', border: '1px solid rgba(124,58,237,0.3)' }}
+          >
+            <FileText size={13} />
+            Generate Planning Report
+        </motion.button>
+
         {(status === 'idle' || status === 'completed') ? (
           <motion.button
             onClick={handleStart}
