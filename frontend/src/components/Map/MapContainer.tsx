@@ -220,6 +220,7 @@ export function MapContainer() {
   const isSplitScreen = useUIStore((s) => s.isSplitScreen)
   const detailedGrid = useUIStore((s) => s.detailedGrid)
   const isRunning = useSimulationStore((s) => s.isRunning)
+  const isPaused = useSimulationStore((s) => s.isPaused)
   const openDrawer = useUIStore((s) => s.openDrawer)
   const highlightedZoneToken = useUIStore((s) => s.highlightedZoneToken)
   const isOverrideModeActive = useUIStore((s) => s.isOverrideModeActive)
@@ -314,8 +315,8 @@ export function MapContainer() {
         fill: getZoneColor(uz.zone_type_id),
       },
     }))
-    // ── Simulation is running: derive dots from zone GeoJSON centroids ──
-    if ((isRunning || detailedGrid) && frame) {
+    // ── Simulation is running or paused: derive dots from zone GeoJSON centroids ──
+    if ((isRunning || isPaused || detailedGrid) && frame) {
       const simDots = frame.zones_geojson.features.map((f: any, i: number) => {
         const coords: number[][] = f.geometry.coordinates[0]
         const lng = coords.reduce((s: number, c: number[]) => s + c[0], 0) / coords.length
@@ -351,15 +352,23 @@ export function MapContainer() {
         fill: getZoneColor(lm.zone_type_id),
       },
     })), ...userDots]
-  }, [city, frame, isRunning, detailedGrid, userZones])
+  }, [city, frame, isRunning, isPaused, detailedGrid, userZones])
 
   const showDots = activeLayers.has('Zones')
-  const isLive = (isRunning || detailedGrid) && !!frame
+  const isLive = (isRunning || isPaused || detailedGrid) && !!frame
 
   const initialCenter: [number, number] = city
     ? [city.center_lat, city.center_lng]
     : [40.71, -74.01]
   const initialZoom = city?.default_zoom ?? 12
+
+  // Derive max bounds from city bbox [west, south, east, north] with padding
+  const maxBounds: L.LatLngBoundsExpression | undefined = city
+    ? [
+        [city.bbox[1] - 0.05, city.bbox[0] - 0.05],
+        [city.bbox[3] + 0.05, city.bbox[2] + 0.05],
+      ]
+    : undefined
 
   return (
     <main
@@ -367,7 +376,7 @@ export function MapContainer() {
         flex: 1,
         position: 'relative',
         minWidth: 0,
-        height: '100%',       // ← critical: lets LeafletMap see a defined height
+        height: '100%',
         overflow: 'hidden',
         background: '#0d1117',
       }}
@@ -383,6 +392,9 @@ export function MapContainer() {
             zoom={initialZoom}
             style={{ width: '100%', height: '100%' }}
             zoomControl={false}
+            maxBounds={maxBounds}
+            maxBoundsViscosity={0.85}
+            minZoom={10}
           >
             {/* Dark CartoDB basemap */}
             <TileLayer
