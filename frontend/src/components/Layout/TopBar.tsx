@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { motion } from 'framer-motion'
 import { Play, Pause, Download, Settings, RefreshCw, Zap, Scale, TrendingUp, Leaf, Users, Landmark, RotateCcw } from 'lucide-react'
+import { SettingsModal } from './SettingsModal'
 import { useSimulationStore } from '@/stores/simulationStore'
 import { useCityStore } from '@/stores/cityStore'
 import { useScenarioStore, scenarioColors, scenarioLabels } from '@/stores/scenarioStore'
@@ -29,6 +30,7 @@ export function TopBar() {
   const ws = useWebSocket(sessionId)
   const notify = useNotification((s) => s.notify)
   const [starting, setStarting] = useState(false)
+  const [settingsOpen, setSettingsOpen] = useState(false)
 
   const totalSteps = 50
   const progress = (currentYear / totalSteps) * 100
@@ -228,7 +230,7 @@ export function TopBar() {
         )}
 
         <motion.button
-          onClick={() => notify('info', 'Settings panel coming soon.', 2500)}
+          onClick={() => setSettingsOpen(true)}
           whileHover={{ scale: 1.05 }}
           whileTap={{ scale: 0.95 }}
           className="flex items-center justify-center w-8 h-8 rounded-lg"
@@ -237,6 +239,7 @@ export function TopBar() {
         >
           <Settings size={13} />
         </motion.button>
+        <SettingsModal open={settingsOpen} onClose={() => setSettingsOpen(false)} />
 
         <div
           className="flex items-center gap-1.5 px-2 py-1 rounded-md font-mono text-[10px] tracking-widest uppercase"

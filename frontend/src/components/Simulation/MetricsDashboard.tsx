@@ -1,4 +1,5 @@
 import { useRef, useEffect, useState, useCallback } from 'react'
+import { createPortal } from 'react-dom'
 import * as d3 from 'd3'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Maximize2, X, TrendingUp, TrendingDown, Minus } from 'lucide-react'
@@ -687,17 +688,20 @@ export function MetricsDashboard() {
         )}
       </div>
 
-      {/* Expanded modal */}
-      <AnimatePresence>
-        {expandedConfig && (
-          <ExpandedModal
-            config={expandedConfig}
-            history={metricsHistory}
-            color={expandedColor}
-            onClose={handleClose}
-          />
-        )}
-      </AnimatePresence>
+      {/* Expanded modal — portal escapes sidebar transform context */}
+      {createPortal(
+        <AnimatePresence>
+          {expandedConfig && (
+            <ExpandedModal
+              config={expandedConfig}
+              history={metricsHistory}
+              color={expandedColor}
+              onClose={handleClose}
+            />
+          )}
+        </AnimatePresence>,
+        document.body
+      )}
     </>
   )
 }

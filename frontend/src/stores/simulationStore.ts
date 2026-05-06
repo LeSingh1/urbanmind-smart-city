@@ -4,6 +4,13 @@ import type { AgentAction, SimulationFrame } from '@/types/simulation.types'
 
 type Speed = 1 | 5 | 10 | 50
 
+export interface UserPlacedZone {
+  id: string
+  lat: number
+  lng: number
+  zone_type_id: string
+}
+
 interface SimulationStore {
   sessionId: string | null
   wsUrl: string | null
@@ -15,6 +22,7 @@ interface SimulationStore {
   frameHistory: SimulationFrame[]
   metricsHistory: MetricsSnapshot[]
   lastActions: AgentAction[]
+  userZones: UserPlacedZone[]
   startSimulation: (cityId: string, scenarioId: string, sandboxConfig?: Record<string, unknown>) => Promise<void>
   setSession: (sessionId: string, wsUrl?: string) => void
   pauseSimulation: () => void
@@ -22,6 +30,8 @@ interface SimulationStore {
   setSpeed: (speed: number) => void
   receiveFrame: (frame: SimulationFrame) => void
   scrubToYear: (year: number) => void
+  addUserZone: (zone: UserPlacedZone) => void
+  removeUserZone: (id: string) => void
   reset: () => void
 }
 
@@ -38,6 +48,7 @@ const initialState = {
   frameHistory: [],
   metricsHistory: [],
   lastActions: [],
+  userZones: [] as UserPlacedZone[],
 }
 
 export const useSimulationStore = create<SimulationStore>((set, get) => ({
@@ -76,6 +87,9 @@ export const useSimulationStore = create<SimulationStore>((set, get) => ({
     const frame = get().frameHistory.find((item) => item.year === year)
     if (frame) set({ currentFrame: frame, currentYear: frame.year })
   },
+
+  addUserZone: (zone) => set((state) => ({ userZones: [...state.userZones, zone] })),
+  removeUserZone: (id) => set((state) => ({ userZones: state.userZones.filter((z) => z.id !== id) })),
 
   reset: () => set(initialState),
 }))

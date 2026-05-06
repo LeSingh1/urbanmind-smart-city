@@ -1,18 +1,58 @@
 import { useEffect, useMemo, useCallback, useRef, useState } from 'react'
-import { MapContainer as LeafletMap, TileLayer, CircleMarker, useMap } from 'react-leaflet'
+import { MapContainer as LeafletMap, TileLayer, CircleMarker, Circle, useMap, useMapEvents } from 'react-leaflet'
 import L from 'leaflet'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useCityStore } from '@/stores/cityStore'
 import { useSimulationStore } from '@/stores/simulationStore'
+import type { UserPlacedZone } from '@/stores/simulationStore'
 import { useUIStore } from '@/stores/uiStore'
+import { useNotification } from '@/hooks/useNotification'
 import { useScenarioStore } from '@/stores/scenarioStore'
 import { useAIStore } from '@/stores/aiStore'
-import { getZoneColor } from '@/utils/colorUtils'
+import { getZoneColor, getZoneToken } from '@/utils/colorUtils'
 import { ExplanationTooltip } from './ExplanationTooltip'
 import { MiniMetricsPanel } from './MiniMetricsPanel'
 import { SplitScreenView } from '@/components/Layout/SplitScreenView'
 import { ZoneLegend } from './ZoneLegend'
 import type { Landmark } from '@/types/city.types'
+
+// Service coverage radii in metres for facility zone types
+const SERVICE_RADII: Record<string, number> = {
+  '--zone-health':      2000,
+  '--zone-education':    800,
+  '--zone-transit':      600,
+  '--zone-government':  1200,
+  '--zone-disaster':    1200,
+  '--zone-utility':      400,
+  '--zone-smart':        250,
+  '--zone-commercial':   500,
+}
+
+function getServiceRadius(zoneTypeId: string): number | null {
+  return SERVICE_RADII[getZoneToken(zoneTypeId)] ?? null
+}
+
+interface ServiceArea { lat: number; lng: number; radius: number; color: string }
+
+// ─── Map click handler for zone placement ────────────────────────────────────
+function MapClickHandler({
+  active,
+  zoneTypeId,
+  onPlace,
+}: {
+  active: boolean
+  zoneTypeId: string | null
+  onPlace: (lat: number, lng: number) => void
+}) {
+  useMapEvents({
+    click(e) {
+      if (active && zoneTypeId) {
+        onPlace(e.latlng.lat, e.latlng.lng)
+      }
+    },
+  })
+  return null
+}
 
 // ─── Fly-to controller (must live inside <LeafletMap>) ───────────────────────
 function CityFlyController({ city }: { city: any }) {
@@ -40,37 +80,39 @@ interface DotLayerProps {
   dots: DotFeature[]
   onHover: (d: DotFeature | null, x: number, y: number) => void
   onClick: (d: DotFeature, x: number, y: number) => void
+  highlightedToken: string | null
 }
 
-function DotLayer({ dots, onHover, onClick }: DotLayerProps) {
+function DotLayer({ dots, onHover, onClick, highlightedToken }: DotLayerProps) {
   return (
     <>
-      {dots.map((dot) => (
+      {dots.map((dot) => {
+        const token = getZoneToken(dot.properties?.zone_type_id ?? '')
+        const dimmed = highlightedToken !== null && token !== highlightedToken
+        return (
         <CircleMarker
           key={dot.id}
           center={[dot.lat, dot.lng]}
-          radius={dot.radius}
+          radius={dimmed ? dot.radius * 0.6 : dot.radius}
           pathOptions={{
             color: dot.color,
             fillColor: dot.color,
-            fillOpacity: 0.85,
-            weight: 1.5,
-            opacity: 0.9,
+            fillOpacity: dimmed ? 0.1 : 0.85,
+            weight: dimmed ? 0.5 : 1.5,
+            opacity: dimmed ? 0.15 : 0.9,
           }}
           eventHandlers={{
             mouseover(e) {
+              if (dimmed) return
               const p = e.containerPoint
               onHover(dot, p.x, p.y)
-              ;(e.target as L.CircleMarker).setStyle({
-                fillOpacity: 1,
-                weight: 3,
-              } as any)
+              ;(e.target as L.CircleMarker).setStyle({ fillOpacity: 1, weight: 3 } as any)
             },
             mouseout(e) {
               onHover(null, 0, 0)
               ;(e.target as L.CircleMarker).setStyle({
-                fillOpacity: 0.85,
-                weight: 1.5,
+                fillOpacity: dimmed ? 0.1 : 0.85,
+                weight: dimmed ? 0.5 : 1.5,
               } as any)
             },
             click(e) {
@@ -80,7 +122,8 @@ function DotLayer({ dots, onHover, onClick }: DotLayerProps) {
             },
           }}
         />
-      ))}
+        )
+      })}
     </>
   )
 }
@@ -169,6 +212,7 @@ function DotCountBadge({ count, isLive }: { count: number; isLive: boolean }) {
 // ─── Main component ──────────────────────────────────────────────────────────
 export function MapContainer() {
   const [hovered, setHovered] = useState<{ x: number; y: number; properties: any } | null>(null)
+  const [serviceArea, setServiceArea] = useState<ServiceArea | null>(null)
 
   const city = useCityStore((s) => s.selectedCity)
   const frame = useSimulationStore((s) => s.currentFrame)
@@ -177,8 +221,30 @@ export function MapContainer() {
   const detailedGrid = useUIStore((s) => s.detailedGrid)
   const isRunning = useSimulationStore((s) => s.isRunning)
   const openDrawer = useUIStore((s) => s.openDrawer)
+  const highlightedZoneToken = useUIStore((s) => s.highlightedZoneToken)
+  const isOverrideModeActive = useUIStore((s) => s.isOverrideModeActive)
+  const selectedOverrideZone = useUIStore((s) => s.selectedOverrideZone)
+  const userZones = useSimulationStore((s) => s.userZones)
+  const addUserZone = useSimulationStore((s) => s.addUserZone)
   const scenario = useScenarioStore((s) => s.activeScenario)
   const fetchExplanation = useAIStore((s) => s.fetchExplanation)
+  const notify = useNotification((s) => s.notify)
+
+  const handlePlaceZone = useCallback(
+    (lat: number, lng: number) => {
+      if (!selectedOverrideZone) return
+      const zone: UserPlacedZone = {
+        id: `user-${Date.now()}`,
+        lat,
+        lng,
+        zone_type_id: selectedOverrideZone,
+      }
+      addUserZone(zone)
+      const label = selectedOverrideZone.replace(/_/g, ' ').toLowerCase().replace(/\b\w/g, (c) => c.toUpperCase())
+      notify('success', `Placed ${label} at (${lat.toFixed(4)}, ${lng.toFixed(4)})`, 2500)
+    },
+    [selectedOverrideZone, addUserZone, notify]
+  )
 
   const handleHover = useCallback(
     (dot: DotFeature | null, x: number, y: number) => {
@@ -194,6 +260,17 @@ export function MapContainer() {
       const displayName = props.zone_display_name ?? props.building_name ?? zone
       const placementReason = props.placement_reason ?? null
       const spsScore: number | undefined = props.sps_score
+
+      // Show service coverage circle if this zone type has one
+      const radius = getServiceRadius(zone)
+      if (radius) {
+        setServiceArea((prev) =>
+          prev && Math.abs(prev.lat - dot.lat) < 0.00001 ? null // toggle off
+            : { lat: dot.lat, lng: dot.lng, radius, color: getZoneColor(zone) }
+        )
+      } else {
+        setServiceArea(null)
+      }
 
       const explanationText = await fetchExplanation({
         type: 'zone_explanation',
@@ -223,9 +300,23 @@ export function MapContainer() {
 
   // Build dots from landmarks (initial state) or from simulation zones
   const dots = useMemo<DotFeature[]>(() => {
+    const userDots: DotFeature[] = userZones.map((uz) => ({
+      id: uz.id,
+      lat: uz.lat,
+      lng: uz.lng,
+      color: getZoneColor(uz.zone_type_id),
+      radius: 8,
+      properties: {
+        zone_type_id: uz.zone_type_id,
+        zone_display_name: uz.zone_type_id.replace(/_/g, ' ').toLowerCase().replace(/\b\w/g, (c) => c.toUpperCase()),
+        isKeyInfrastructure: false,
+        isUserPlaced: true,
+        fill: getZoneColor(uz.zone_type_id),
+      },
+    }))
     // ── Simulation is running: derive dots from zone GeoJSON centroids ──
     if ((isRunning || detailedGrid) && frame) {
-      return frame.zones_geojson.features.map((f: any, i: number) => {
+      const simDots = frame.zones_geojson.features.map((f: any, i: number) => {
         const coords: number[][] = f.geometry.coordinates[0]
         const lng = coords.reduce((s: number, c: number[]) => s + c[0], 0) / coords.length
         const lat = coords.reduce((s: number, c: number[]) => s + c[1], 0) / coords.length
@@ -237,18 +328,15 @@ export function MapContainer() {
           lng,
           color: getZoneColor(zone),
           radius: isKey ? 9 : 5,
-          properties: {
-            ...f.properties,
-            zone_type_id: zone,
-            fill: getZoneColor(zone),
-          },
+          properties: { ...f.properties, zone_type_id: zone, fill: getZoneColor(zone) },
         }
       })
+      return [...simDots, ...userDots]
     }
 
     // ── Default: one dot per city landmark ──
     const landmarks: Landmark[] = city?.landmarks ?? []
-    return landmarks.map((lm, i) => ({
+    return [...landmarks.map((lm, i) => ({
       id: `lm-${i}`,
       lat: lm.lat,
       lng: lm.lng,
@@ -262,8 +350,8 @@ export function MapContainer() {
         isKeyInfrastructure: true,
         fill: getZoneColor(lm.zone_type_id),
       },
-    }))
-  }, [city, frame, isRunning, detailedGrid])
+    })), ...userDots]
+  }, [city, frame, isRunning, detailedGrid, userZones])
 
   const showDots = activeLayers.has('Zones')
   const isLive = (isRunning || detailedGrid) && !!frame
@@ -305,7 +393,33 @@ export function MapContainer() {
             />
 
             {city && <CityFlyController city={city} />}
-            {showDots && <DotLayer dots={dots} onHover={handleHover} onClick={handleClick} />}
+            <MapClickHandler
+              active={isOverrideModeActive}
+              zoneTypeId={selectedOverrideZone}
+              onPlace={handlePlaceZone}
+            />
+            {showDots && (
+              <DotLayer
+                dots={dots}
+                onHover={handleHover}
+                onClick={handleClick}
+                highlightedToken={highlightedZoneToken}
+              />
+            )}
+            {serviceArea && (
+              <Circle
+                center={[serviceArea.lat, serviceArea.lng]}
+                radius={serviceArea.radius}
+                pathOptions={{
+                  color: serviceArea.color,
+                  fillColor: serviceArea.color,
+                  fillOpacity: 0.07,
+                  weight: 1.5,
+                  opacity: 0.5,
+                  dashArray: '6 4',
+                }}
+              />
+            )}
           </LeafletMap>
         </div>
       )}
@@ -319,7 +433,39 @@ export function MapContainer() {
         <DotCountBadge count={dots.length} isLive={isLive} />
       )}
 
-      {hovered && <ExplanationTooltip hover={hovered} />}
+      {hovered && !isOverrideModeActive && <ExplanationTooltip hover={hovered} />}
+
+      {/* Override-mode cursor banner */}
+      {isOverrideModeActive && selectedOverrideZone && (
+        <motion.div
+          initial={{ opacity: 0, y: -8 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -8 }}
+          style={{
+            position: 'absolute',
+            top: 12,
+            left: '50%',
+            transform: 'translateX(-50%)',
+            zIndex: 20,
+            pointerEvents: 'none',
+            background: 'var(--color-bg-sidebar)',
+            border: `1px solid ${getZoneColor(selectedOverrideZone)}55`,
+            borderRadius: 8,
+            padding: '6px 14px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 8,
+            fontFamily: 'var(--font-mono)',
+            fontSize: 10,
+            letterSpacing: '0.12em',
+            color: getZoneColor(selectedOverrideZone),
+          }}
+        >
+          <span style={{ width: 8, height: 8, borderRadius: '50%', background: getZoneColor(selectedOverrideZone), flexShrink: 0 }} />
+          PLACING: {selectedOverrideZone.replace(/_/g, ' ')}
+        </motion.div>
+      )}
+
       <MiniMetricsPanel />
       <ZoneLegend />
     </main>
