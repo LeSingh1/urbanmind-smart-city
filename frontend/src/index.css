@@ -54,6 +54,26 @@ select:focus-visible,
   display: none !important;
 }
 
+/* ── Global smooth transitions on interactive elements ──────── */
+button, select, input, a, [role="button"] {
+  transition: background 150ms ease, color 150ms ease, border-color 150ms ease, opacity 150ms ease, transform 100ms ease;
+}
+
+/* ── MapLibre popup skin ─────────────────────────────────────── */
+.maplibregl-popup-content {
+  background: transparent !important;
+  box-shadow: none !important;
+  padding: 0 !important;
+}
+.maplibregl-popup-tip { display: none !important; }
+.maplibregl-ctrl-logo { display: none !important; }
+.maplibregl-ctrl-attrib { opacity: 0.35 !important; font-size: 9px !important; }
+
+/* ── Smoother sidebar / panel transitions ───────────────────── */
+.glass-panel, aside, [role="dialog"] {
+  transition: opacity 200ms ease, transform 200ms cubic-bezier(0.16,1,0.3,1);
+}
+
 .icon-btn {
   display: inline-grid;
   width: 36px;

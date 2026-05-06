@@ -2,6 +2,7 @@ import { useEffect, useMemo, useCallback, useRef, useState } from 'react'
 import { MapContainer as LeafletMap, TileLayer, CircleMarker, Circle, useMap, useMapEvents } from 'react-leaflet'
 import L from 'leaflet'
 import { motion, AnimatePresence } from 'framer-motion'
+import { Box } from 'lucide-react'
 import { useCityStore } from '@/stores/cityStore'
 import { useSimulationStore } from '@/stores/simulationStore'
 import type { UserPlacedZone } from '@/stores/simulationStore'
@@ -14,18 +15,22 @@ import { ExplanationTooltip } from './ExplanationTooltip'
 import { MiniMetricsPanel } from './MiniMetricsPanel'
 import { SplitScreenView } from '@/components/Layout/SplitScreenView'
 import { ZoneLegend } from './ZoneLegend'
+import { Map3DView } from './Map3DView'
 import type { Landmark } from '@/types/city.types'
 
-// Service coverage radii in metres for facility zone types
+// Service coverage radii in metres per zone token
 const SERVICE_RADII: Record<string, number> = {
   '--zone-health':      2000,
   '--zone-education':    800,
   '--zone-transit':      600,
+  '--zone-road':        1000,
   '--zone-government':  1200,
-  '--zone-disaster':    1200,
-  '--zone-utility':      400,
-  '--zone-smart':        250,
+  '--zone-disaster':    1500,
+  '--zone-utility':      800,
+  '--zone-smart':        400,
   '--zone-commercial':   500,
+  '--zone-industrial':   300,
+  '--zone-waste':        600,
 }
 
 function getServiceRadius(zoneTypeId: string): number | null {
@@ -116,6 +121,7 @@ function DotLayer({ dots, onHover, onClick, highlightedToken }: DotLayerProps) {
               } as any)
             },
             click(e) {
+              L.DomEvent.stopPropagation(e)
               const p = e.containerPoint
               onHover(null, 0, 0)
               onClick(dot, p.x, p.y)
@@ -222,9 +228,12 @@ export function MapContainer() {
   const isRunning = useSimulationStore((s) => s.isRunning)
   const isPaused = useSimulationStore((s) => s.isPaused)
   const openDrawer = useUIStore((s) => s.openDrawer)
+  const updateDrawer = useUIStore((s) => s.updateDrawer)
   const highlightedZoneToken = useUIStore((s) => s.highlightedZoneToken)
   const isOverrideModeActive = useUIStore((s) => s.isOverrideModeActive)
   const selectedOverrideZone = useUIStore((s) => s.selectedOverrideZone)
+  const is3DMode = useUIStore((s) => s.is3DMode)
+  const toggle3D = useUIStore((s) => s.toggle3D)
   const userZones = useSimulationStore((s) => s.userZones)
   const addUserZone = useSimulationStore((s) => s.addUserZone)
   const scenario = useScenarioStore((s) => s.activeScenario)
@@ -255,25 +264,40 @@ export function MapContainer() {
   )
 
   const handleClick = useCallback(
-    async (dot: DotFeature) => {
+    (dot: DotFeature) => {
       const props = dot.properties ?? {}
       const zone = props.zone_type_id ?? 'RES_LOW_DETACHED'
       const displayName = props.zone_display_name ?? props.building_name ?? zone
       const placementReason = props.placement_reason ?? null
       const spsScore: number | undefined = props.sps_score
 
-      // Show service coverage circle if this zone type has one
+      // Show service coverage circle
       const radius = getServiceRadius(zone)
       if (radius) {
         setServiceArea((prev) =>
-          prev && Math.abs(prev.lat - dot.lat) < 0.00001 ? null // toggle off
+          prev && Math.abs(prev.lat - dot.lat) < 0.00001
+            ? null
             : { lat: dot.lat, lng: dot.lng, radius, color: getZoneColor(zone) }
         )
       } else {
         setServiceArea(null)
       }
 
-      const explanationText = await fetchExplanation({
+      // Open drawer immediately with placeholder, then fill in AI text
+      openDrawer({
+        zone_type_id: zone,
+        zone_display_name: displayName,
+        x: props.x ?? 0,
+        y: props.y ?? 0,
+        year: frame?.year ?? 0,
+        explanation_text: '…',
+        metrics_delta: frame?.metrics_snapshot ?? {},
+        surrounding_context: placementReason ?? 'Nearby zones, transit distance, terrain class, and scenario objective.',
+        placement_reason: placementReason ?? undefined,
+        sps_score: spsScore,
+      })
+
+      fetchExplanation({
         type: 'zone_explanation',
         zone_type_id: zone,
         zone_display_name: displayName,
@@ -281,22 +305,9 @@ export function MapContainer() {
         surrounding_context: placementReason ?? 'Nearby zones, road access, service coverage, terrain conditions, and forecast growth pressure.',
         metrics_delta: frame?.metrics_snapshot ?? {},
         scenario_goal: scenario,
-      })
-
-      openDrawer({
-        zone_type_id: zone,
-        zone_display_name: displayName,
-        x: props.x ?? 0,
-        y: props.y ?? 0,
-        year: frame?.year ?? 0,
-        explanation_text: explanationText,
-        metrics_delta: frame?.metrics_snapshot ?? {},
-        surrounding_context: placementReason ?? 'Nearby zones, transit distance, terrain class, and scenario objective.',
-        placement_reason: placementReason ?? undefined,
-        sps_score: spsScore,
-      })
+      }).then((text) => updateDrawer({ explanation_text: text }))
     },
-    [city, frame, scenario, fetchExplanation, openDrawer]
+    [city, frame, scenario, fetchExplanation, openDrawer, updateDrawer]
   )
 
   // Build dots from landmarks (initial state) or from simulation zones
@@ -381,8 +392,39 @@ export function MapContainer() {
         background: '#0d1117',
       }}
     >
+      {/* 2D / 3D toggle */}
+      <motion.button
+        onClick={toggle3D}
+        whileHover={{ scale: 1.08 }}
+        whileTap={{ scale: 0.94 }}
+        title={is3DMode ? 'Switch to 2D map' : 'Switch to 3D map'}
+        style={{
+          position: 'absolute',
+          bottom: 80,
+          right: 16,
+          zIndex: 20,
+          width: 38,
+          height: 38,
+          borderRadius: 8,
+          border: is3DMode
+            ? '1px solid rgba(0,212,255,0.6)'
+            : '1px solid rgba(0,212,255,0.2)',
+          background: is3DMode ? 'rgba(0,212,255,0.15)' : 'rgba(13,17,23,0.82)',
+          color: is3DMode ? 'var(--color-accent-cyan)' : 'var(--color-text-muted)',
+          display: 'grid',
+          placeItems: 'center',
+          cursor: 'pointer',
+          transition: 'all 200ms ease',
+          backdropFilter: 'blur(8px)',
+        }}
+      >
+        <Box size={16} />
+      </motion.button>
+
       {isSplitScreen ? (
         <SplitScreenView />
+      ) : is3DMode ? (
+        <Map3DView />
       ) : (
         // Absolute wrapper ensures the map fills the entire <main>
         <div style={{ position: 'absolute', inset: 0 }}>

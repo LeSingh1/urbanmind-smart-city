@@ -10,7 +10,7 @@ const tokenHex: Record<string, string> = {
   '--zone-transit': '#8E44AD',
   '--zone-health': '#E74C3C',
   '--zone-education': '#F9E79F',
-  '--zone-utility': '#7D6608',
+  '--zone-utility': '#D4AC0D',
   '--zone-government': '#5D4E75',
   '--zone-culture': '#D4AC0D',
   '--zone-disaster': '#E67E22',
@@ -19,26 +19,31 @@ const tokenHex: Record<string, string> = {
   '--zone-landmark': '#C0392B',
   '--zone-office': '#2980B9',
   '--zone-food': '#27AE60',
+  '--zone-waste': '#8B7355',
+  '--zone-road': '#9B59B6',
 }
 
 export function getZoneToken(zoneTypeId = ''): string {
-  if (zoneTypeId.startsWith('RES_LOW')) return '--zone-res-low'
+  if (zoneTypeId.startsWith('RES_LOW') || zoneTypeId.startsWith('RES_AFFORDABLE')) return '--zone-res-low'
   if (zoneTypeId.startsWith('RES_MED') || zoneTypeId.includes('APARTMENT')) return '--zone-res-med'
   if (zoneTypeId.startsWith('RES_HIGH') || zoneTypeId.includes('TOWER')) return '--zone-res-high'
-  if (zoneTypeId.startsWith('IND_') || zoneTypeId.startsWith('MAINT_')) return '--zone-industrial'
+  if (zoneTypeId.startsWith('IND_') || zoneTypeId.startsWith('MAINT_') || zoneTypeId.startsWith('CARGO_')) return '--zone-industrial'
   if (zoneTypeId.startsWith('COM_')) return '--zone-commercial'
   if (zoneTypeId.includes('MIXED')) return '--zone-mixed-use'
   if (zoneTypeId.startsWith('PARK_') || zoneTypeId.startsWith('ENV_TREE') || zoneTypeId.includes('GREEN_BELT')) return '--zone-green'
   if (zoneTypeId.includes('FOREST') || zoneTypeId.includes('NATURE')) return '--zone-forest'
+  if (zoneTypeId.startsWith('ROAD_') || zoneTypeId.startsWith('HIGHWAY_')) return '--zone-road'
   if (zoneTypeId.includes('BUS') || zoneTypeId.includes('METRO') || zoneTypeId.includes('TRAIN') || zoneTypeId.includes('TRANSIT') || zoneTypeId.includes('TRAM')) return '--zone-transit'
   if (zoneTypeId.startsWith('HEALTH_')) return '--zone-health'
   if (zoneTypeId.startsWith('EDU_')) return '--zone-education'
-  if (zoneTypeId.includes('POWER') || zoneTypeId.includes('WATER') || zoneTypeId.includes('SUBSTATION') || zoneTypeId.includes('GRID')) return '--zone-utility'
+  if (zoneTypeId.includes('POWER') || zoneTypeId.includes('SUBSTATION') || zoneTypeId.includes('GRID')
+    || zoneTypeId.startsWith('WATER_PUMP') || zoneTypeId.startsWith('SEWAGE_')) return '--zone-utility'
+  if (zoneTypeId.startsWith('WATER_') || zoneTypeId.includes('HARBOR') || zoneTypeId.includes('FERRY')) return '--zone-waterfront'
   if (zoneTypeId.startsWith('GOV_') || zoneTypeId.includes('COURT') || zoneTypeId.includes('POLICE')) return '--zone-government'
   if (zoneTypeId.startsWith('CULT_') || zoneTypeId.startsWith('ENT_') || zoneTypeId.startsWith('SPORT_')) return '--zone-culture'
-  if (zoneTypeId.startsWith('DIS_') || zoneTypeId.includes('FIRE')) return '--zone-disaster'
-  if (zoneTypeId.startsWith('SMART_') || zoneTypeId.includes('DATA')) return '--zone-smart'
-  if (zoneTypeId.startsWith('WATER_') || zoneTypeId.includes('HARBOR') || zoneTypeId.includes('FERRY')) return '--zone-waterfront'
+  if (zoneTypeId.startsWith('DIS_') || zoneTypeId.includes('FIRE_STATION')) return '--zone-disaster'
+  if (zoneTypeId.startsWith('SMART_') || zoneTypeId.startsWith('TELECOM_') || zoneTypeId.includes('DATA')) return '--zone-smart'
+  if (zoneTypeId.startsWith('WASTE_')) return '--zone-waste'
   if (zoneTypeId.startsWith('LAND_')) return '--zone-landmark'
   if (zoneTypeId.startsWith('OFF_')) return '--zone-office'
   if (zoneTypeId.startsWith('FOOD_')) return '--zone-food'
