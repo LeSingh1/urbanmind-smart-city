@@ -14,6 +14,7 @@ interface UIStore {
   selectedOverrideZone: string | null
   detailedGrid: boolean
   activeMapLayer: string
+  highlightedZoneToken: string | null
   toggleLayer: (layerId: string) => void
   setActiveTab: (tab: Tab) => void
   openDashboard: () => void
@@ -24,6 +25,7 @@ interface UIStore {
   setSplitScreen: (enabled: boolean) => void
   setDetailedGrid: (enabled: boolean) => void
   setActiveMapLayer: (layer: string) => void
+  setHighlightedZoneToken: (token: string | null) => void
 }
 
 export const useUIStore = create<UIStore>((set) => ({
@@ -37,6 +39,7 @@ export const useUIStore = create<UIStore>((set) => ({
   selectedOverrideZone: null,
   detailedGrid: false,
   activeMapLayer: 'zones',
+  highlightedZoneToken: null,
 
   toggleLayer: (layerId) =>
     set((state) => {
@@ -54,4 +57,5 @@ export const useUIStore = create<UIStore>((set) => ({
   setSplitScreen: (enabled) => set({ isSplitScreen: enabled }),
   setDetailedGrid: (enabled) => set({ detailedGrid: enabled }),
   setActiveMapLayer: (layer) => set({ activeMapLayer: layer }),
+  setHighlightedZoneToken: (token) => set({ highlightedZoneToken: token }),
 }))

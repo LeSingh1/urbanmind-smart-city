@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Columns2, Download, Pause, Play, RotateCcw, Settings, Share2, SkipBack, SkipForward } from 'lucide-react'
 import { Logo } from '@/components/UI/LandingScreen'
@@ -7,6 +8,7 @@ import { useSimulationStore } from '@/stores/simulationStore'
 import { useSimulation } from '@/hooks/useSimulation'
 import { useUIStore } from '@/stores/uiStore'
 import { useNotification } from '@/hooks/useNotification'
+import { SettingsModal } from './SettingsModal'
 
 export function ControlBar({ connectionState }: { connectionState: string }) {
   const selectedCity = useCityStore((state) => state.selectedCity)
@@ -23,6 +25,7 @@ export function ControlBar({ connectionState }: { connectionState: string }) {
   const isSplitScreen = useUIStore((state) => state.isSplitScreen)
   const setSplitScreen = useUIStore((state) => state.setSplitScreen)
   const notify = useNotification((s) => s.notify)
+  const [settingsOpen, setSettingsOpen] = useState(false)
 
   const play = () => {
     if (!selectedCity) return
@@ -87,7 +90,8 @@ export function ControlBar({ connectionState }: { connectionState: string }) {
             const session = useSimulationStore.getState().sessionId
             if (session) window.open(`/api/simulation/${session}/export`, '_blank')
           }}><Download size={17} /></button>
-          <button className="icon-btn" aria-label="Settings" onClick={() => notify('info', 'Settings panel coming soon.', 2500)}><Settings size={17} /></button>
+          <button className="icon-btn" aria-label="Settings" onClick={() => setSettingsOpen(true)}><Settings size={17} /></button>
+          <SettingsModal open={settingsOpen} onClose={() => setSettingsOpen(false)} />
         </div>
       </div>
       <div style={{ position: 'absolute', bottom: 0, left: 0, height: 2, width: `${Math.min(100, (currentYear / 50) * 100)}%`, background: 'var(--color-brand-accent)', transition: 'width 400ms ease' }} />

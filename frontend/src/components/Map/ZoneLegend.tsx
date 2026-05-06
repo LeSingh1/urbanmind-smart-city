@@ -1,7 +1,8 @@
-import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { getZoneColor } from '@/utils/colorUtils'
 import { ChevronDown } from 'lucide-react'
+import { useState } from 'react'
+import { getZoneColor, getZoneToken } from '@/utils/colorUtils'
+import { useUIStore } from '@/stores/uiStore'
 
 const LEGEND_ITEMS = [
   { id: 'RES_LOW_DETACHED',    label: 'Residential (Low)' },
@@ -20,6 +21,13 @@ const LEGEND_ITEMS = [
 
 export function ZoneLegend() {
   const [collapsed, setCollapsed] = useState(true)
+  const highlightedZoneToken = useUIStore((s) => s.highlightedZoneToken)
+  const setHighlightedZoneToken = useUIStore((s) => s.setHighlightedZoneToken)
+
+  const handleItemClick = (id: string) => {
+    const token = getZoneToken(id)
+    setHighlightedZoneToken(highlightedZoneToken === token ? null : token)
+  }
 
   return (
     <motion.div
@@ -31,12 +39,11 @@ export function ZoneLegend() {
         bottom: 16,
         left: 16,
         zIndex: 10,
-        background: 'rgba(9,14,23,0.90)',
-        border: '1px solid rgba(0,212,255,0.16)',
+        background: 'var(--color-bg-sidebar)',
+        border: '1px solid var(--color-border-subtle)',
         borderRadius: 10,
-        backdropFilter: 'blur(16px)',
         minWidth: 156,
-        boxShadow: '0 4px 20px rgba(0,0,0,0.5)',
+        boxShadow: '0 4px 16px rgba(0,0,0,0.4)',
         overflow: 'hidden',
       }}
     >
@@ -51,13 +58,21 @@ export function ZoneLegend() {
           background: 'none',
           border: 'none',
           cursor: 'pointer',
-          color: 'rgba(0,212,255,0.65)',
+          color: 'var(--color-text-muted)',
           gap: 8,
         }}
       >
         <span style={{ fontFamily: 'var(--font-mono)', fontSize: 9, letterSpacing: '0.14em', textTransform: 'uppercase' }}>
-          Zone Legend
+          Zone Legend{highlightedZoneToken ? ' ·' : ''}
         </span>
+        {highlightedZoneToken && (
+          <span
+            style={{ fontFamily: 'var(--font-mono)', fontSize: 8, color: 'var(--color-accent-cyan)', letterSpacing: '0.1em' }}
+            onClick={(e) => { e.stopPropagation(); setHighlightedZoneToken(null) }}
+          >
+            CLEAR
+          </span>
+        )}
         <motion.span
           animate={{ rotate: collapsed ? 0 : 180 }}
           transition={{ duration: 0.22 }}
@@ -77,16 +92,33 @@ export function ZoneLegend() {
             transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
             style={{ overflow: 'hidden' }}
           >
-            <div style={{ padding: '0 10px 9px', display: 'flex', flexDirection: 'column', gap: 5 }}>
+            <div style={{ padding: '0 10px 9px', display: 'flex', flexDirection: 'column', gap: 4 }}>
               {LEGEND_ITEMS.map(({ id, label }, i) => {
                 const color = getZoneColor(id)
+                const token = getZoneToken(id)
+                const isActive = highlightedZoneToken === token
+                const isDimmed = highlightedZoneToken !== null && !isActive
+
                 return (
-                  <motion.div
+                  <motion.button
                     key={id}
                     initial={{ opacity: 0, x: -6 }}
-                    animate={{ opacity: 1, x: 0 }}
+                    animate={{ opacity: isDimmed ? 0.35 : 1, x: 0 }}
                     transition={{ delay: i * 0.025, duration: 0.18 }}
-                    style={{ display: 'flex', alignItems: 'center', gap: 7 }}
+                    onClick={() => handleItemClick(id)}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 7,
+                      background: isActive ? `${color}18` : 'none',
+                      border: isActive ? `1px solid ${color}40` : '1px solid transparent',
+                      borderRadius: 5,
+                      padding: '3px 5px',
+                      cursor: 'pointer',
+                      width: '100%',
+                      textAlign: 'left',
+                    }}
+                    title={`Filter: ${label}`}
                   >
                     <div
                       style={{
@@ -95,15 +127,23 @@ export function ZoneLegend() {
                         borderRadius: '50%',
                         background: color,
                         flexShrink: 0,
-                        boxShadow: `0 0 5px ${color}70`,
                       }}
                     />
-                    <span style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: 'rgba(255,255,255,0.55)', whiteSpace: 'nowrap' }}>
+                    <span style={{
+                      fontFamily: 'var(--font-mono)',
+                      fontSize: 9,
+                      color: isActive ? color : 'rgba(255,255,255,0.55)',
+                      whiteSpace: 'nowrap',
+                      fontWeight: isActive ? 700 : 400,
+                    }}>
                       {label}
                     </span>
-                  </motion.div>
+                  </motion.button>
                 )
               })}
+              <div style={{ marginTop: 2, fontFamily: 'var(--font-mono)', fontSize: 8, color: 'rgba(255,255,255,0.2)', textAlign: 'center' }}>
+                Click to filter map
+              </div>
             </div>
           </motion.div>
         )}
