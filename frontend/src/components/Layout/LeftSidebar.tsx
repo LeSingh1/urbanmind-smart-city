@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import {
+  Bike,
   Building2,
   ChevronLeft,
   ChevronRight,
@@ -14,6 +15,7 @@ import {
   Map,
   Mountain,
   Plus,
+  Route,
   Scale,
   Shield,
   Sparkles,
@@ -42,7 +44,8 @@ const TABS = [
 
 type TabId = typeof TABS[number]['id']
 
-const ALL_CITY_PRESETS = ['fremon', 'fremont', 'san_jose', 'sacramento', 'phoenix', 'austin']
+const REAL_CITY_PRESETS = ['san_jose', 'sacramento', 'phoenix', 'austin']
+const GENERATED_CITY_PRESETS = ['san_jose', 'sacramento', 'phoenix', 'austin']
 
 const CITY_META: Record<string, { type: string; growth: string; challenge: string; badge: string }> = {
   san_jose: { type: 'Bay Area metro', growth: '22% in 10 years', challenge: 'housing, transit, heat', badge: 'Preset' },
@@ -69,6 +72,7 @@ const LAYER_ITEMS = [
   { id: 'Existing transit', icon: Train, label: 'Existing Transit', color: '#8E44AD', group: 'Existing Infrastructure' },
   { id: 'Existing police stations', icon: Shield, label: 'Existing Police', color: '#5D4E75', group: 'Existing Infrastructure' },
   { id: 'Existing fire stations', icon: Flame, label: 'Existing Fire', color: '#E74C3C', group: 'Existing Infrastructure' },
+  { id: 'Existing Roads', icon: Route, label: 'Existing Roads', color: '#8B949E', group: 'Existing Infrastructure' },
   { id: 'Growth Pressure', icon: Users, label: 'Housing Growth', color: '#E67E22', group: 'Analysis Overlays' },
   { id: 'Proposed infrastructure', icon: Crosshair, label: 'Proposed Infrastructure', color: '#00D4FF', group: 'Future Scenario' },
   { id: 'AI Recommendations', icon: Sparkles, label: 'AI Recommendations', color: '#00D4FF', group: 'Future Scenario' },
@@ -209,13 +213,13 @@ export function LeftSidebar() {
 function PlannerPanel() {
   const { cities, selectedCity, selectCity, addCity } = useCityStore()
   const { activeScenario, setScenario } = useScenarioStore()
-  const { planning, analyzeDemo, setPlanningConstraint, setBudgetLevel, setTimelineYear } = useSimulationStore()
+  const { planning, analyzeDemo, setPlanningConstraint, setCityMode, setBudgetLevel, setTimelineYear } = useSimulationStore()
   const { activeLayers, toggleLayer } = useUIStore()
   const [createOpen, setCreateOpen] = useState(false)
 
   const presetCities = useMemo(
-    () => cities.filter((city) => ALL_CITY_PRESETS.includes(city.id)),
-    [cities]
+    () => cities.filter((city) => (planning.cityMode === 'generated' ? GENERATED_CITY_PRESETS : REAL_CITY_PRESETS).includes(city.id)),
+    [cities, planning.cityMode]
   )
 
   const createCity = (city: CityProfile) => {
@@ -226,6 +230,33 @@ function PlannerPanel() {
 
   return (
     <div className="p-4 space-y-5">
+      <PanelSection title="City Mode">
+        <div className="grid grid-cols-2 gap-2">
+          {[
+            ['real', 'Real City', 'Seeded real-world inspired presets'],
+            ['generated', 'Generated City', 'Clean simulated city for demo clarity'],
+          ].map(([mode, label, helper]) => (
+            <button
+              key={mode}
+              onClick={() => {
+                setCityMode(mode as 'real' | 'generated')
+                const nextCity = cities.find((city) => city.id === (mode === 'generated' ? 'fremon' : 'san_jose'))
+                if (nextCity) selectCity(nextCity)
+              }}
+              className="rounded-xl p-3 text-left"
+              style={{
+                background: planning.cityMode === mode ? 'rgba(0,212,255,0.1)' : 'rgba(255,255,255,0.03)',
+                border: planning.cityMode === mode ? '1px solid rgba(0,212,255,0.4)' : '1px solid rgba(255,255,255,0.07)',
+                color: planning.cityMode === mode ? 'var(--color-accent-cyan)' : 'var(--color-text-secondary)',
+              }}
+            >
+              <div className="font-display text-xs font-semibold">{label}</div>
+              <p className="mt-1 text-[10px] leading-relaxed" style={{ color: 'var(--color-text-muted)' }}>{helper}</p>
+            </button>
+          ))}
+        </div>
+      </PanelSection>
+
       <PanelSection title="City" action={<button onClick={() => setCreateOpen(true)} className="panel-link"><Plus size={11} />Create New City</button>}>
         <div className="grid gap-2">
           {presetCities.map((city) => (
