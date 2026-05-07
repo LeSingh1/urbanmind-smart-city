@@ -31,35 +31,43 @@ button:focus-visible,
 input:focus-visible,
 select:focus-visible,
 [tabindex]:focus-visible {
-  outline: 2px solid var(--color-brand-secondary);
+  outline: 2px solid var(--color-border-active);
   outline-offset: 2px;
 }
 
+/* ── Light industrial scrollbar ── */
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
 }
 
 ::-webkit-scrollbar-track {
-  background: var(--color-bg-sidebar);
-}
-
-::-webkit-scrollbar-thumb {
   background: var(--color-bg-hover);
   border-radius: 3px;
 }
 
+::-webkit-scrollbar-thumb {
+  background: var(--color-border-subtle);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #a3b1c6;
+}
+
+/* ── Map attribution ── */
 .mapboxgl-ctrl-logo,
 .mapboxgl-ctrl-attrib {
   display: none !important;
 }
 
-/* ── Global smooth transitions on interactive elements ──────── */
+/* ── Global transitions on interactive elements ── */
 button, select, input, a, [role="button"] {
-  transition: background 150ms ease, color 150ms ease, border-color 150ms ease, opacity 150ms ease, transform 100ms ease;
+  transition: background 150ms ease, color 150ms ease, border-color 150ms ease,
+              opacity 150ms ease, transform 100ms ease, box-shadow 150ms ease;
 }
 
-/* ── MapLibre popup skin ─────────────────────────────────────── */
+/* ── MapLibre popup skin ── */
 .maplibregl-popup-content {
   background: transparent !important;
   box-shadow: none !important;
@@ -67,13 +75,19 @@ button, select, input, a, [role="button"] {
 }
 .maplibregl-popup-tip { display: none !important; }
 .maplibregl-ctrl-logo { display: none !important; }
-.maplibregl-ctrl-attrib { opacity: 0.35 !important; font-size: 9px !important; }
-
-/* ── Smoother sidebar / panel transitions ───────────────────── */
-.glass-panel, aside, [role="dialog"] {
-  transition: opacity 200ms ease, transform 200ms cubic-bezier(0.16,1,0.3,1);
+.maplibregl-ctrl-attrib {
+  opacity: 0.35 !important;
+  font-size: 9px !important;
+  background: rgba(224, 229, 236, 0.8) !important;
+  color: var(--color-text-muted) !important;
 }
 
+/* ── Panel transitions ── */
+.industrial-panel, aside, [role="dialog"] {
+  transition: opacity 200ms ease, transform 200ms cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+/* ── Neumorphic icon button ── */
 .icon-btn {
   display: inline-grid;
   width: 36px;
@@ -81,28 +95,43 @@ button, select, input, a, [role="button"] {
   place-items: center;
   border: 1px solid var(--color-border-subtle);
   border-radius: var(--radius-md);
-  background: rgba(31, 41, 55, 0.72);
+  background: var(--color-bg-panel);
   color: var(--color-text-secondary);
+  box-shadow: var(--shadow-sm);
   transition: var(--transition-fast);
 }
 
 .icon-btn:hover {
   border-color: var(--color-border-active);
   color: var(--color-text-primary);
-  background: var(--color-bg-panel);
+  box-shadow: var(--shadow-md);
 }
 
-.glass-panel {
+.icon-btn:active {
+  box-shadow: var(--shadow-pressed);
+  transform: translateY(1px);
+}
+
+/* ── Industrial panel (replaces glass-panel) ── */
+.glass-panel,
+.industrial-panel {
   border: 1px solid var(--color-border-subtle);
   background: var(--color-bg-panel);
-  box-shadow: var(--shadow-lg);
+  box-shadow: var(--shadow-md);
+}
+
+/* ── Tactile button base ── */
+.btn-industrial {
+  box-shadow: var(--shadow-sm);
+  transition: box-shadow var(--transition-fast), transform 100ms ease;
 }
 
 .premium-input {
   width: 100%;
-  border: 1px solid rgba(0, 212, 255, 0.14);
+  border: 1px solid var(--color-border-subtle);
   border-radius: 10px;
-  background: rgba(8, 13, 22, 0.72);
+  background: var(--color-bg-hover);
+  box-shadow: var(--shadow-inset);
   color: var(--color-text-primary);
   padding: 9px 10px;
   font-size: 13px;
@@ -112,9 +141,9 @@ button, select, input, a, [role="button"] {
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  border: 1px solid rgba(0, 212, 255, 0.2);
+  border: 1px solid var(--color-border-active);
   border-radius: 999px;
-  background: rgba(0, 212, 255, 0.06);
+  background: var(--color-bg-hover);
   color: var(--color-accent-cyan);
   padding: 4px 8px;
   font-size: 10px;
@@ -126,25 +155,82 @@ button, select, input, a, [role="button"] {
   100% { transform: translateX(-180px); }
 }
 
-@keyframes windowGlow {
-  0%, 100% { opacity: 0.38; }
-  50% { opacity: 0.9; }
+.btn-industrial:hover {
+  box-shadow: var(--shadow-md);
 }
 
-/* ── Skeleton shimmer ─────────────────────────────────────────── */
+.btn-industrial:active {
+  box-shadow: var(--shadow-pressed);
+  transform: translateY(2px);
+}
+
+/* ── Recessed input ── */
+.input-industrial {
+  box-shadow: var(--shadow-inset);
+  background: var(--color-bg-hover);
+  border: none;
+  font-family: var(--font-mono);
+}
+
+.input-industrial:focus {
+  box-shadow: var(--shadow-inset), 0 0 0 2px var(--color-border-active);
+  outline: none;
+}
+
+/* ── Skeleton shimmer (light mode) ── */
 @keyframes shimmer {
   0%   { background-position: -400px 0; }
   100% { background-position:  400px 0; }
 }
 .skeleton {
   display: block;
-  background: linear-gradient(90deg, rgba(55,65,81,0.6) 25%, rgba(75,85,99,0.9) 50%, rgba(55,65,81,0.6) 75%);
+  background: var(--color-bg-hover);
   background-size: 800px 100%;
   animation: shimmer 1.6s infinite linear;
   border-radius: 4px;
 }
 
-/* ── Scanline overlay for glassmorphism panels ────────────────── */
+/* ── Noise texture overlay for industrial surfaces ── */
+.noise-overlay {
+  position: relative;
+}
+.noise-overlay::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.25;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
+  background-repeat: repeat;
+  background-size: 128px 128px;
+  mix-blend-mode: overlay;
+  border-radius: inherit;
+  z-index: 0;
+}
+
+/* ── Screw-head detail (corner decoration) ── */
+.screw-tl, .screw-tr, .screw-bl, .screw-br {
+  position: absolute;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #d7dee8;
+  box-shadow: inset 1px 1px 2px rgba(255,255,255,0.7), inset -1px -1px 2px rgba(0,0,0,0.15);
+}
+.screw-tl { top: 10px; left: 10px; }
+.screw-tr { top: 10px; right: 10px; }
+.screw-bl { bottom: 10px; left: 10px; }
+.screw-br { bottom: 10px; right: 10px; }
+
+/* ── LED indicator ── */
+.led {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  box-shadow: 0 0 6px 1px currentColor;
+}
+
+/* ── Scanline (kept for compatibility, but now uses light tone) ── */
 .scanline {
   overflow: hidden;
 }
@@ -153,34 +239,50 @@ button, select, input, a, [role="button"] {
   position: absolute;
   inset: 0;
   pointer-events: none;
-  background: repeating-linear-gradient(
-    0deg,
-    transparent,
-    transparent 2px,
-    rgba(0, 212, 255, 0.015) 2px,
-    rgba(0, 212, 255, 0.015) 4px
-  );
+  background: rgba(186, 190, 204, 0.04);
   border-radius: inherit;
 }
 
-/* ── Leaflet map — make sure it fills its container ──────────── */
+/* ── Leaflet map ── */
 .leaflet-container {
   width: 100% !important;
   height: 100% !important;
+  background: var(--color-bg-app) !important;
+  background-size: auto, 64px 64px, 64px 64px, auto !important;
 }
 
-/* ── Crisp dot pulsing ring for active zone hover ─────────────── */
+.urbanmind-soft-basemap {
+  filter: saturate(0.62) contrast(0.9) brightness(1.05);
+  mix-blend-mode: multiply;
+}
+
+.leaflet-pane {
+  transition: opacity 220ms ease, transform 220ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.leaflet-control-attribution {
+  font-size: 9px !important;
+  opacity: 0.5 !important;
+  background: rgba(224, 229, 236, 0.85) !important;
+  color: var(--color-text-muted) !important;
+}
+.leaflet-control-attribution a {
+  color: var(--color-border-active) !important;
+}
+
+/* ── Dot ring pulse for map hover ── */
 @keyframes dotRing {
   0%   { transform: scale(1);   opacity: 0.8; }
   70%  { transform: scale(2.4); opacity: 0; }
   100% { transform: scale(2.4); opacity: 0; }
 }
 
-/* ── Map attribution — keep it but make it unobtrusive ──────── */
-.leaflet-control-attribution {
-  font-size: 9px !important;
-  opacity: 0.45 !important;
-  background: rgba(0,0,0,0.4) !important;
-  color: rgba(255,255,255,0.5) !important;
+@keyframes skylineDrift {
+  0%   { transform: translateX(0); }
+  100% { transform: translateX(-180px); }
 }
-.leaflet-control-attribution a { color: rgba(0,212,255,0.6) !important; }
+
+@keyframes windowGlow {
+  0%, 100% { opacity: 0.2; }
+  50%       { opacity: 0.6; }
+}

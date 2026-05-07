@@ -9,7 +9,7 @@ interface Props {
   onClose: () => void
 }
 
-const LAYER_IDS = ['Zones', 'Roads', '3D Buildings']
+const LAYER_IDS = ['Zones', '3D Buildings']
 
 export function SettingsModal({ open, onClose }: Props) {
   const speed = useSimulationStore((s) => s.speed)
@@ -32,7 +32,8 @@ export function SettingsModal({ open, onClose }: Props) {
             position: 'fixed',
             inset: 0,
             zIndex: 60,
-            background: 'rgba(0,0,0,0.6)',
+            background: 'rgba(150,155,165,0.35)',
+            backdropFilter: 'blur(4px)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
@@ -48,9 +49,9 @@ export function SettingsModal({ open, onClose }: Props) {
               width: 400,
               maxWidth: '92vw',
               background: 'var(--color-bg-panel)',
-              border: '1px solid var(--color-border-subtle)',
-              borderRadius: 12,
-              boxShadow: '0 16px 48px rgba(0,0,0,0.6)',
+              border: '1px solid var(--color-border-light)',
+              borderRadius: 16,
+              boxShadow: 'var(--shadow-lg)',
               overflow: 'hidden',
             }}
           >
@@ -81,9 +82,10 @@ export function SettingsModal({ open, onClose }: Props) {
                         flex: 1,
                         padding: '6px 0',
                         borderRadius: 6,
-                        border: speed === s ? '1px solid var(--color-accent-cyan)' : '1px solid var(--color-border-subtle)',
-                        background: speed === s ? 'rgba(0,212,255,0.1)' : 'transparent',
+                        border: speed === s ? '1px solid rgba(255,71,87,0.4)' : '1px solid var(--color-border-subtle)',
+                        background: speed === s ? 'var(--color-bg-hover)' : 'var(--color-bg-panel)',
                         color: speed === s ? 'var(--color-accent-cyan)' : 'var(--color-text-muted)',
+                        boxShadow: speed === s ? 'var(--shadow-pressed)' : 'var(--shadow-sm)',
                         fontFamily: 'var(--font-mono)',
                         fontSize: 11,
                         cursor: 'pointer',
@@ -171,12 +173,13 @@ function Toggle({ label, checked, onChange }: { label: string; checked: boolean;
           height: 18,
           borderRadius: 99,
           border: '1px solid var(--color-border-subtle)',
-          background: checked ? 'rgba(0,212,255,0.15)' : 'transparent',
-          borderColor: checked ? 'rgba(0,212,255,0.4)' : 'var(--color-border-subtle)',
+          background: checked ? 'var(--color-bg-hover)' : 'var(--color-bg-panel)',
+          borderColor: checked ? 'rgba(255,71,87,0.4)' : 'var(--color-border-subtle)',
+          boxShadow: checked ? 'var(--shadow-inset)' : 'var(--shadow-sm)',
           position: 'relative',
           flexShrink: 0,
         }}
-        animate={{ borderColor: checked ? 'rgba(0,212,255,0.4)' : 'var(--color-border-subtle)' }}
+        animate={{ borderColor: checked ? 'rgba(255,71,87,0.4)' : 'var(--color-border-subtle)' }}
       >
         <motion.div
           style={{

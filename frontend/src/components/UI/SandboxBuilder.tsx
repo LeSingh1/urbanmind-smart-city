@@ -40,7 +40,7 @@ export function SandboxBuilder({ onGenerated }: { onGenerated: () => void }) {
   }
 
   return (
-    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} style={{ width: 'min(1060px, 100%)', margin: '32px auto', border: '1px solid var(--color-border-subtle)', borderRadius: 16, background: 'rgba(17,24,39,0.9)', padding: 24 }}>
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} style={{ width: 'min(1060px, 100%)', margin: '32px auto', border: '1px solid var(--color-border-subtle)', borderRadius: 16, background: 'var(--color-bg-panel)', padding: 24 }}>
       <h2 style={{ margin: 0, color: 'white' }}>Build a New City</h2>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 10, marginTop: 18 }}>
         {archetypes.map(([id, name, desc]) => <button key={id} onClick={() => setArchetype(id)} style={{ height: 116, border: `2px solid ${archetype === id ? 'var(--color-brand-accent)' : 'var(--color-border-subtle)'}`, borderRadius: 10, background: 'var(--color-bg-panel)', color: 'white', padding: 10, transform: archetype === id ? 'scale(1.03)' : 'scale(1)' }}><TerrainIcon kind={id} /><strong>{name}</strong><p style={{ margin: '4px 0 0', fontSize: 10, color: 'var(--color-text-muted)' }}>{desc}</p></button>)}

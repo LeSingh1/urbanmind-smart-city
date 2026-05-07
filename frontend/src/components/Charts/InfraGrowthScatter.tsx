@@ -26,10 +26,10 @@ export function InfraGrowthScatter() {
         <g transform={`translate(${margin.left},${margin.top})`}>
           {x.ticks(5).map((tick) => <line key={tick} x1={x(tick)} x2={x(tick)} y1={0} y2={innerH} stroke="var(--chart-grid)" />)}
           {y.ticks(4).map((tick) => <g key={tick}><line x1={0} x2={innerW} y1={y(tick)} y2={y(tick)} stroke="var(--chart-grid)" /><text x={-8} y={y(tick) + 3} fill="var(--color-text-muted)" fontSize="10" textAnchor="end">{tick.toFixed(1)}%</text></g>)}
-          <line x1={x(0)} y1={y(regression.intercept)} x2={x(d3.max(data, (d) => d.investment) ?? 1)} y2={y(regression.slope * (d3.max(data, (d) => d.investment) ?? 1) + regression.intercept)} stroke="white" strokeDasharray="5 4" opacity="0.65" />
+          <line x1={x(0)} y1={y(regression.intercept)} x2={x(d3.max(data, (d) => d.investment) ?? 1)} y2={y(regression.slope * (d3.max(data, (d) => d.investment) ?? 1) + regression.intercept)} stroke="var(--color-text-muted)" strokeDasharray="5 4" opacity="0.65" />
           {data.map((point) => <circle key={point.year} cx={x(point.investment)} cy={y(point.growth)} r={6} fill={getZoneColor(point.zone)} onMouseEnter={() => setHover(point)} onMouseLeave={() => setHover(null)} />)}
           <text x={innerW - 8} y={12} fill="var(--color-text-secondary)" fontSize="11" textAnchor="end">R2 {regression.r2.toFixed(2)}</text>
-          {hover && <g transform={`translate(${x(hover.investment) + 10},${y(hover.growth) - 26})`}><rect width="142" height="50" rx="8" fill="rgba(17,24,39,0.94)" stroke="rgba(255,255,255,0.18)" /><text x="10" y="19" fill="white" fontSize="11">Years {hover.year}-{hover.year + 5}</text><text x="10" y="36" fill="var(--color-text-secondary)" fontSize="10">Growth {hover.growth.toFixed(2)}%, infra {hover.investment}</text></g>}
+          {hover && <g transform={`translate(${x(hover.investment) + 10},${y(hover.growth) - 26})`}><rect width="142" height="50" rx="8" fill="#e0e5ec" stroke="#babecc" style={{ filter: 'drop-shadow(2px 2px 4px #babecc)' }} /><text x="10" y="19" fill="var(--color-text-primary)" fontSize="11">Years {hover.year}-{hover.year + 5}</text><text x="10" y="36" fill="var(--color-text-secondary)" fontSize="10">Growth {hover.growth.toFixed(2)}%, infra {hover.investment}</text></g>}
         </g>
       </svg>
     </div>

@@ -9,10 +9,10 @@ const tokenHex: Record<string, string> = {
   '--zone-forest': '#1E8449',
   '--zone-transit': '#8E44AD',
   '--zone-health': '#E74C3C',
-  '--zone-education': '#F9E79F',
-  '--zone-utility': '#D4AC0D',
+  '--zone-education': '#2E86C1',
+  '--zone-utility': '#6C5CE7',
   '--zone-government': '#5D4E75',
-  '--zone-culture': '#D4AC0D',
+  '--zone-culture': '#8E44AD',
   '--zone-disaster': '#E67E22',
   '--zone-smart': '#00BCD4',
   '--zone-waterfront': '#1A6B8A',
@@ -20,7 +20,6 @@ const tokenHex: Record<string, string> = {
   '--zone-office': '#2980B9',
   '--zone-food': '#27AE60',
   '--zone-waste': '#8B7355',
-  '--zone-road': '#9B59B6',
 }
 
 export function getZoneToken(zoneTypeId = ''): string {
@@ -32,7 +31,6 @@ export function getZoneToken(zoneTypeId = ''): string {
   if (zoneTypeId.includes('MIXED')) return '--zone-mixed-use'
   if (zoneTypeId.startsWith('PARK_') || zoneTypeId.startsWith('ENV_TREE') || zoneTypeId.includes('GREEN_BELT')) return '--zone-green'
   if (zoneTypeId.includes('FOREST') || zoneTypeId.includes('NATURE')) return '--zone-forest'
-  if (zoneTypeId.startsWith('ROAD_') || zoneTypeId.startsWith('HIGHWAY_')) return '--zone-road'
   if (zoneTypeId.includes('BUS') || zoneTypeId.includes('METRO') || zoneTypeId.includes('TRAIN') || zoneTypeId.includes('TRANSIT') || zoneTypeId.includes('TRAM')) return '--zone-transit'
   if (zoneTypeId.startsWith('HEALTH_')) return '--zone-health'
   if (zoneTypeId.startsWith('EDU_')) return '--zone-education'

@@ -37,12 +37,58 @@ const ZONE_DISPLAY: Record<string, string> = {
   INFRA_POWER_SUBSTATION: 'Power Substation',
 }
 const ZONE_TYPES = Object.keys(ZONE_DISPLAY)
+const SIM_START_YEAR = 2026
+const SIM_END_YEAR = 2076
+const NEED_SEQUENCE = [
+  'HEALTH_HOSPITAL',
+  'EDU_HIGH',
+  'BUS_STATION',
+  'PARK_SMALL',
+  'INFRA_POWER_SUBSTATION',
+  'RES_MED_APARTMENT',
+  'COM_SMALL_SHOP',
+  'ENV_TREE_CORRIDOR',
+  'RES_HIGH_TOWER',
+  'COM_OFFICE_PLAZA',
+  'RES_LOW_DETACHED',
+  'SMART_TRAFFIC_LIGHT',
+]
+const SPACING_BY_NEED: Record<string, number> = {
+  HEALTH_HOSPITAL: 0.035,
+  EDU_HIGH: 0.025,
+  BUS_STATION: 0.018,
+  PARK_SMALL: 0.018,
+  INFRA_POWER_SUBSTATION: 0.025,
+}
 
 // Fixed cell size ~100m × 133m (city-block scale), independent of bbox
 const ZONE_W_DEG = 0.0014
 const ZONE_H_DEG = 0.0011
 
-// Per-city neighborhood anchors [lat, lng] — verified land centres; dots are jittered ±150 m around each
+// Per-city land bounding boxes [minLat, maxLat, minLng, maxLng] — clamps jittered dots to avoid water
+const CITY_BOUNDS: Record<string, [number, number, number, number]> = {
+  new_york:   [40.4774, 40.9176, -74.2591, -73.7004],
+  los_angeles:[33.7037, 34.3373, -118.6682, -117.6462],
+  tokyo:      [35.5219, 35.8985, 139.5426, 139.9200],
+  lagos:      [6.3930,  6.7023,   3.2714,   3.6500],
+  london:     [51.2868, 51.6919, -0.5103,   0.3340],
+  sao_paulo:  [-23.7749,-23.3568,-46.8252, -46.3648],
+  // Tight bounds for water-heavy cities
+  singapore:  [1.2200,  1.4700,  103.6100, 104.0850],
+  dubai:      [24.9200, 25.3600,  55.0200,  55.5700],
+  mumbai:     [18.8900, 19.2700,  72.7800,  72.9900],
+  // Bay Area cities
+  fremont:    [37.4500, 37.6300, -122.0900, -121.8600],
+  fremon:     [37.4500, 37.6300, -122.0900, -121.8600],
+  san_jose:   [37.1900, 37.4700, -122.0500, -121.6800],
+  sacramento: [38.4400, 38.6900, -121.6200, -121.3300],
+  stockton:   [37.8400, 38.0800, -121.4200, -121.1600],
+  // Sun Belt
+  austin:     [30.1000, 30.5200, -97.9400, -97.5600],
+  phoenix:    [33.2800, 33.7500, -112.3200, -111.8200],
+}
+
+// Per-city neighborhood anchors [lat, lng] — verified land centres; dots are jittered around each
 const CITY_ANCHORS: Record<string, Array<[number, number]>> = {
   new_york: [
     // Manhattan
@@ -120,6 +166,54 @@ const CITY_ANCHORS: Record<string, Array<[number, number]>> = {
     [19.0895, 72.8656], [18.9548, 72.8338], [19.0544, 72.8319],
     [19.1580, 72.9891],
   ],
+  // Fremont, CA & generated twin
+  fremont: [
+    [37.5485, -121.9886], [37.5574, -121.9766], [37.5030, -121.9390],
+    [37.5331, -121.9294], [37.5760, -121.9650], [37.5200, -122.0100],
+    [37.5680, -122.0300], [37.5400, -121.9500], [37.5100, -121.9700],
+    [37.5820, -121.9800], [37.5450, -122.0050], [37.5300, -121.9100],
+    [37.5650, -121.9400], [37.5150, -121.9550], [37.5520, -121.9950],
+  ],
+  fremon: [
+    [37.5860, -121.9900], [37.5480, -121.9360], [37.5000, -121.9900],
+    [37.5520, -121.9900], [37.5480, -122.0380], [37.5650, -121.9560],
+    [37.5120, -121.9450], [37.5710, -122.0100], [37.5300, -121.9650],
+    [37.5600, -121.9200], [37.5400, -122.0150], [37.5200, -121.9800],
+  ],
+  // San Jose, CA
+  san_jose: [
+    [37.3382, -121.8863], [37.3480, -121.9060], [37.3720, -121.9200],
+    [37.3600, -121.8700], [37.3200, -121.8500], [37.3100, -121.8900],
+    [37.3850, -121.8600], [37.3000, -121.9100], [37.3550, -121.9400],
+    [37.3750, -121.9500], [37.3400, -121.8300], [37.3650, -121.8100],
+  ],
+  // Sacramento, CA
+  sacramento: [
+    [38.5816, -121.4944], [38.5600, -121.4700], [38.5450, -121.5200],
+    [38.6000, -121.4600], [38.6200, -121.5000], [38.5700, -121.5400],
+    [38.5300, -121.4400], [38.5900, -121.4300], [38.5150, -121.5000],
+    [38.6350, -121.4800], [38.5500, -121.5700], [38.5800, -121.3900],
+  ],
+  // Stockton, CA
+  stockton: [
+    [37.9577, -121.2908], [37.9400, -121.3100], [37.9700, -121.2600],
+    [37.9200, -121.2700], [37.9800, -121.3300], [37.9100, -121.2500],
+    [37.9600, -121.3500], [37.9350, -121.2400], [38.0000, -121.3000],
+  ],
+  // Austin, TX
+  austin: [
+    [30.2672, -97.7431], [30.2850, -97.7500], [30.2500, -97.7600],
+    [30.3100, -97.7300], [30.2300, -97.7200], [30.2700, -97.7800],
+    [30.3400, -97.7600], [30.2200, -97.7900], [30.2900, -97.8100],
+    [30.3200, -97.7000], [30.2400, -97.7000], [30.2600, -97.6800],
+  ],
+  // Phoenix, AZ
+  phoenix: [
+    [33.4484, -112.0740], [33.4700, -112.0500], [33.4300, -112.1000],
+    [33.5000, -112.0800], [33.4100, -112.0600], [33.4600, -112.1200],
+    [33.5200, -112.0400], [33.3900, -112.0300], [33.4800, -111.9800],
+    [33.4200, -111.9600], [33.5400, -111.9500], [33.3700, -112.1100],
+  ],
 }
 
 function makeOfflineZoneFeatures(
@@ -156,7 +250,7 @@ function makeOfflineZoneFeatures(
 }
 
 function offlineMetrics(city: CityProfile, year: number): MetricsSnapshot {
-  const t = year / 50
+  const t = Math.max(0, Math.min(1, (year - SIM_START_YEAR) / (SIM_END_YEAR - SIM_START_YEAR)))
   return {
     year,
     pop_total: Math.round(city.population_current * (1 + city.urban_growth_rate * t * 0.3)),
@@ -182,22 +276,51 @@ function offlineMetrics(city: CityProfile, year: number): MetricsSnapshot {
   }
 }
 
-// Max jitter in degrees — keeps dots within ~150 m of each anchor
-const JITTER_LNG = 0.0018
-const JITTER_LAT = 0.0013
+// Jitter in degrees — spreads dots ~500 m around each anchor for natural city coverage
+const JITTER_LNG = 0.006
+const JITTER_LAT = 0.005
+const WATER_SENSITIVE_CITIES = new Set(['new_york', 'singapore', 'mumbai', 'dubai', 'lagos', 'london', 'tokyo'])
+const WATER_EXCLUSION_BOXES: Record<string, Array<[number, number, number, number]>> = {
+  new_york: [
+    [40.7000, 40.9000, -74.0350, -74.0120], // Hudson River edge
+    [40.6900, 40.7950, -73.9940, -73.9340], // East River channel
+    [40.5600, 40.7000, -74.0700, -73.9600], // Upper Bay / harbour
+    [40.5900, 40.6700, -73.9000, -73.7450], // Jamaica Bay
+  ],
+  singapore: [
+    [1.2300, 1.3000, 103.6100, 103.7400],
+    [1.2200, 1.3000, 103.8400, 104.0850],
+  ],
+  mumbai: [
+    [18.8900, 19.0600, 72.7800, 72.8150],
+    [19.0000, 19.2300, 72.9300, 72.9900],
+  ],
+  dubai: [
+    [24.9200, 25.1700, 55.0200, 55.1100],
+  ],
+}
 
 function offlineActions(year: number, city: CityProfile): AgentAction[] {
-  const count = 10 + (year % 8)
   const anchors = CITY_ANCHORS[city.id] ?? [[city.center_lat, city.center_lng] as [number, number]]
+  const count = Math.max(1, Math.min(10, anchors.length, 8 + (year % 6)))
+  const offset = (year * 31) % anchors.length
+  const bounds = CITY_BOUNDS[city.id]
+  const jitterScale = WATER_SENSITIVE_CITIES.has(city.id) ? 0.38 : 1
+  const placed: Array<{ lat: number; lng: number; zoneId: string }> = []
   return Array.from({ length: count }, (_, i) => {
+    const anchorIdx = (offset + i * Math.ceil(anchors.length / count)) % anchors.length
+    const [anchorLat, anchorLng] = anchors[anchorIdx]
     const seed = year * 97 + i * 53
-    const [anchorLat, anchorLng] = anchors[seed % anchors.length]
-    // Deterministic sub-block jitter — never enough to cross a river
-    const lngJitter = (((seed * 7919 + i * 3571) % 10000) / 10000 - 0.5) * 2 * JITTER_LNG
-    const latJitter = (((seed * 6271 + i * 4919) % 10000) / 10000 - 0.5) * 2 * JITTER_LAT
-    const lng = anchorLng + lngJitter
-    const lat = anchorLat + latJitter
-    const zoneId = ZONE_TYPES[seed % ZONE_TYPES.length]
+    const lngJitter = (((seed * 7919 + i * 3571) % 10000) / 10000 - 0.5) * 2 * JITTER_LNG * jitterScale
+    const latJitter = (((seed * 6271 + i * 4919) % 10000) / 10000 - 0.5) * 2 * JITTER_LAT * jitterScale
+    // Clamp to city land bounds to prevent placements in water
+    const rawLng = anchorLng + lngJitter
+    const rawLat = anchorLat + latJitter
+    const adjusted = safeLandPlacement(city.id, rawLat, rawLng, anchorLat, anchorLng, bounds)
+    const lat = adjusted.lat
+    const lng = adjusted.lng
+    const zoneId = chooseNeededZone(year, i, lat, lng, placed)
+    placed.push({ lat, lng, zoneId })
     return {
       x: 0,
       y: 0,
@@ -209,6 +332,57 @@ function offlineActions(year: number, city: CityProfile): AgentAction[] {
       placement_reason: PLACEMENT_REASONS[zoneId] ?? 'Zone placement optimises service coverage and land-use efficiency in this sector.',
     }
   })
+}
+
+function safeLandPlacement(
+  cityId: string,
+  rawLat: number,
+  rawLng: number,
+  anchorLat: number,
+  anchorLng: number,
+  bounds?: [number, number, number, number]
+) {
+  const clamp = (lat: number, lng: number) => ({
+    lat: bounds ? Math.max(bounds[0], Math.min(bounds[1], lat)) : lat,
+    lng: bounds ? Math.max(bounds[2], Math.min(bounds[3], lng)) : lng,
+  })
+  const candidate = clamp(rawLat, rawLng)
+  if (!isExcludedWater(cityId, candidate.lat, candidate.lng)) return candidate
+
+  const nudges = [
+    [0, 0],
+    [0.004, 0.004],
+    [-0.004, 0.004],
+    [0.004, -0.004],
+    [-0.004, -0.004],
+    [0.007, 0],
+    [0, 0.007],
+    [-0.007, 0],
+    [0, -0.007],
+  ]
+
+  for (const [latOffset, lngOffset] of nudges) {
+    const next = clamp(anchorLat + latOffset, anchorLng + lngOffset)
+    if (!isExcludedWater(cityId, next.lat, next.lng)) return next
+  }
+  return clamp(anchorLat, anchorLng)
+}
+
+function isExcludedWater(cityId: string, lat: number, lng: number) {
+  return (WATER_EXCLUSION_BOXES[cityId] ?? []).some(([minLat, maxLat, minLng, maxLng]) =>
+    lat >= minLat && lat <= maxLat && lng >= minLng && lng <= maxLng
+  )
+}
+
+function chooseNeededZone(year: number, index: number, lat: number, lng: number, placed: Array<{ lat: number; lng: number; zoneId: string }>) {
+  const start = (year + index * 3) % NEED_SEQUENCE.length
+  for (let j = 0; j < NEED_SEQUENCE.length; j += 1) {
+    const zoneId = NEED_SEQUENCE[(start + j) % NEED_SEQUENCE.length]
+    const minDistance = SPACING_BY_NEED[zoneId] ?? 0.012
+    const tooClose = placed.some((item) => item.zoneId === zoneId && Math.hypot(lat - item.lat, lng - item.lng) < minDistance)
+    if (!tooClose) return zoneId
+  }
+  return ZONE_TYPES[(year + index) % ZONE_TYPES.length]
 }
 
 export default function App() {
@@ -228,14 +402,6 @@ export default function App() {
     fetchCities()
   }, [fetchCities])
 
-  useEffect(() => {
-    if (selectedCity || cities.length === 0) return
-    const fremont = cities.find((city) => city.id === 'fremont') ?? cities[0]
-    if (fremont) {
-      selectCity(fremont)
-      setShowLanding(false)
-    }
-  }, [cities, selectedCity, selectCity])
 
   // Offline simulation loop — adds new zone features to the map each year
   useEffect(() => {
@@ -243,8 +409,8 @@ export default function App() {
     const ms = Math.max(300, 1200 / speed)
     const id = setInterval(() => {
       const store = useSimulationStore.getState()
-      const nextYear = store.currentYear + 1
-      if (nextYear > 50) {
+      const nextYear = store.currentYear < SIM_START_YEAR ? SIM_START_YEAR : store.currentYear + 1
+      if (nextYear > SIM_END_YEAR) {
         store.pauseSimulation()
         return
       }
@@ -262,10 +428,10 @@ export default function App() {
       const capped = [...prevFeatures, ...newFeatures].slice(-300)
 
       store.receiveFrame({
-        type: nextYear >= 50 ? 'SIM_COMPLETE' : 'SIM_FRAME',
+        type: nextYear >= SIM_END_YEAR ? 'SIM_COMPLETE' : 'SIM_FRAME',
         year: nextYear,
         zones_geojson: { type: 'FeatureCollection', features: capped },
-        roads_geojson: store.currentFrame?.roads_geojson ?? { type: 'FeatureCollection', features: [] },
+        roads_geojson: { type: 'FeatureCollection', features: [] },
         metrics_snapshot: offlineMetrics(city, nextYear),
         agent_actions: actions,
       })
@@ -274,6 +440,10 @@ export default function App() {
   }, [sessionId, isRunning, isPaused, speed])
 
   const onSimLanding = showLanding || !selectedCity
+  const goHome = () => {
+    setShowLanding(true)
+    selectCity(null)
+  }
 
   return (
     <div style={{ background: 'var(--color-bg-app)', height: '100vh', overflow: 'hidden' }}>
@@ -283,8 +453,8 @@ export default function App() {
             key="landing"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            exit={{ opacity: 0, scale: 1.04, filter: 'blur(4px)' }}
-            transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
+            exit={{ opacity: 0, scale: 1.02 }}
+            transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
             style={{ position: 'absolute', inset: 0 }}
           >
             <LandingScreen onEnter={() => setShowLanding(false)} />
@@ -292,13 +462,13 @@ export default function App() {
         ) : (
           <motion.div
             key="simulation"
-            initial={{ opacity: 0, scale: 0.98, filter: 'blur(4px)' }}
-            animate={{ opacity: 1, scale: 1, filter: 'blur(0px)' }}
+            initial={{ opacity: 0, scale: 0.99 }}
+            animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0 }}
-            transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
+            transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
             style={{ position: 'absolute', inset: 0 }}
           >
-            <MainLayout />
+            <MainLayout onHome={goHome} />
           </motion.div>
         )}
       </AnimatePresence>

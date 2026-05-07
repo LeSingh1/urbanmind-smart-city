@@ -11,11 +11,11 @@ const CATEGORIES = ['mobility', 'economy', 'environment', 'social', 'infrastruct
 type Category = typeof CATEGORIES[number]
 
 const CATEGORY_COLORS: Record<Category, string> = {
-  mobility: 'var(--color-accent-cyan)',
-  economy: 'var(--color-accent-warning)',
-  environment: 'var(--color-accent-green)',
-  social: 'var(--color-accent-purple)',
-  infrastructure: '#06b6d4',
+  mobility: '#1A6FA3',
+  economy: '#B7770D',
+  environment: '#1E8449',
+  social: '#7D3C98',
+  infrastructure: '#0097A7',
 }
 
 const METRIC_DESCRIPTIONS: Partial<Record<string, string>> = {
@@ -23,7 +23,7 @@ const METRIC_DESCRIPTIONS: Partial<Record<string, string>> = {
   pop_density_avg: 'Average number of residents per square kilometre. Higher density often correlates with efficient land use.',
   pop_growth_rate: 'Year-over-year population growth as a percentage. Healthy cities typically sustain 1–3% annual growth.',
   mobility_commute: 'Average daily commute time in minutes. Lower values indicate good transit connectivity and mixed-use zoning.',
-  mobility_congestion: 'Percentage of road network experiencing above-threshold traffic. Reduced by transit investment and grid design.',
+  mobility_congestion: 'Estimated congestion pressure from growth, commute demand, and transit availability.',
   mobility_transit_coverage: 'Share of population within walking distance of a transit stop. Target is 80%+ for urban cores.',
   mobility_walkability: 'Composite walk score (0–100) based on proximity to amenities, sidewalk quality, and density.',
   econ_housing_afford: 'Housing affordability index (0–100). Higher values mean more residents can afford local housing.',
@@ -101,13 +101,7 @@ function Sparkline({ history, config, color, height = 28 }: SparklineProps) {
       .y1((d) => y(d[config.key] as number))
       .curve(d3.curveCatmullRom)
 
-    const gradId = `spark-grad-${String(config.key)}`
-    const defs = svg.append('defs')
-    const grad = defs.append('linearGradient').attr('id', gradId).attr('x1', 0).attr('y1', 0).attr('x2', 0).attr('y2', 1)
-    grad.append('stop').attr('offset', '0%').attr('stop-color', color).attr('stop-opacity', 0.25)
-    grad.append('stop').attr('offset', '100%').attr('stop-color', color).attr('stop-opacity', 0)
-
-    svg.append('path').datum(history).attr('fill', `url(#${gradId})`).attr('d', area)
+    svg.append('path').datum(history).attr('fill', color).attr('opacity', 0.12).attr('d', area)
     svg.append('path').datum(history).attr('fill', 'none').attr('stroke', color)
       .attr('stroke-width', 1.5).attr('opacity', 0.9).attr('d', line)
       .style('filter', `drop-shadow(0 0 2px ${color})`)
@@ -164,18 +158,12 @@ function FullChart({ history, config, color }: FullChartProps) {
       .enter().append('line')
       .attr('x1', 0).attr('x2', innerW)
       .attr('y1', (d) => yScale(d)).attr('y2', (d) => yScale(d))
-      .attr('stroke', 'rgba(0,212,255,0.07)').attr('stroke-width', 0.5)
+      .attr('stroke', 'var(--chart-grid)').attr('stroke-width', 0.5)
 
     // Area
-    const gradId = `full-grad-${String(config.key)}`
-    const defs = svg.append('defs')
-    const grad = defs.append('linearGradient').attr('id', gradId).attr('x1', 0).attr('y1', 0).attr('x2', 0).attr('y2', 1)
-    grad.append('stop').attr('offset', '0%').attr('stop-color', color).attr('stop-opacity', 0.22)
-    grad.append('stop').attr('offset', '100%').attr('stop-color', color).attr('stop-opacity', 0)
-
     const area = d3.area<MetricsSnapshot>()
       .x((_, i) => xScale(i)).y0(innerH).y1((d) => yScale(d[config.key] as number)).curve(d3.curveCatmullRom)
-    g.append('path').datum(history).attr('fill', `url(#${gradId})`).attr('d', area)
+    g.append('path').datum(history).attr('fill', color).attr('opacity', 0.1).attr('d', area)
 
     // Line
     const line = d3.line<MetricsSnapshot>()
@@ -199,7 +187,7 @@ function FullChart({ history, config, color }: FullChartProps) {
       }))
       .call((ax) => ax.select('.domain').remove())
       .call((ax) => ax.selectAll('line').remove())
-      .call((ax) => ax.selectAll('text').attr('fill', 'rgba(0,212,255,0.45)').style('font-size', '9px').style('font-family', 'JetBrains Mono'))
+      .call((ax) => ax.selectAll('text').attr('fill', 'var(--color-text-muted)').style('font-size', '9px').style('font-family', 'JetBrains Mono'))
 
     // X axis
     g.append('g').attr('transform', `translate(0,${innerH})`)
@@ -209,7 +197,7 @@ function FullChart({ history, config, color }: FullChartProps) {
       }))
       .call((ax) => ax.select('.domain').remove())
       .call((ax) => ax.selectAll('line').remove())
-      .call((ax) => ax.selectAll('text').attr('fill', 'rgba(0,212,255,0.4)').style('font-size', '9px').style('font-family', 'JetBrains Mono'))
+      .call((ax) => ax.selectAll('text').attr('fill', 'var(--color-text-muted)').style('font-size', '9px').style('font-family', 'JetBrains Mono'))
 
     // Transparent overlay for tooltip
     g.append('rect')
@@ -243,15 +231,15 @@ function FullChart({ history, config, color }: FullChartProps) {
               left: tooltip.x + 8,
               top: tooltip.y - 28,
               pointerEvents: 'none',
-              background: 'rgba(11,17,28,0.95)',
+              background: 'var(--color-bg-panel)',
               border: `1px solid ${color}50`,
               borderRadius: 6,
               padding: '4px 8px',
               zIndex: 20,
-              boxShadow: `0 0 12px ${color}30`,
+              boxShadow: 'var(--shadow-sm)',
             }}
           >
-            <div style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: 'rgba(0,212,255,0.5)', letterSpacing: '0.1em' }}>
+            <div style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: 'var(--color-text-muted)', letterSpacing: '0.1em' }}>
               YEAR {tooltip.year}
             </div>
             <div style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color, fontWeight: 700 }}>
@@ -285,7 +273,7 @@ function ExpandedModal({ config, history, color, onClose }: ExpandedModalProps) 
 
   const trendPositive = delta !== null ? (config.higherIsBetter ? delta > 0 : delta < 0) : null
   const TrendIcon = delta === null || Math.abs(delta) < 0.001 ? Minus : delta > 0 ? TrendingUp : TrendingDown
-  const trendColor = trendPositive === null ? 'rgba(255,255,255,0.3)' : trendPositive ? 'var(--color-accent-green)' : 'var(--color-accent-danger)'
+  const trendColor = trendPositive === null ? 'var(--color-text-muted)' : trendPositive ? 'var(--color-accent-green)' : 'var(--color-accent-danger)'
 
   const description = METRIC_DESCRIPTIONS[String(config.key)] ?? `${config.label} tracks city performance in the ${config.category} category.`
   const insight = PLANNING_INSIGHTS[String(config.key)] ?? `Monitor ${config.label} over time and adjust zone placements to maintain reliable service levels.`
@@ -296,7 +284,7 @@ function ExpandedModal({ config, history, color, onClose }: ExpandedModalProps) 
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
       className="fixed inset-0 z-50 flex items-center justify-center"
-      style={{ background: 'rgba(0,0,0,0.72)', backdropFilter: 'blur(6px)' }}
+      style={{ background: 'rgba(150,155,165,0.35)', backdropFilter: 'blur(4px)' }}
       onClick={onClose}
     >
       <motion.div
@@ -310,9 +298,9 @@ function ExpandedModal({ config, history, color, onClose }: ExpandedModalProps) 
           maxWidth: '95vw',
           maxHeight: '90vh',
           background: 'var(--color-bg-panel)',
-          border: `1px solid ${color}30`,
-          borderRadius: 12,
-          boxShadow: `0 8px 48px rgba(0,0,0,0.6), 0 0 32px ${color}15`,
+          border: `1px solid var(--color-border-subtle)`,
+          borderRadius: 16,
+          boxShadow: 'var(--shadow-lg)',
           overflow: 'hidden',
         }}
         onClick={(e) => e.stopPropagation()}
@@ -331,7 +319,7 @@ function ExpandedModal({ config, history, color, onClose }: ExpandedModalProps) 
               <div className="font-display font-semibold text-sm" style={{ color: 'var(--color-text-primary)' }}>
                 {config.label}
               </div>
-              <div className="font-mono text-[10px] tracking-widest uppercase mt-0.5" style={{ color: 'rgba(255,255,255,0.3)' }}>
+              <div className="font-mono text-[10px] tracking-widest uppercase mt-0.5" style={{ color: 'var(--color-text-muted)' }}>
                 {config.category} · {config.unit || 'index'}
               </div>
             </div>
@@ -339,7 +327,7 @@ function ExpandedModal({ config, history, color, onClose }: ExpandedModalProps) 
           <button
             onClick={onClose}
             className="w-7 h-7 flex items-center justify-center rounded-lg transition-colors"
-            style={{ border: '1px solid rgba(255,255,255,0.1)', color: 'rgba(255,255,255,0.4)' }}
+            style={{ border: '1px solid var(--color-border-subtle)', color: 'var(--color-text-muted)', background: 'var(--color-bg-panel)', boxShadow: 'var(--shadow-sm)' }}
           >
             <X size={13} />
           </button>
@@ -363,7 +351,7 @@ function ExpandedModal({ config, history, color, onClose }: ExpandedModalProps) 
               <div
                 key={label}
                 className="rounded-lg p-3 text-center"
-                style={{ background: 'rgba(0,212,255,0.04)', border: '1px solid rgba(0,212,255,0.1)' }}
+                style={{ background: 'var(--color-bg-hover)', border: '1px solid var(--color-border-subtle)', boxShadow: 'var(--shadow-inset)' }}
               >
                 <div
                   className="font-mono font-bold text-lg"
@@ -373,7 +361,7 @@ function ExpandedModal({ config, history, color, onClose }: ExpandedModalProps) 
                 </div>
                 <div
                   className="font-mono text-[9px] tracking-widest uppercase mt-0.5"
-                  style={{ color: 'rgba(255,255,255,0.3)' }}
+                  style={{ color: 'var(--color-text-muted)' }}
                 >
                   {label}
                 </div>
@@ -404,13 +392,13 @@ function ExpandedModal({ config, history, color, onClose }: ExpandedModalProps) 
             <div>
               <div
                 className="font-mono text-[9px] tracking-widest uppercase mb-2"
-                style={{ color: 'rgba(255,255,255,0.3)' }}
+                style={{ color: 'var(--color-text-muted)' }}
               >
                 Historical Trend
               </div>
               <div
                 className="rounded-lg p-2"
-                style={{ background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(0,212,255,0.07)' }}
+                style={{ background: 'var(--color-bg-hover)', border: '1px solid var(--color-border-subtle)', boxShadow: 'var(--shadow-inset)' }}
               >
                 <FullChart history={history} config={config} color={color} />
               </div>
@@ -418,7 +406,7 @@ function ExpandedModal({ config, history, color, onClose }: ExpandedModalProps) 
           ) : (
             <div
               className="text-center py-8 rounded-lg font-mono text-[10px] tracking-widest uppercase"
-              style={{ background: 'rgba(0,212,255,0.03)', border: '1px solid rgba(0,212,255,0.08)', color: 'rgba(255,255,255,0.3)' }}
+              style={{ background: 'var(--color-bg-hover)', border: '1px solid var(--color-border-subtle)', color: 'var(--color-text-muted)', boxShadow: 'var(--shadow-inset)' }}
             >
               Run simulation to populate chart
             </div>
@@ -428,11 +416,11 @@ function ExpandedModal({ config, history, color, onClose }: ExpandedModalProps) 
           <div className="space-y-2">
             <div
               className="font-mono text-[9px] tracking-widest uppercase"
-              style={{ color: 'rgba(255,255,255,0.3)' }}
+              style={{ color: 'var(--color-text-muted)' }}
             >
               What This Measures
             </div>
-            <p className="text-[11px] leading-relaxed" style={{ color: 'rgba(255,255,255,0.55)' }}>
+            <p className="text-[11px] leading-relaxed" style={{ color: 'var(--color-text-secondary)' }}>
               {description}
             </p>
           </div>
@@ -448,7 +436,7 @@ function ExpandedModal({ config, history, color, onClose }: ExpandedModalProps) 
             >
               Planning Insight
             </div>
-            <p className="text-[11px] leading-relaxed" style={{ color: 'rgba(255,255,255,0.6)' }}>
+            <p className="text-[11px] leading-relaxed" style={{ color: 'var(--color-text-secondary)' }}>
               {insight}
             </p>
           </div>
@@ -481,11 +469,12 @@ function MetricRow({ config, metrics, history, color, onExpand }: MetricRowProps
     <motion.div
       className="rounded-lg p-2.5 group cursor-pointer"
       style={{
-        background: 'rgba(0,212,255,0.025)',
-        border: '1px solid rgba(0,212,255,0.07)',
-        transition: 'background 0.15s',
+        background: 'var(--color-bg-panel)',
+        border: '1px solid var(--color-border-subtle)',
+        boxShadow: 'var(--shadow-sm)',
+        transition: 'box-shadow 0.15s',
       }}
-      whileHover={{ backgroundColor: 'rgba(0,212,255,0.05)' }}
+      whileHover={{ boxShadow: 'var(--shadow-md)' }}
     >
       {/* Top row */}
       <div className="flex justify-between items-start mb-1.5">
@@ -494,7 +483,7 @@ function MetricRow({ config, metrics, history, color, onExpand }: MetricRowProps
             {config.label}
           </span>
           {config.unit && (
-            <span className="font-mono text-[9px] ml-1" style={{ color: 'rgba(255,255,255,0.25)' }}>
+            <span className="font-mono text-[9px] ml-1" style={{ color: 'var(--color-text-muted)' }}>
               {config.unit}
             </span>
           )}
@@ -514,7 +503,7 @@ function MetricRow({ config, metrics, history, color, onExpand }: MetricRowProps
           <button
             onClick={(e) => { e.stopPropagation(); onExpand() }}
             className="w-5 h-5 flex items-center justify-center rounded opacity-0 group-hover:opacity-100 transition-opacity"
-            style={{ border: '1px solid rgba(0,212,255,0.25)', color: 'rgba(0,212,255,0.6)' }}
+            style={{ border: '1px solid var(--color-border-subtle)', color: 'var(--color-text-muted)', background: 'var(--color-bg-panel)', boxShadow: 'var(--shadow-sm)' }}
             title={`Expand ${config.label}`}
           >
             <Maximize2 size={9} />
@@ -523,7 +512,7 @@ function MetricRow({ config, metrics, history, color, onExpand }: MetricRowProps
       </div>
 
       {/* Bar */}
-      <div className="h-px rounded-full overflow-hidden mb-1.5" style={{ background: 'rgba(0,212,255,0.08)' }}>
+      <div className="h-1 rounded-full overflow-hidden mb-1.5" style={{ background: 'var(--color-bg-hover)', boxShadow: 'var(--shadow-inset)' }}>
         <motion.div
           className="h-full rounded-full"
           style={{ background: barColor, boxShadow: `0 0 3px ${barColor}` }}
@@ -552,7 +541,7 @@ function HealthGauge({ value }: { value: number }) {
     <div className="flex flex-col items-center py-2">
       <div className="relative w-24 h-14 overflow-hidden">
         <svg viewBox="0 0 100 60" className="w-full h-full">
-          <path d="M 10 55 A 40 40 0 0 1 90 55" fill="none" stroke="rgba(0,212,255,0.1)" strokeWidth="8" strokeLinecap="round" />
+          <path d="M 10 55 A 40 40 0 0 1 90 55" fill="none" stroke="var(--color-bg-hover)" strokeWidth="8" strokeLinecap="round" />
           <motion.path
             d="M 10 55 A 40 40 0 0 1 90 55"
             fill="none"
@@ -626,7 +615,7 @@ export function MetricsDashboard() {
           <button
             onClick={() => setShowAdvanced((value) => !value)}
             className="px-2 py-1 rounded-md text-[10px] font-display"
-            style={{ border: '1px solid rgba(0,212,255,0.22)', color: 'var(--color-accent-cyan)', background: 'rgba(0,212,255,0.05)' }}
+            style={{ border: '1px solid var(--color-border-subtle)', color: 'var(--color-accent-cyan)', background: 'var(--color-bg-hover)' }}
           >
             {showAdvanced ? 'Show Core' : 'Advanced Metrics'}
           </button>
@@ -636,7 +625,7 @@ export function MetricsDashboard() {
         {planning.beforeScores && (
           <div
             className="rounded-lg p-3"
-            style={{ background: 'rgba(0,212,255,0.04)', border: '1px solid rgba(0,212,255,0.12)' }}
+            style={{ background: 'var(--color-bg-hover)', border: '1px solid var(--color-border-subtle)' }}
           >
             <div className="flex items-center justify-between mb-2">
               <div className="font-mono text-[9px] tracking-widest uppercase" style={{ color: 'var(--color-accent-cyan)' }}>
@@ -676,8 +665,8 @@ export function MetricsDashboard() {
             className="px-2 py-0.5 rounded-md text-[10px] font-display transition-all"
             style={
               activeCategory === 'all'
-                ? { background: 'rgba(0,212,255,0.12)', color: 'var(--color-accent-cyan)', border: '1px solid rgba(0,212,255,0.3)' }
-                : { color: 'var(--color-text-muted)', border: '1px solid transparent' }
+                ? { background: 'var(--color-bg-hover)', color: 'var(--color-text-primary)', border: '1px solid var(--color-border-subtle)', boxShadow: 'var(--shadow-pressed)' }
+                : { color: 'var(--color-text-muted)', border: '1px solid var(--color-border-subtle)', boxShadow: 'var(--shadow-sm)' }
             }
           >
             All
@@ -691,8 +680,8 @@ export function MetricsDashboard() {
               className="px-2 py-0.5 rounded-md text-[10px] font-display capitalize transition-all"
               style={
                 activeCategory === cat
-                  ? { background: `${CATEGORY_COLORS[cat]}20`, color: CATEGORY_COLORS[cat], border: `1px solid ${CATEGORY_COLORS[cat]}40` }
-                  : { color: 'var(--color-text-muted)', border: '1px solid transparent' }
+                  ? { background: 'var(--color-bg-hover)', color: CATEGORY_COLORS[cat], border: `1px solid ${CATEGORY_COLORS[cat]}50`, boxShadow: 'var(--shadow-pressed)' }
+                  : { color: 'var(--color-text-muted)', border: '1px solid var(--color-border-subtle)', boxShadow: 'var(--shadow-sm)' }
               }
             >
               {cat}
@@ -703,12 +692,12 @@ export function MetricsDashboard() {
         {!currentMetrics ? (
           <div
             className="rounded-xl p-6 text-center space-y-2"
-            style={{ background: 'rgba(0,212,255,0.03)', border: '1px dashed rgba(0,212,255,0.15)' }}
+            style={{ background: 'var(--color-bg-hover)', border: '1px dashed var(--color-border-subtle)', boxShadow: 'var(--shadow-inset)' }}
           >
-            <div className="font-mono text-[10px] tracking-widest uppercase" style={{ color: 'rgba(0,212,255,0.4)' }}>
+            <div className="font-mono text-[10px] tracking-widest uppercase" style={{ color: 'var(--color-text-muted)' }}>
               No Data Yet
             </div>
-            <div className="font-mono text-[9px]" style={{ color: 'rgba(255,255,255,0.25)' }}>
+            <div className="font-mono text-[9px]" style={{ color: 'var(--color-text-muted)' }}>
               Start the simulation to see live metrics, charts, and trends across all categories.
             </div>
           </div>
@@ -732,7 +721,7 @@ export function MetricsDashboard() {
             {/* Hint for expand */}
             <div
               className="text-center font-mono text-[9px] tracking-widest"
-              style={{ color: 'rgba(255,255,255,0.18)' }}
+              style={{ color: 'var(--color-text-muted)' }}
             >
               Hover a metric and click
               <Maximize2 size={8} className="inline mx-1" style={{ verticalAlign: 'middle' }} />
@@ -770,7 +759,7 @@ export function MetricsDashboard() {
 
 function ScoreTile({ label, value, active = false }: { label: string; value: number; active?: boolean }) {
   return (
-    <div className="rounded-lg p-2 text-center" style={{ background: active ? 'rgba(0,255,156,0.06)' : 'rgba(255,255,255,0.025)', border: active ? '1px solid rgba(0,255,156,0.22)' : '1px solid var(--color-border-subtle)' }}>
+    <div className="rounded-lg p-2 text-center" style={{ background: active ? 'rgba(0,184,148,0.08)' : 'var(--color-bg-card)', border: active ? '1px solid rgba(0,184,148,0.35)' : '1px solid var(--color-border-subtle)' }}>
       <div className="font-mono font-bold text-lg" style={{ color: active ? 'var(--color-accent-green)' : 'var(--color-text-primary)' }}>{value}</div>
       <div className="font-mono text-[8px] tracking-widest uppercase" style={{ color: 'var(--color-text-muted)' }}>{label}</div>
     </div>

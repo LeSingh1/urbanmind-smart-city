@@ -1,7 +1,6 @@
 import { useMemo, useState } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import {
-  Bike,
   Building2,
   ChevronLeft,
   ChevronRight,
@@ -15,7 +14,6 @@ import {
   Map,
   Mountain,
   Plus,
-  Route,
   Scale,
   Shield,
   Sparkles,
@@ -34,6 +32,8 @@ import { useSimulationStore } from '@/stores/simulationStore'
 import { useUIStore } from '@/stores/uiStore'
 import type { CityProfile, ScenarioId } from '@/types/city.types'
 
+const CITY_PRESETS = ['fremon', 'fremont', 'san_jose', 'sacramento', 'phoenix', 'austin']
+
 const TABS = [
   { id: 'planner', icon: Map, label: 'Planner' },
   { id: 'metrics', icon: Scale, label: 'Metrics' },
@@ -44,25 +44,22 @@ const TABS = [
 
 type TabId = typeof TABS[number]['id']
 
-const REAL_CITY_PRESETS = ['san_jose', 'sacramento', 'phoenix', 'austin']
-const GENERATED_CITY_PRESETS = ['san_jose', 'sacramento', 'phoenix', 'austin']
-
 const CITY_META: Record<string, { type: string; growth: string; challenge: string; badge: string }> = {
   san_jose: { type: 'Bay Area metro', growth: '22% in 10 years', challenge: 'housing, transit, heat', badge: 'Preset' },
   fremon: { type: 'Generated future suburb', growth: '35% in 10 years', challenge: 'clinics, schools, transit, parks, congestion, utilities', badge: 'Generated' },
   fremont: { type: 'Bay Area suburb', growth: '30% in 10 years', challenge: 'transit, schools, clinics, housing growth', badge: 'Demo ready' },
   sacramento: { type: 'Capital region', growth: '18% in 10 years', challenge: 'flood, heat, service access', badge: 'Preset' },
-  phoenix: { type: 'Desert growth city', growth: '26% in 10 years', challenge: 'heat, water, roads', badge: 'Preset' },
+  phoenix: { type: 'Desert growth city', growth: '26% in 10 years', challenge: 'heat, water, service access', badge: 'Preset' },
   austin: { type: 'Fast-growth tech city', growth: '32% in 10 years', challenge: 'housing, congestion, emergency access', badge: 'Preset' },
 }
 
 const SCENARIO_DETAILS: Record<ScenarioId, { icon: React.ElementType; description: string; weights: string; impact: string }> = {
   balanced: { icon: Scale, description: 'Balances access, growth, commute, and green space.', weights: 'All weights normal', impact: 'Stable baseline' },
-  transit_first: { icon: Train, description: 'Prioritizes bus routes, rail access, bike lanes, and commute reduction.', weights: 'Transit + commute', impact: 'Lower commute' },
+  transit_first: { icon: Train, description: 'Prioritizes transit stops, rail access, and commute reduction.', weights: 'Transit + commute', impact: 'Lower commute' },
   climate_resilient: { icon: Leaf, description: 'Prioritizes parks, CO2, heat risk, and resilient green corridors.', weights: 'Green + CO2', impact: 'Lower emissions' },
   equity_focused: { icon: Users, description: 'Prioritizes underserved zones, schools, emergency access, and transit.', weights: 'Equity + access', impact: 'Fairer access' },
   emergency_ready: { icon: Flame, description: 'Prioritizes clinics, hospitals, police, fire, and response coverage.', weights: 'Emergency + response', impact: 'Faster response' },
-  max_growth: { icon: Home, description: 'Prioritizes housing capacity while tracking commute and congestion risk.', weights: 'Housing + roads', impact: 'More capacity' },
+  max_growth: { icon: Home, description: 'Prioritizes housing capacity while tracking commute and congestion risk.', weights: 'Housing + access', impact: 'More capacity' },
 }
 
 const LAYER_ITEMS = [
@@ -72,12 +69,11 @@ const LAYER_ITEMS = [
   { id: 'Existing transit', icon: Train, label: 'Existing Transit', color: '#8E44AD', group: 'Existing Infrastructure' },
   { id: 'Existing police stations', icon: Shield, label: 'Existing Police', color: '#5D4E75', group: 'Existing Infrastructure' },
   { id: 'Existing fire stations', icon: Flame, label: 'Existing Fire', color: '#E74C3C', group: 'Existing Infrastructure' },
-  { id: 'Existing Roads', icon: Route, label: 'Existing Roads', color: '#8B949E', group: 'Existing Infrastructure' },
   { id: 'Growth Pressure', icon: Users, label: 'Housing Growth', color: '#E67E22', group: 'Analysis Overlays' },
   { id: 'Proposed infrastructure', icon: Crosshair, label: 'Proposed Infrastructure', color: '#00D4FF', group: 'Future Scenario' },
   { id: 'AI Recommendations', icon: Sparkles, label: 'AI Recommendations', color: '#00D4FF', group: 'Future Scenario' },
   { id: 'Underserved zones', icon: CloudSun, label: 'Underserved Zones', color: '#FF5A3D', group: 'Analysis Overlays' },
-  { id: 'Heatmap Mode', icon: Zap, label: 'Heatmap Mode', color: '#FFB800', group: 'Analysis Overlays' },
+  { id: 'Heatmap Mode', icon: Zap, label: 'Heatmap Mode', color: '#6C5CE7', group: 'Analysis Overlays' },
 ] as const
 
 const TERRAIN_OPTIONS = [
@@ -97,17 +93,15 @@ export function LeftSidebar() {
     <div
       className="flex shrink-0"
       style={{
-        width: collapsed ? 52 : 368,
+        width: collapsed ? 48 : 330,
         transition: 'width 300ms cubic-bezier(0.16,1,0.3,1)',
       }}
     >
       <div
-        className="flex flex-col items-center gap-1.5 py-3 px-1.5 shrink-0 w-13"
+        className="flex w-12 shrink-0 flex-col items-center gap-1.5 px-1 py-3"
         style={{
-          width: 52,
-          background: 'rgba(8,13,22,0.82)',
-          borderRight: '1px solid rgba(0,212,255,0.12)',
-          backdropFilter: 'blur(18px)',
+          background: 'var(--color-bg-sidebar)',
+          borderRight: '1px solid var(--color-border-subtle)',
         }}
       >
         {TABS.map(({ id, icon: Icon, label }) => {
@@ -119,31 +113,34 @@ export function LeftSidebar() {
                 if (collapsed) setCollapsed(false)
                 setActivePanel(activePanel === id && !collapsed ? null : id)
               }}
-              whileHover={{ scale: 1.08, y: -1 }}
+              whileHover={{ scale: 1.06, y: -1 }}
               whileTap={{ scale: 0.94 }}
-              className="w-10 h-10 flex items-center justify-center rounded-xl transition-all relative"
-              style={
-                active
-                  ? {
-                      background: 'linear-gradient(135deg, rgba(0,212,255,0.18), rgba(124,58,237,0.15))',
-                      color: 'var(--color-accent-cyan)',
-                      border: '1px solid rgba(0,212,255,0.32)',
-                      boxShadow: '0 0 18px rgba(0,212,255,0.12)',
-                    }
-                  : {
-                      color: 'var(--color-text-muted)',
-                      border: '1px solid transparent',
-                    }
-              }
+              className="relative flex h-9 w-9 items-center justify-center rounded-lg"
+              style={{
+                background: active ? 'var(--color-bg-hover)' : 'transparent',
+                color: active ? 'var(--color-accent-cyan)' : 'var(--color-text-muted)',
+                border: active ? '1px solid rgba(255,71,87,0.32)' : '1px solid transparent',
+                boxShadow: active ? 'var(--shadow-pressed)' : 'none',
+              }}
               title={label}
               aria-label={label}
             >
               <Icon size={16} />
               {active && (
                 <motion.div
-                  layoutId="sidebar-active-dot"
-                  className="absolute right-0.5 top-1/2 -translate-y-1/2 w-1 h-5 rounded-full"
-                  style={{ background: 'var(--color-accent-cyan)' }}
+                  initial={{ opacity: 0, scaleY: 0.65 }}
+                  animate={{ opacity: 1, scaleY: 1 }}
+                  exit={{ opacity: 0, scaleY: 0.65 }}
+                  transition={{ duration: 0.16, ease: 'easeOut' }}
+                  className="absolute rounded-full"
+                  style={{
+                    right: 5,
+                    top: 8,
+                    bottom: 8,
+                    width: 4,
+                    transformOrigin: 'center',
+                    background: 'var(--color-accent-cyan)',
+                  }}
                 />
               )}
             </motion.button>
@@ -154,9 +151,9 @@ export function LeftSidebar() {
 
         <motion.button
           onClick={() => setCollapsed((v) => !v)}
-          whileHover={{ scale: 1.08 }}
-          whileTap={{ scale: 0.93 }}
-          className="w-10 h-10 flex items-center justify-center rounded-xl"
+          whileHover={{ scale: 1.06 }}
+          whileTap={{ scale: 0.94 }}
+          className="flex h-9 w-9 items-center justify-center rounded-lg"
           style={{ color: 'var(--color-text-muted)', border: '1px solid transparent' }}
           title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
           aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
@@ -173,27 +170,22 @@ export function LeftSidebar() {
             exit={{ opacity: 0, x: -12, transition: { duration: 0.2 } }}
             className="flex-1 flex flex-col overflow-hidden"
             style={{
-              background: 'linear-gradient(180deg, rgba(17,24,39,0.92), rgba(10,15,25,0.96))',
-              borderRight: '1px solid rgba(0,212,255,0.12)',
+              background: 'var(--color-bg-sidebar)',
+              borderRight: '1px solid var(--color-border-subtle)',
               boxShadow: '12px 0 34px rgba(0,0,0,0.18)',
               backdropFilter: 'blur(18px)',
             }}
           >
             <div
               className="px-4 py-4 shrink-0"
-              style={{ borderBottom: '1px solid rgba(0,212,255,0.1)' }}
+              style={{ borderBottom: '1px solid var(--color-border-subtle)' }}
             >
               <div className="flex items-center gap-2">
-                <div className="w-1 h-5 rounded-full" style={{ background: 'var(--color-accent-cyan)', boxShadow: '0 0 12px rgba(0,212,255,0.6)' }} />
+                <div className="w-1 h-5 rounded-full" style={{ background: 'var(--color-accent-cyan)', boxShadow: 'var(--shadow-sm)' }} />
                 <h2 className="font-display font-semibold text-sm tracking-wide" style={{ color: 'var(--color-text-primary)' }}>
-                  {TABS.find((t) => t.id === activePanel)?.label}
+                  {TABS.find((tab) => tab.id === activePanel)?.label}
                 </h2>
               </div>
-              {activePanel === 'planner' && (
-                <p className="mt-2 text-xs leading-relaxed" style={{ color: 'var(--color-text-muted)' }}>
-                  Pick a city, set the scenario, then run an infrastructure gap analysis.
-                </p>
-              )}
             </div>
 
             <div className="flex-1 overflow-y-auto">
@@ -213,81 +205,43 @@ export function LeftSidebar() {
 function PlannerPanel() {
   const { cities, selectedCity, selectCity, addCity } = useCityStore()
   const { activeScenario, setScenario } = useScenarioStore()
-  const { planning, analyzeDemo, setPlanningConstraint, setCityMode, setBudgetLevel, setTimelineYear } = useSimulationStore()
+  const { planning, analyzeDemo, setPlanningConstraint, setBudgetLevel, setTimelineYear } = useSimulationStore()
   const { activeLayers, toggleLayer } = useUIStore()
   const [createOpen, setCreateOpen] = useState(false)
 
   const presetCities = useMemo(
-    () => cities.filter((city) => (planning.cityMode === 'generated' ? GENERATED_CITY_PRESETS : REAL_CITY_PRESETS).includes(city.id)),
-    [cities, planning.cityMode]
+    () => CITY_PRESETS.map((id) => cities.find((city) => city.id === id)).filter(Boolean) as CityProfile[],
+    [cities]
   )
 
   const createCity = (city: CityProfile) => {
     addCity(city)
     setCreateOpen(false)
+      selectCity(city)
+      analyzeDemo(city.id, activeScenario)
+  }
+
+  const chooseCity = (city: CityProfile) => {
+    selectCity(city)
     analyzeDemo(city.id, activeScenario)
   }
 
+  const chooseScenario = (id: ScenarioId) => {
+    setScenario(id)
+    if (selectedCity) analyzeDemo(selectedCity.id, id)
+  }
+
   return (
-    <div className="p-4 space-y-5">
-      <PanelSection title="City Mode">
-        <div className="grid grid-cols-2 gap-2">
-          {[
-            ['real', 'Real City', 'Seeded real-world inspired presets'],
-            ['generated', 'Generated City', 'Clean simulated city for demo clarity'],
-          ].map(([mode, label, helper]) => (
-            <button
-              key={mode}
-              onClick={() => {
-                setCityMode(mode as 'real' | 'generated')
-                const nextCity = cities.find((city) => city.id === (mode === 'generated' ? 'fremon' : 'san_jose'))
-                if (nextCity) selectCity(nextCity)
-              }}
-              className="rounded-xl p-3 text-left"
-              style={{
-                background: planning.cityMode === mode ? 'rgba(0,212,255,0.1)' : 'rgba(255,255,255,0.03)',
-                border: planning.cityMode === mode ? '1px solid rgba(0,212,255,0.4)' : '1px solid rgba(255,255,255,0.07)',
-                color: planning.cityMode === mode ? 'var(--color-accent-cyan)' : 'var(--color-text-secondary)',
-              }}
-            >
-              <div className="font-display text-xs font-semibold">{label}</div>
-              <p className="mt-1 text-[10px] leading-relaxed" style={{ color: 'var(--color-text-muted)' }}>{helper}</p>
-            </button>
-          ))}
-        </div>
-      </PanelSection>
-
-      <PanelSection title="City" action={<button onClick={() => setCreateOpen(true)} className="panel-link"><Plus size={11} />Create New City</button>}>
+    <div className="p-3 space-y-4">
+      <PanelSection title="Growth Scenario">
         <div className="grid gap-2">
-          {presetCities.map((city) => (
-            <CityPresetCard
-              key={city.id}
-              city={city}
-              active={selectedCity?.id === city.id}
-              onSelect={() => selectCity(city)}
-            />
+          {(Object.keys(SCENARIO_DETAILS) as ScenarioId[]).map((id) => (
+            <ScenarioCard key={id} id={id} active={activeScenario === id} onSelect={() => chooseScenario(id)} />
           ))}
-          <button
-            onClick={() => setCreateOpen(true)}
-            className="w-full rounded-xl p-3 text-left"
-            style={{
-              background: 'rgba(0,212,255,0.035)',
-              border: '1px dashed rgba(0,212,255,0.24)',
-              color: 'var(--color-accent-cyan)',
-            }}
-          >
-            <div className="flex items-center gap-2 font-display text-sm font-semibold">
-              <Plus size={15} />
-              Create New City
-            </div>
-            <p className="mt-1 text-[11px]" style={{ color: 'var(--color-text-muted)' }}>
-              Generate a simulated city grid with starter infrastructure and gaps.
-            </p>
-          </button>
         </div>
       </PanelSection>
 
-      <PanelSection title="Budget Optimizer">
+      <PanelSection title="Constraints">
         <div className="grid grid-cols-3 gap-1.5">
           {[
             ['low', 'Low', '$25M'],
@@ -299,8 +253,8 @@ function PlannerPanel() {
               onClick={() => setBudgetLevel(level as 'low' | 'medium' | 'high')}
               className="rounded-lg p-2 text-center"
               style={{
-                background: planning.budgetLevel === level ? 'rgba(0,255,156,0.08)' : 'rgba(255,255,255,0.03)',
-                border: planning.budgetLevel === level ? '1px solid rgba(0,255,156,0.32)' : '1px solid rgba(255,255,255,0.07)',
+                background: planning.budgetLevel === level ? 'rgba(0,184,148,0.1)' : 'var(--color-bg-card)',
+                border: planning.budgetLevel === level ? '1px solid rgba(0,184,148,0.4)' : '1px solid var(--color-border-subtle)',
                 color: planning.budgetLevel === level ? 'var(--color-accent-green)' : 'var(--color-text-muted)',
               }}
             >
@@ -309,7 +263,7 @@ function PlannerPanel() {
             </button>
           ))}
         </div>
-        <div className="mt-2 rounded-xl p-3" style={{ border: '1px solid rgba(0,255,156,0.14)', background: 'rgba(0,255,156,0.035)' }}>
+        <div className="mt-2 rounded-xl p-3" style={{ border: '1px solid rgba(0,184,148,0.3)', background: 'rgba(0,184,148,0.06)' }}>
           <div className="flex justify-between font-mono text-[10px]" style={{ color: 'var(--color-text-secondary)' }}>
             <span>Used ${(planning.budgetSummary.used / 1_000_000).toFixed(0)}M</span>
             <span>Remaining ${(planning.budgetSummary.remaining / 1_000_000).toFixed(0)}M</span>
@@ -318,7 +272,7 @@ function PlannerPanel() {
         </div>
       </PanelSection>
 
-      <PanelSection title="Timeline Simulation">
+      <PanelSection title="Timeline">
         <div className="grid grid-cols-5 gap-1">
           {([2026, 2028, 2030, 2032, 2036] as const).map((year) => (
             <button
@@ -326,9 +280,9 @@ function PlannerPanel() {
               onClick={() => setTimelineYear(year)}
               className="rounded-lg py-2 font-mono text-[9px]"
               style={{
-                border: year === planning.timelineYear ? '1px solid rgba(0,212,255,0.42)' : '1px solid rgba(255,255,255,0.07)',
+                border: year === planning.timelineYear ? '1px solid rgba(255,71,87,0.4)' : '1px solid var(--color-border-subtle)',
                 color: year === planning.timelineYear ? 'var(--color-accent-cyan)' : 'var(--color-text-muted)',
-                background: year === planning.timelineYear ? 'rgba(0,212,255,0.08)' : 'rgba(255,255,255,0.025)',
+                background: year === planning.timelineYear ? 'var(--color-bg-hover)' : 'var(--color-bg-card)',
               }}
             >
               {year}
@@ -343,22 +297,14 @@ function PlannerPanel() {
         </div>
       </PanelSection>
 
-      <PanelSection title="Growth Scenario">
-        <div className="grid gap-2">
-          {(Object.keys(SCENARIO_DETAILS) as ScenarioId[]).map((id) => (
-            <ScenarioCard key={id} id={id} active={activeScenario === id} onSelect={() => setScenario(id)} />
-          ))}
-        </div>
-      </PanelSection>
-
-      <PanelSection title="Constraints">
+      <PanelSection title="Advanced Constraints">
         <div className="grid gap-3">
           <ConstraintRow label="Budget" value={planning.budget / 1_000_000} min={25} max={250} suffix="M" onChange={(value) => setPlanningConstraint('budget', value * 1_000_000)} />
-          <ConstraintRow label="Population Growth" value={planning.growthPercent} min={5} max={60} suffix="%" onChange={() => undefined} />
+          <ConstraintRow label="Population Growth" value={planning.growthPercent} min={5} max={60} suffix="%" onChange={() => undefined} disabled />
           <ConstraintRow label="Service Radius" value={planning.serviceRadius} min={600} max={2400} suffix="m" onChange={(value) => setPlanningConstraint('serviceRadius', value)} />
           <div className="grid grid-cols-4 gap-1">
             {[5, 10, 20, 50].map((year) => (
-              <button key={year} className="rounded-lg py-2 font-mono text-[10px]" style={{ border: year === planning.horizonYears ? '1px solid rgba(0,212,255,0.35)' : '1px solid rgba(255,255,255,0.08)', color: year === planning.horizonYears ? 'var(--color-accent-cyan)' : 'var(--color-text-muted)', background: year === planning.horizonYears ? 'rgba(0,212,255,0.08)' : 'rgba(255,255,255,0.025)' }}>
+              <button key={year} className="rounded-lg py-2 font-mono text-[10px]" style={{ border: year === planning.horizonYears ? '1px solid rgba(255,71,87,0.4)' : '1px solid var(--color-border-subtle)', color: year === planning.horizonYears ? 'var(--color-accent-cyan)' : 'var(--color-text-muted)', background: year === planning.horizonYears ? 'var(--color-bg-hover)' : 'var(--color-bg-card)' }}>
                 {year}Y
               </button>
             ))}
@@ -386,7 +332,7 @@ function PlannerPanel() {
         </div>
       </PanelSection>
 
-      <PanelSection title="Infrastructure Tools">
+      <PanelSection title="Tools">
         <ZonePalette compact />
       </PanelSection>
 
@@ -406,14 +352,14 @@ function CityPresetCard({ city, active, onSelect }: { city: CityProfile; active:
       whileTap={{ scale: 0.98 }}
       className="w-full rounded-xl p-3 text-left"
       style={{
-        background: active ? 'linear-gradient(135deg, rgba(0,212,255,0.13), rgba(124,58,237,0.08))' : 'rgba(255,255,255,0.035)',
-        border: active ? '1px solid rgba(0,212,255,0.38)' : '1px solid rgba(255,255,255,0.07)',
-        boxShadow: active ? '0 0 22px rgba(0,212,255,0.08)' : 'none',
+        background: active ? 'var(--color-bg-hover)' : 'var(--color-bg-card)',
+        border: active ? '1px solid rgba(255,71,87,0.35)' : '1px solid var(--color-border-subtle)',
+        boxShadow: active ? 'var(--shadow-sm)' : 'none',
       }}
     >
       <div className="flex items-start justify-between gap-3">
         <div className="flex gap-2 min-w-0">
-          <div className="w-9 h-9 rounded-xl grid place-items-center shrink-0" style={{ background: 'rgba(0,212,255,0.08)', border: '1px solid rgba(0,212,255,0.18)', color: 'var(--color-accent-cyan)' }}>
+          <div className="w-9 h-9 rounded-xl grid place-items-center shrink-0" style={{ background: 'var(--color-bg-hover)', border: '1px solid var(--color-border-subtle)', color: 'var(--color-accent-cyan)' }}>
             <Building2 size={16} />
           </div>
           <div className="min-w-0">
@@ -421,7 +367,7 @@ function CityPresetCard({ city, active, onSelect }: { city: CityProfile; active:
             <div className="text-[11px]" style={{ color: 'var(--color-text-muted)' }}>{meta.type}</div>
           </div>
         </div>
-        <span className="rounded-full px-2 py-0.5 font-mono text-[8px] uppercase" style={{ color: active ? 'var(--color-accent-green)' : 'var(--color-accent-cyan)', border: '1px solid rgba(0,212,255,0.22)', background: 'rgba(0,212,255,0.06)' }}>
+        <span className="rounded-full px-2 py-0.5 font-mono text-[8px] uppercase" style={{ color: active ? 'var(--color-accent-green)' : 'var(--color-text-muted)', border: '1px solid var(--color-border-subtle)', background: 'var(--color-bg-hover)' }}>
           {meta.badge}
         </span>
       </div>
@@ -444,8 +390,8 @@ function ScenarioCard({ id, active, onSelect }: { id: ScenarioId; active: boolea
       whileTap={{ scale: 0.98 }}
       className="w-full rounded-xl p-3 text-left"
       style={{
-        background: active ? `${color}16` : 'rgba(255,255,255,0.032)',
-        border: active ? `1px solid ${color}88` : '1px solid rgba(255,255,255,0.07)',
+        background: active ? `${color}16` : 'var(--color-bg-card)',
+        border: active ? `1px solid ${color}88` : '1px solid var(--color-border-subtle)',
         boxShadow: active ? `0 0 20px ${color}22` : 'none',
       }}
     >
@@ -472,7 +418,7 @@ function LayerSwitch({ item, checked, onToggle }: { item: typeof LAYER_ITEMS[num
     <button
       onClick={onToggle}
       className="w-full flex items-center justify-between gap-2 rounded-lg px-2.5 py-2"
-      style={{ background: checked ? 'rgba(0,212,255,0.055)' : 'rgba(255,255,255,0.025)', border: checked ? `1px solid ${item.color}55` : '1px solid rgba(255,255,255,0.06)' }}
+      style={{ background: checked ? 'var(--color-bg-hover)' : 'var(--color-bg-card)', border: checked ? `1px solid ${item.color}55` : '1px solid var(--color-border-subtle)' }}
       aria-pressed={checked}
     >
       <span className="flex items-center gap-2 min-w-0">
@@ -541,10 +487,10 @@ function CreateCityModal({ open, onClose, onCreate }: { open: boolean; onClose: 
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.96, y: 18 }}
             className="scanline"
-            style={{ width: 680, maxWidth: '94vw', background: 'linear-gradient(180deg, rgba(17,24,39,0.98), rgba(8,13,22,0.98))', border: '1px solid rgba(0,212,255,0.2)', borderRadius: 18, boxShadow: '0 24px 90px rgba(0,0,0,0.65), 0 0 40px rgba(0,212,255,0.08)' }}
+            style={{ width: 680, maxWidth: '94vw', background: 'var(--color-bg-panel)', border: '1px solid var(--color-border-subtle)', borderRadius: 18, boxShadow: 'var(--shadow-lg)' }}
             onClick={(event) => event.stopPropagation()}
           >
-            <div className="p-5" style={{ borderBottom: '1px solid rgba(0,212,255,0.12)' }}>
+            <div className="p-5" style={{ borderBottom: '1px solid var(--color-border-subtle)' }}>
               <div className="font-display text-xl font-bold" style={{ color: 'var(--color-text-primary)' }}>Create New City</div>
               <p className="mt-1 text-sm" style={{ color: 'var(--color-text-muted)' }}>Generate a simulated city plan with starter zones, services, and growth gaps.</p>
             </div>
@@ -570,7 +516,7 @@ function CreateCityModal({ open, onClose, onCreate }: { open: boolean; onClose: 
                     const Icon = option.icon
                     const active = terrain === option.id
                     return (
-                      <button key={option.id} onClick={() => setTerrain(option.id)} className="rounded-lg p-2 text-[10px]" style={{ border: active ? '1px solid rgba(0,212,255,0.45)' : '1px solid rgba(255,255,255,0.08)', color: active ? 'var(--color-accent-cyan)' : 'var(--color-text-muted)', background: active ? 'rgba(0,212,255,0.08)' : 'rgba(255,255,255,0.03)' }}>
+                      <button key={option.id} onClick={() => setTerrain(option.id)} className="rounded-lg p-2 text-[10px]" style={{ border: active ? '1px solid rgba(255,71,87,0.4)' : '1px solid var(--color-border-subtle)', color: active ? 'var(--color-accent-cyan)' : 'var(--color-text-muted)', background: active ? 'var(--color-bg-hover)' : 'var(--color-bg-card)' }}>
                         <Icon size={13} className="mx-auto mb-1" />
                         {option.label}
                       </button>
@@ -593,16 +539,16 @@ function CreateCityModal({ open, onClose, onCreate }: { open: boolean; onClose: 
                   {['low', 'medium', 'high'].map((value) => <option key={value} value={value}>{value}</option>)}
                 </select>
               </Field>
-              <div className="rounded-xl p-3" style={{ border: '1px solid rgba(0,212,255,0.12)', background: 'rgba(0,212,255,0.04)' }}>
+              <div className="rounded-xl p-3" style={{ border: '1px solid var(--color-border-subtle)', background: 'var(--color-bg-hover)' }}>
                 <div className="font-mono text-[10px] uppercase tracking-widest" style={{ color: 'var(--color-accent-cyan)' }}>Generated plan includes</div>
                 <p className="mt-2 text-xs leading-relaxed" style={{ color: 'var(--color-text-secondary)' }}>
-                  Residential, commercial, parks, transit corridors, schools, clinics, roads, utilities, starting metrics, and seeded infrastructure gaps.
+                  Residential, commercial, parks, transit corridors, schools, clinics, utilities, starting metrics, and seeded infrastructure gaps.
                 </p>
               </div>
             </div>
-            <div className="flex justify-end gap-2 p-5" style={{ borderTop: '1px solid rgba(0,212,255,0.12)' }}>
+            <div className="flex justify-end gap-2 p-5" style={{ borderTop: '1px solid var(--color-border-subtle)' }}>
               <button onClick={onClose} className="px-4 py-2 rounded-lg text-sm" style={{ border: '1px solid rgba(255,255,255,0.1)', color: 'var(--color-text-secondary)' }}>Cancel</button>
-              <button onClick={generate} className="px-4 py-2 rounded-lg text-sm font-semibold" style={{ border: '1px solid rgba(0,212,255,0.42)', color: 'var(--color-accent-cyan)', background: 'rgba(0,212,255,0.1)' }}>Generate City</button>
+              <button onClick={generate} className="px-4 py-2 rounded-lg text-sm font-semibold" style={{ border: '1px solid rgba(255,71,87,0.4)', color: 'var(--color-accent-cyan)', background: 'var(--color-bg-hover)' }}>Generate City</button>
             </div>
           </motion.div>
         </motion.div>
@@ -632,14 +578,14 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
   )
 }
 
-function ConstraintRow({ label, value, min, max, suffix, onChange }: { label: string; value: number; min: number; max: number; suffix: string; onChange: (value: number) => void }) {
+function ConstraintRow({ label, value, min, max, suffix, onChange, disabled = false }: { label: string; value: number; min: number; max: number; suffix: string; onChange: (value: number) => void; disabled?: boolean }) {
   return (
     <label>
       <div className="mb-1 flex justify-between">
         <span className="font-mono text-[10px]" style={{ color: 'var(--color-text-muted)' }}>{label}</span>
         <span className="font-mono text-[10px]" style={{ color: 'var(--color-accent-cyan)' }}>{Math.round(value)}{suffix}</span>
       </div>
-      <input type="range" min={min} max={max} value={value} onChange={(event) => onChange(Number(event.target.value))} className="w-full" style={{ accentColor: 'var(--color-accent-cyan)' }} />
+      <input type="range" min={min} max={max} value={value} disabled={disabled} onChange={(event) => onChange(Number(event.target.value))} className="w-full disabled:opacity-45" style={{ accentColor: 'var(--color-accent-cyan)' }} />
     </label>
   )
 }
@@ -654,7 +600,7 @@ function Chip({ color, children }: { color: string; children: React.ReactNode })
 
 function TrustCard() {
   return (
-    <div className="rounded-xl p-3" style={{ border: '1px solid rgba(0,212,255,0.14)', background: 'linear-gradient(135deg, rgba(0,212,255,0.055), rgba(124,58,237,0.045))' }}>
+    <div className="rounded-xl p-3" style={{ border: '1px solid var(--color-border-subtle)', background: 'var(--color-bg-hover)' }}>
       <div className="font-mono text-[10px] uppercase tracking-widest" style={{ color: 'var(--color-accent-cyan)' }}>Trust and Assumptions</div>
       <p className="mt-2 text-[11px] leading-relaxed" style={{ color: 'var(--color-text-secondary)' }}>
         UrbanMind estimates infrastructure needs using simulated growth data, visible service gaps, and scenario based scoring. It supports early stage planning comparison and does not replace formal zoning, environmental review, traffic engineering, or public approval.

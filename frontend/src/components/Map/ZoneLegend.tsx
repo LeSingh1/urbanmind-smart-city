@@ -43,7 +43,7 @@ export function ZoneLegend() {
         border: '1px solid var(--color-border-subtle)',
         borderRadius: 10,
         minWidth: 156,
-        boxShadow: '0 4px 16px rgba(0,0,0,0.4)',
+        boxShadow: 'var(--shadow-lg)',
         overflow: 'hidden',
       }}
     >
@@ -132,7 +132,7 @@ export function ZoneLegend() {
                     <span style={{
                       fontFamily: 'var(--font-mono)',
                       fontSize: 9,
-                      color: isActive ? color : 'rgba(255,255,255,0.55)',
+                      color: isActive ? color : 'var(--color-text-secondary)',
                       whiteSpace: 'nowrap',
                       fontWeight: isActive ? 700 : 400,
                     }}>
@@ -141,7 +141,7 @@ export function ZoneLegend() {
                   </motion.button>
                 )
               })}
-              <div style={{ marginTop: 2, fontFamily: 'var(--font-mono)', fontSize: 8, color: 'rgba(255,255,255,0.2)', textAlign: 'center' }}>
+              <div style={{ marginTop: 2, fontFamily: 'var(--font-mono)', fontSize: 8, color: 'var(--color-text-muted)', textAlign: 'center' }}>
                 Click to filter map
               </div>
             </div>

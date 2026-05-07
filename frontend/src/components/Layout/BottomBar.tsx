@@ -1,150 +1,152 @@
-import { useMemo } from 'react'
-import * as d3 from 'd3'
+import { motion } from 'framer-motion'
+import { Pause, Play, RotateCcw } from 'lucide-react'
+import { useCityStore } from '@/stores/cityStore'
+import { useScenarioStore } from '@/stores/scenarioStore'
 import { useSimulationStore } from '@/stores/simulationStore'
-import { getZoneColor } from '@/utils/colorUtils'
+
+const START_YEAR = 2026
+const END_YEAR = 2076
 
 export function BottomBar() {
-  const currentYear = useSimulationStore((state) => state.currentYear)
-  const frameHistory = useSimulationStore((state) => state.frameHistory)
-  const scrubToYear = useSimulationStore((state) => state.scrubToYear)
+  const selectedCity = useCityStore((state) => state.selectedCity)
+  const activeScenario = useScenarioStore((state) => state.activeScenario)
+  const {
+    currentYear,
+    frameHistory,
+    isRunning,
+    isPaused,
+    planning,
+    startSimulation,
+    pauseSimulation,
+    resumeSimulation,
+    scrubToYear,
+    setTimelineYear,
+    analyzeDemo,
+  } = useSimulationStore()
 
-  const zoneCounts = useMemo(() => {
-    const counts = new Map<string, number>()
-    const features = frameHistory.at(-1)?.zones_geojson.features ?? []
-    features.forEach((feature) => {
-      const zone = String(feature.properties?.zone_type_id ?? feature.properties?.zone_type ?? 'ZONE')
-      counts.set(zone, (counts.get(zone) ?? 0) + 1)
-    })
-    return [...counts.entries()].sort((a, b) => b[1] - a[1]).slice(0, 10)
-  }, [frameHistory])
+  const displayYear = currentYear >= START_YEAR ? currentYear : planning.timelineYear
+  const progress = Math.max(0, Math.min(100, ((displayYear - START_YEAR) / (END_YEAR - START_YEAR)) * 100))
+
+  const togglePlayback = () => {
+    if (!selectedCity) return
+    if (isRunning) {
+      pauseSimulation()
+      return
+    }
+    if (isPaused && currentYear < END_YEAR) {
+      resumeSimulation()
+      return
+    }
+    startSimulation(selectedCity.id, activeScenario)
+  }
+
+  const reset = () => {
+    if (selectedCity) analyzeDemo(selectedCity.id, activeScenario)
+  }
+
+  const moveToYear = (year: number) => {
+    const frame = frameHistory.find((item) => item.year === year)
+    if (frame) {
+      scrubToYear(year)
+      return
+    }
+    setTimelineYear(year)
+  }
 
   return (
     <footer
-      className="fixed left-0 right-0 bottom-0 h-16 z-50 flex"
+      className="fixed bottom-0 left-0 right-0 z-[70] flex h-[58px] items-center gap-3 px-4"
       style={{
         background: 'var(--color-bg-sidebar)',
         borderTop: '1px solid var(--color-border-subtle)',
-        boxShadow: '0 -1px 0 rgba(0,212,255,0.06)',
+        boxShadow: '0 -10px 30px rgba(0,0,0,0.18)',
       }}
     >
-      {/* Timeline */}
-      <div className="flex-1 px-5 flex items-center">
-        <Timeline
-          currentYear={currentYear}
-          years={frameHistory.map((f) => f.year)}
-          onScrub={scrubToYear}
-        />
+      <div className="flex min-w-[164px] items-center gap-2">
+        <button
+          onClick={togglePlayback}
+          disabled={!selectedCity}
+          className="grid h-9 w-9 place-items-center rounded-lg disabled:cursor-not-allowed disabled:opacity-40"
+          style={{ color: 'var(--color-accent-cyan)', border: '1px solid rgba(255,71,87,0.32)', background: 'var(--color-bg-panel)', boxShadow: 'var(--shadow-sm)' }}
+          aria-label={isRunning ? 'Pause simulation' : 'Play simulation'}
+          title={isRunning ? 'Pause simulation' : 'Play simulation'}
+        >
+          {isRunning ? <Pause size={17} /> : <Play size={17} />}
+        </button>
+        <button
+          onClick={reset}
+          disabled={!selectedCity}
+          className="grid h-9 w-9 place-items-center rounded-lg disabled:cursor-not-allowed disabled:opacity-40"
+          style={{ color: 'var(--color-text-secondary)', border: '1px solid var(--color-border-subtle)', background: 'var(--color-bg-panel)', boxShadow: 'var(--shadow-sm)' }}
+          aria-label="Reset simulation"
+          title="Reset simulation"
+        >
+          <RotateCcw size={16} />
+        </button>
+        <div>
+          <div className="font-mono text-[9px] uppercase tracking-widest" style={{ color: 'var(--color-text-muted)' }}>Year</div>
+          <motion.div
+            key={displayYear}
+            initial={{ opacity: 0.55, y: 5 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.28, ease: [0.16, 1, 0.3, 1] }}
+            className="font-mono text-lg font-bold"
+            style={{ color: 'var(--color-text-primary)' }}
+          >
+            {displayYear}
+          </motion.div>
+        </div>
       </div>
 
-      {/* Zone legend */}
-      <div
-        className="w-72 flex items-center gap-1.5 flex-wrap px-4 overflow-hidden"
-        style={{ borderLeft: '1px solid var(--color-border-subtle)' }}
-      >
-        {zoneCounts.length === 0 ? (
-          <span className="font-mono text-[9px] tracking-wide" style={{ color: 'var(--color-text-muted)' }}>
-            Zone legend populates as simulation runs
+      <div className="min-w-0 flex-1">
+        <div className="mb-1.5 flex items-center justify-between gap-2">
+          <span className="text-xs font-semibold" style={{ color: 'var(--color-text-secondary)' }}>
+            {planning.timelinePhase || 'Move the timeline or press play to run the growth simulation.'}
           </span>
-        ) : (
-          zoneCounts.map(([zone]) => (
-            <div
-              key={zone}
-              className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded"
-              style={{
-                border: '1px solid var(--color-border-subtle)',
-                background: 'transparent',
-              }}
-            >
-              <span
-                className="w-2 h-2 rounded-sm shrink-0"
-                style={{ background: getZoneColor(zone) }}
-              />
-              <span
-                className="font-mono text-[8px] uppercase tracking-wide"
-                style={{ color: 'var(--color-text-muted)' }}
-              >
-                {zone.replace(/_/g, ' ').slice(0, 14)}
-              </span>
-            </div>
-          ))
-        )}
+          <span className="font-mono text-[10px]" style={{ color: 'var(--color-text-muted)' }}>
+            {START_YEAR} to {END_YEAR}
+          </span>
+        </div>
+        <div className="relative">
+          <div className="absolute left-0 right-0 top-1/2 h-1.5 -translate-y-1/2 rounded-full" style={{ background: 'var(--color-bg-hover)', boxShadow: 'var(--shadow-inset)' }} />
+          <motion.div
+            className="absolute left-0 top-1/2 h-1.5 -translate-y-1/2 rounded-full"
+            animate={{ width: `${progress}%` }}
+            transition={{ type: 'spring', stiffness: 90, damping: 22, mass: 0.4 }}
+            style={{ background: 'var(--color-accent-cyan)', opacity: 0.72 }}
+          />
+          <motion.div
+            className="pointer-events-none absolute top-1/2 h-5 w-5 -translate-x-1/2 -translate-y-1/2 rounded-full"
+            animate={{ left: `${progress}%` }}
+            transition={{ type: 'spring', stiffness: 100, damping: 18, mass: 0.45 }}
+            style={{
+              background: 'var(--color-accent-cyan)',
+              border: '2px solid var(--color-bg-sidebar)',
+              boxShadow: '0 6px 18px rgba(255,71,87,0.34)',
+            }}
+          />
+          <input
+            type="range"
+            min={START_YEAR}
+            max={END_YEAR}
+            step={1}
+            value={displayYear}
+            onChange={(event) => moveToYear(Number(event.target.value))}
+            className="relative z-10 w-full"
+            style={{ accentColor: 'var(--color-accent-cyan)', opacity: 0 }}
+            aria-label="Simulation year"
+          />
+        </div>
+      </div>
+
+      <div className="hidden min-w-[132px] text-right md:block">
+        <div className="font-mono text-[10px] uppercase tracking-widest" style={{ color: 'var(--color-text-muted)' }}>
+          Population
+        </div>
+        <div className="font-mono text-base font-bold" style={{ color: 'var(--color-text-primary)' }}>
+          {planning.timelinePopulation.toLocaleString()}
+        </div>
       </div>
     </footer>
-  )
-}
-
-function Timeline({
-  currentYear,
-  years,
-  onScrub,
-}: {
-  currentYear: number
-  years: number[]
-  onScrub: (year: number) => void
-}) {
-  const W = 700
-  const H = 40
-  const maxYear = Math.max(50, ...years, currentYear)
-  const x = d3.scaleLinear().domain([0, maxYear]).range([16, W - 16])
-  const progress = x(currentYear)
-  const milestones = years.filter((y) => y % 10 === 0)
-
-  return (
-    <svg
-      width="100%"
-      height={H}
-      viewBox={`0 0 ${W} ${H}`}
-      style={{ cursor: 'pointer' }}
-      onClick={(e) => {
-        const rect = (e.currentTarget as SVGSVGElement).getBoundingClientRect()
-        const raw = ((e.clientX - rect.left) / rect.width) * W
-        onScrub(Math.round(x.invert(raw)))
-      }}
-    >
-      {/* Track */}
-      <line
-        x1="16" x2={W - 16} y1="22" y2="22"
-        stroke="rgba(0,212,255,0.1)" strokeWidth="3" strokeLinecap="round"
-      />
-      {/* Filled track */}
-      <line
-        x1="16" x2={progress} y1="22" y2="22"
-        stroke="var(--color-accent-cyan)" strokeWidth="3" strokeLinecap="round"
-        style={{ filter: 'drop-shadow(0 0 4px rgba(0,212,255,0.6))' }}
-      />
-      {/* Milestone markers */}
-      {milestones.map((year) => (
-        <circle
-          key={year}
-          cx={x(year)} cy="22" r="3"
-          fill={year % 20 === 0 ? 'var(--color-accent-purple)' : 'rgba(0,212,255,0.4)'}
-          style={year % 20 === 0 ? { filter: 'drop-shadow(0 0 4px rgba(124,58,237,0.8))' } : {}}
-        >
-          <title>Year {year}</title>
-        </circle>
-      ))}
-      {/* Playhead */}
-      <circle
-        cx={progress} cy="22" r="7"
-        fill="var(--color-bg-sidebar)"
-        stroke="var(--color-accent-cyan)"
-        strokeWidth="1.5"
-        style={{ filter: 'drop-shadow(0 0 6px rgba(0,212,255,0.7))' }}
-      />
-      {/* Year label */}
-      <text
-        x={progress} y="11"
-        fill="var(--color-accent-cyan)"
-        fontSize="9"
-        textAnchor="middle"
-        fontFamily="JetBrains Mono, monospace"
-        letterSpacing="0.1em"
-      >
-        Y{currentYear}
-      </text>
-      {/* Start / end labels */}
-      <text x="16" y="36" fill="rgba(0,212,255,0.3)" fontSize="8" fontFamily="JetBrains Mono, monospace">0</text>
-      <text x={W - 16} y="36" fill="rgba(0,212,255,0.3)" fontSize="8" fontFamily="JetBrains Mono, monospace" textAnchor="end">{maxYear}</text>
-    </svg>
   )
 }

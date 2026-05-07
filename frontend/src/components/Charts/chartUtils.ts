@@ -17,7 +17,7 @@ export function useChartSize<T extends HTMLElement>() {
 export function ensureHistory(history: MetricsSnapshot[], cityPopulation = 1000000) {
   if (history.length) return history
   return Array.from({ length: 6 }, (_, index) => ({
-    year: index * 10,
+    year: 2026 + index * 10,
     pop_total: Math.round(cityPopulation * (1 + index * 0.12)),
     pop_density_avg: 8000 + index * 400,
     pop_growth_rate: 1.2 + index * 0.15,

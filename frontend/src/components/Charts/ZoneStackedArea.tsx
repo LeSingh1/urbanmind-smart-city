@@ -39,7 +39,7 @@ export function ZoneStackedArea() {
           {series.map((layer) => <path key={layer.key} d={area(layer) ?? ''} fill={colors[layer.key]} opacity="0.78" />)}
           {x.ticks(5).map((tick) => <text key={tick} x={x(tick)} y={innerH + 20} fill="var(--color-text-muted)" fontSize="10" textAnchor="middle">{tick}</text>)}
           {y.ticks(4).map((tick) => <g key={tick}><line x1={0} x2={innerW} y1={y(tick)} y2={y(tick)} stroke="var(--chart-grid)" /><text x={-8} y={y(tick) + 3} fill="var(--color-text-muted)" fontSize="10" textAnchor="end">{d3.format('.1s')(tick)}</text></g>)}
-          {hover && <g transform={`translate(${x(hover.year)},8)`}><rect x="8" y="0" width="138" height="78" rx="8" fill="rgba(17,24,39,0.94)" stroke="rgba(255,255,255,0.2)" /><text x="18" y="20" fill="white" fontSize="11" fontWeight="700">Year {hover.year}</text>{keys.map((key, i) => <text key={key} x="18" y={38 + i * 12} fill="var(--color-text-secondary)" fontSize="10">{key}: {Math.round(hover[key]).toLocaleString()}</text>)}</g>}
+          {hover && <g transform={`translate(${x(hover.year)},8)`}><rect x="8" y="0" width="138" height="78" rx="8" fill="#e0e5ec" stroke="#babecc" style={{ filter: 'drop-shadow(2px 2px 4px #babecc)' }} /><text x="18" y="20" fill="var(--color-text-primary)" fontSize="11" fontWeight="700">Year {hover.year}</text>{keys.map((key, i) => <text key={key} x="18" y={38 + i * 12} fill="var(--color-text-secondary)" fontSize="10">{key}: {Math.round(hover[key]).toLocaleString()}</text>)}</g>}
         </g>
       </svg>
     </div>

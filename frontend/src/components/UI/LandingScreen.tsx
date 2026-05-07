@@ -1,6 +1,6 @@
-import { useEffect, useRef, useState } from 'react'
+import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { X, Globe, Plus } from 'lucide-react'
+import { X, Plus } from 'lucide-react'
 import { useCityStore } from '@/stores/cityStore'
 import type { CityProfile } from '@/types/city.types'
 import { SandboxBuilder } from './SandboxBuilder'
@@ -10,108 +10,82 @@ interface Props {
 }
 
 export function LandingScreen({ onEnter }: Props) {
-  const [galleryOpen, setGalleryOpen] = useState(false)
   const [sandboxOpen, setSandboxOpen] = useState(false)
+  const cities = useCityStore((state) => state.cities)
+  const selectCity = useCityStore((state) => state.selectCity)
+
+  const chooseCity = (city: CityProfile) => {
+    selectCity(city)
+    onEnter()
+  }
 
   return (
-    <div className="relative h-screen overflow-hidden" style={{ background: 'var(--color-bg-app)' }}>
-      <StarField />
-      <HudGrid />
-
-      <div className="absolute inset-0 flex items-center justify-center p-6">
+    <div className="relative h-screen overflow-auto noise-overlay" style={{ background: 'var(--color-bg-app)' }}>
+      <div className="relative z-10 max-w-6xl mx-auto px-8 py-14">
+        {/* Hero row */}
         <motion.div
           initial="hidden"
           animate="visible"
           variants={{ hidden: {}, visible: { transition: { staggerChildren: 0.1 } } }}
-          className="w-full max-w-lg"
+          className="flex items-start gap-12 mb-14"
         >
           {/* Hero panel */}
           <motion.div
             variants={{ hidden: { opacity: 0, y: 24 }, visible: { opacity: 1, y: 0, transition: { duration: 0.6, ease: [0.16, 1, 0.3, 1] } } }}
-            className="scanline relative rounded-2xl p-10 text-center"
-            style={{
-              background: 'var(--color-bg-sidebar)',
-              border: '1px solid var(--color-border-subtle)',
-              boxShadow: '0 8px 32px rgba(0,0,0,0.5)',
-            }}
+            className="relative rounded-2xl p-8 shrink-0 w-72"
+            style={{ background: 'var(--color-bg-panel)', border: '1px solid var(--color-border-light)', boxShadow: 'var(--shadow-lg)' }}
           >
-            {/* Corner accents */}
-            <CornerAccents />
+            <ScrewCorners />
+            <div style={{ position: 'absolute', top: 14, right: 28, display: 'flex', gap: 4 }}>
+              {[0, 1, 2].map((i) => (
+                <div key={i} style={{ width: 3, height: 20, borderRadius: 99, background: 'var(--color-bg-hover)', boxShadow: 'inset 1px 1px 2px rgba(0,0,0,0.12)' }} />
+              ))}
+            </div>
 
-            {/* Logo */}
-            <motion.div
-              variants={{ hidden: { opacity: 0, scale: 0.9 }, visible: { opacity: 1, scale: 1, transition: { duration: 0.5 } } }}
-              className="mb-3"
-            >
-              <CityIcon />
-            </motion.div>
+            <div className="mb-4"><CityIcon /></div>
 
-            <motion.h1
-              variants={{ hidden: { opacity: 0, y: 8 }, visible: { opacity: 1, y: 0 } }}
-              className="font-display font-bold tracking-widest uppercase mb-1"
-              style={{
-                fontSize: 42,
-                color: 'var(--color-text-primary)',
-                letterSpacing: '0.15em',
-                lineHeight: 1.1,
-              }}
-            >
+            <h1 className="font-display font-bold tracking-widest uppercase mb-1" style={{ fontSize: 32, color: 'var(--color-text-primary)', letterSpacing: '0.15em', lineHeight: 1.1, filter: 'drop-shadow(0 1px 0 #ffffff)' }}>
               UrbanMind
-            </motion.h1>
+            </h1>
+            <p className="font-mono text-[10px] tracking-widest uppercase mb-3" style={{ color: 'var(--color-text-muted)', letterSpacing: '0.25em' }}>
+              AI infrastructure planning simulator
+            </p>
 
-            <motion.p
-              variants={{ hidden: { opacity: 0 }, visible: { opacity: 1 } }}
-              className="font-mono text-sm tracking-widest uppercase mb-1"
-              style={{ color: 'var(--color-accent-cyan)', opacity: 0.7, letterSpacing: '0.3em' }}
-            >
-              AI infrastructure planning simulator for growing cities.
-            </motion.p>
+            <div className="flex items-center gap-2 mb-4">
+              <span className="led" style={{ width: 8, height: 8, borderRadius: '50%', background: '#00b894', color: '#00b894', display: 'inline-block', boxShadow: '0 0 6px 1px rgba(0,184,148,0.45)', flexShrink: 0 }} />
+              <span className="font-mono text-[9px] tracking-widest uppercase" style={{ color: '#00b894' }}>SYSTEM OPERATIONAL</span>
+            </div>
 
-            <motion.p
-              variants={{ hidden: { opacity: 0 }, visible: { opacity: 1 } }}
-              className="font-display mb-8 mt-4"
-              style={{ color: 'var(--color-text-secondary)', fontSize: 15, lineHeight: 1.6 }}
-            >
-              Find service gaps, test future infrastructure, and compare city expansion scenarios on real maps.
-            </motion.p>
+            <p style={{ color: 'var(--color-text-secondary)', fontSize: 12, lineHeight: 1.7 }} className="mb-6">
+              Find service gaps, test future infrastructure, and compare city expansion scenarios.
+            </p>
 
-            {/* CTA Buttons */}
-            <motion.div
-              variants={{ hidden: { opacity: 0, y: 8 }, visible: { opacity: 1, y: 0 } }}
-              className="flex flex-col gap-3"
-            >
-              <GlowButton
-                variant="cyan"
-                onClick={() => setGalleryOpen(true)}
-                icon={<Globe size={16} />}
-              >
-                Explore a Real City
-              </GlowButton>
-              <GlowButton
-                variant="purple"
-                onClick={() => setSandboxOpen(true)}
-                icon={<Plus size={16} />}
-              >
-                Build a New City
-              </GlowButton>
-            </motion.div>
+            <TactileButton variant="secondary" onClick={() => setSandboxOpen(true)} icon={<Plus size={13} />}>
+              Build a New City
+            </TactileButton>
 
-            {/* Status line */}
-            <motion.div
-              variants={{ hidden: { opacity: 0 }, visible: { opacity: 1, transition: { delay: 0.5 } } }}
-              className="mt-6 flex items-center justify-center gap-2"
-            >
-              <span className="inline-block w-1.5 h-1.5 rounded-full animate-glow-pulse" style={{ background: 'var(--color-accent-cyan)' }} />
-              <span className="font-mono text-xs" style={{ color: 'var(--color-text-muted)', letterSpacing: '0.2em' }}>
-                FREMONT DEMO · 5 SCENARIOS · INFRASTRUCTURE GAP ANALYSIS
+            <div className="mt-4 flex items-center gap-1.5">
+              <span className="inline-block w-1.5 h-1.5 rounded-full" style={{ background: 'var(--color-accent-cyan)' }} />
+              <span className="font-mono text-[9px]" style={{ color: 'var(--color-text-muted)', letterSpacing: '0.15em' }}>
+                {cities.length} CITIES · FREMONT DEMO
               </span>
-            </motion.div>
+            </div>
+          </motion.div>
+
+          {/* City grid */}
+          <motion.div
+            variants={{ hidden: {}, visible: { transition: { staggerChildren: 0.06, delayChildren: 0.15 } } }}
+            className="flex-1 grid gap-6"
+            style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(210px, 1fr))' }}
+          >
+            {cities.map((city) => (
+              <CityCard key={city.id} city={city} onSelect={chooseCity} />
+            ))}
           </motion.div>
         </motion.div>
       </div>
 
       <AnimatePresence>
-        {galleryOpen && <CityGallery onClose={() => setGalleryOpen(false)} onEnter={onEnter} />}
         {sandboxOpen && (
           <SandboxOverlay onClose={() => setSandboxOpen(false)} onGenerated={onEnter} />
         )}
@@ -120,7 +94,7 @@ export function LandingScreen({ onEnter }: Props) {
   )
 }
 
-function GlowButton({
+function TactileButton({
   children,
   onClick,
   variant,
@@ -128,21 +102,24 @@ function GlowButton({
 }: {
   children: React.ReactNode
   onClick: () => void
-  variant: 'cyan' | 'purple'
+  variant: 'primary' | 'secondary'
   icon?: React.ReactNode
 }) {
-  const isCyan = variant === 'cyan'
+  const isPrimary = variant === 'primary'
   return (
     <motion.button
       onClick={onClick}
-      whileHover={{ scale: 1.02 }}
-      whileTap={{ scale: 0.97 }}
-      className="relative w-full flex items-center justify-center gap-2 px-6 py-3 rounded-lg font-display font-semibold text-sm tracking-wide transition-colors"
+      whileHover={{ scale: 1.01 }}
+      whileTap={{ scale: 0.98, y: 2 }}
+      className="relative w-full flex items-center justify-center gap-2 px-6 py-3 rounded-lg font-display font-bold text-sm tracking-widest uppercase transition-all"
       style={{
-        border: `1px solid ${isCyan ? 'var(--color-accent-cyan)' : 'var(--color-accent-purple)'}`,
-        color: isCyan ? 'var(--color-accent-cyan)' : 'var(--color-accent-purple)',
-        background: isCyan ? 'rgba(0,212,255,0.06)' : 'rgba(124,58,237,0.06)',
-        letterSpacing: '0.06em',
+        background: isPrimary ? 'var(--color-accent-cyan)' : 'var(--color-bg-panel)',
+        color: isPrimary ? '#ffffff' : 'var(--color-text-primary)',
+        border: isPrimary ? '1px solid rgba(255,255,255,0.2)' : '1px solid var(--color-border-subtle)',
+        boxShadow: isPrimary
+          ? '4px 4px 8px rgba(166,50,60,0.35), -2px -2px 6px rgba(255,100,110,0.3)'
+          : 'var(--shadow-sm)',
+        letterSpacing: '0.08em',
       }}
     >
       {icon}
@@ -151,107 +128,50 @@ function GlowButton({
   )
 }
 
-function CityGallery({ onClose, onEnter }: { onClose: () => void; onEnter: () => void }) {
-  const cities = useCityStore((state) => state.cities)
-  const selectCity = useCityStore((state) => state.selectCity)
-
-  const chooseCity = (city: CityProfile) => {
-    selectCity(city)
-    onClose()
-    onEnter()
-  }
-
-  return (
-    <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
-      className="fixed inset-0 z-50 overflow-auto"
-      style={{ background: 'rgba(13,17,23,0.97)' }}
-    >
-      <button
-        onClick={onClose}
-        className="fixed top-5 right-5 flex items-center justify-center w-9 h-9 rounded-lg transition-colors"
-        style={{ border: '1px solid var(--color-border-subtle)', color: 'var(--color-text-secondary)', background: 'var(--color-bg-panel)' }}
-        aria-label="Close city gallery"
-      >
-        <X size={16} />
-      </button>
-
-      <div className="max-w-5xl mx-auto px-6 py-16">
-        <motion.div
-          initial={{ opacity: 0, y: -12 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="mb-10 text-center"
-        >
-          <h2 className="font-display font-bold text-3xl tracking-wide mb-2" style={{ color: 'var(--color-text-primary)' }}>
-            Choose Your City
-          </h2>
-          <p className="font-mono text-xs tracking-widest uppercase" style={{ color: 'var(--color-text-muted)' }}>
-            Choose a city and growth scenario to detect infrastructure gaps.
-          </p>
-        </motion.div>
-
-        <motion.div
-          initial="hidden"
-          animate="visible"
-          variants={{ hidden: {}, visible: { transition: { staggerChildren: 0.06 } } }}
-          className="grid grid-cols-3 gap-4"
-        >
-          {cities.map((city) => (
-            <CityCard key={city.id} city={city} onSelect={chooseCity} />
-          ))}
-        </motion.div>
-      </div>
-    </motion.div>
-  )
-}
-
 function CityCard({ city, onSelect }: { city: CityProfile; onSelect: (c: CityProfile) => void }) {
   return (
     <motion.button
       variants={{ hidden: { opacity: 0, y: 16 }, visible: { opacity: 1, y: 0, transition: { duration: 0.4, ease: [0.16, 1, 0.3, 1] } } }}
       onClick={() => onSelect(city)}
-      whileHover={{ scale: 1.02, borderColor: 'rgba(0,212,255,0.5)', boxShadow: '0 0 20px rgba(0,212,255,0.12)' }}
-      whileTap={{ scale: 0.98 }}
-      className="group text-left rounded-xl overflow-hidden transition-all"
+      whileHover={{ y: -4, boxShadow: '12px 12px 24px #babecc, -12px -12px 24px #ffffff' }}
+      whileTap={{ scale: 0.98, y: 0 }}
+      className="group text-left rounded-xl overflow-hidden transition-all relative"
       style={{
-        background: 'var(--color-bg-card)',
+        background: 'var(--color-bg-panel)',
         border: '1px solid var(--color-border-subtle)',
+        boxShadow: 'var(--shadow-md)',
       }}
     >
-      {/* City thumbnail / gradient header */}
+      {/* City thumbnail */}
       <div
-        className="relative h-36 flex items-end p-4"
+        className="relative h-36 flex items-end p-5"
         style={{
-          background: `linear-gradient(135deg, ${cityColor(city.id)} 0%, #050A14 100%)`,
+          background: cityColorLight(city.id),
         }}
       >
-        <div
-          className="absolute inset-0 opacity-30"
-          style={{
-            backgroundImage: 'linear-gradient(rgba(0,212,255,0.06) 1px, transparent 1px), linear-gradient(90deg, rgba(0,212,255,0.06) 1px, transparent 1px)',
-            backgroundSize: '20px 20px',
-          }}
-        />
+        <div className="absolute top-2 right-3 flex gap-1">
+          {[0, 1, 2].map((i) => (
+            <div key={i} style={{ width: 2, height: 14, borderRadius: 99, background: 'var(--color-border-subtle)', boxShadow: 'inset 1px 1px 1px rgba(0,0,0,0.1)' }} />
+          ))}
+        </div>
         <h3
-          className="relative font-display font-bold text-xl leading-tight"
-          style={{ color: 'var(--color-text-primary)', textShadow: '0 2px 8px rgba(0,0,0,0.6)' }}
+          className="relative font-display font-bold text-lg leading-tight"
+          style={{ color: 'var(--color-text-primary)', filter: 'drop-shadow(0 1px 0 #ffffff)' }}
         >
           {city.name}
         </h3>
       </div>
 
       {/* City info */}
-      <div className="p-4">
+      <div className="p-5">
         <p className="font-mono text-xs mb-2" style={{ color: 'var(--color-text-muted)' }}>
           {city.country} · {formatPopulation(city.population_current)}
         </p>
-        <p className="text-xs leading-relaxed line-clamp-2" style={{ color: 'var(--color-text-secondary)', fontSize: 11, lineHeight: 1.5 }}>
+        <p className="text-xs leading-relaxed line-clamp-2" style={{ color: 'var(--color-text-secondary)', fontSize: 12, lineHeight: 1.6 }}>
           {city.key_planning_challenge}
         </p>
         <div
-          className="mt-3 flex items-center gap-1.5 text-xs font-semibold font-mono tracking-wide opacity-0 group-hover:opacity-100 transition-opacity"
+          className="mt-3 flex items-center gap-1.5 text-xs font-bold font-mono tracking-widest uppercase opacity-0 group-hover:opacity-100 transition-opacity"
           style={{ color: 'var(--color-accent-cyan)' }}
         >
           <span>SIMULATE</span>
@@ -269,12 +189,17 @@ function SandboxOverlay({ onClose, onGenerated }: { onClose: () => void; onGener
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
       className="fixed inset-0 z-50 overflow-auto p-8"
-      style={{ background: 'rgba(13,17,23,0.97)' }}
+      style={{ background: 'var(--color-bg-app)' }}
     >
       <button
         onClick={onClose}
-        className="fixed top-5 right-5 flex items-center justify-center w-9 h-9 rounded-lg"
-        style={{ border: '1px solid var(--color-border-subtle)', color: 'var(--color-text-secondary)', background: 'var(--color-bg-panel)' }}
+        className="fixed top-5 right-5 flex items-center justify-center w-9 h-9 rounded-lg transition-all"
+        style={{
+          border: '1px solid var(--color-border-subtle)',
+          color: 'var(--color-text-secondary)',
+          background: 'var(--color-bg-panel)',
+          boxShadow: 'var(--shadow-sm)',
+        }}
         aria-label="Close sandbox builder"
       >
         <X size={16} />
@@ -293,12 +218,13 @@ export function Logo({ large = false }: { large?: boolean }) {
           fontSize: large ? 32 : 15,
           color: 'var(--color-accent-cyan)',
           letterSpacing: '0.12em',
+          filter: 'drop-shadow(0 1px 0 #ffffff)',
         }}
       >
         UrbanMind
       </span>
       {large && (
-        <span className="font-mono text-xs tracking-widest" style={{ color: 'var(--color-accent-cyan)', opacity: 0.6 }}>
+        <span className="font-mono text-xs tracking-widest" style={{ color: 'var(--color-text-muted)', letterSpacing: '0.2em' }}>
           AI
         </span>
       )}
@@ -308,125 +234,64 @@ export function Logo({ large = false }: { large?: boolean }) {
 
 function CityIcon() {
   return (
-    <svg width={56} height={44} viewBox="0 0 56 44" aria-hidden="true">
-      <defs>
-        <linearGradient id="city-icon-grad" x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0%" stopColor="#00D4FF" />
-          <stop offset="100%" stopColor="#7C3AED" />
-        </linearGradient>
-        <filter id="city-glow">
-          <feGaussianBlur stdDeviation="1.5" result="blur" />
-          <feMerge><feMergeNode in="blur" /><feMergeNode in="SourceGraphic" /></feMerge>
-        </filter>
-      </defs>
+    <svg width={52} height={42} viewBox="0 0 56 44" aria-hidden="true">
+      {/* Building silhouette — subtle drop shadow for depth */}
       <path
         d="M4 40V22h7V10h9v30h5V16h8v24h5V4h11v36h4v4H1v-4h3z"
-        fill="url(#city-icon-grad)"
-        filter="url(#city-glow)"
+        fill="var(--color-accent-cyan)"
+        style={{ filter: 'drop-shadow(0 2px 3px rgba(0,0,0,0.15)) drop-shadow(0 -1px 0 rgba(255,255,255,0.4))' }}
       />
     </svg>
   )
 }
 
-function CornerAccents() {
-  const size = 14
-  const stroke = 'rgba(0,212,255,0.5)'
-  const style: React.CSSProperties = { position: 'absolute', strokeWidth: 1.5, fill: 'none', stroke }
+function ScrewCorners() {
+  const positions: React.CSSProperties[] = [
+    { top: 10, left: 10 },
+    { top: 10, right: 10 },
+    { bottom: 10, left: 10 },
+    { bottom: 10, right: 10 },
+  ]
   return (
     <>
-      <svg width={size} height={size} style={{ ...style, top: 10, left: 10 }} viewBox="0 0 14 14">
-        <path d="M14,2 L2,2 L2,14" />
-      </svg>
-      <svg width={size} height={size} style={{ ...style, top: 10, right: 10 }} viewBox="0 0 14 14">
-        <path d="M0,2 L12,2 L12,14" />
-      </svg>
-      <svg width={size} height={size} style={{ ...style, bottom: 10, left: 10 }} viewBox="0 0 14 14">
-        <path d="M14,12 L2,12 L2,0" />
-      </svg>
-      <svg width={size} height={size} style={{ ...style, bottom: 10, right: 10 }} viewBox="0 0 14 14">
-        <path d="M0,12 L12,12 L12,0" />
-      </svg>
+      {positions.map((pos, i) => (
+        <div
+          key={i}
+          style={{
+            position: 'absolute',
+            width: 10,
+            height: 10,
+            borderRadius: '50%',
+            background: 'var(--color-border-subtle)',
+            boxShadow: 'inset 1px 1px 2px rgba(255,255,255,0.8), inset -1px -1px 2px rgba(0,0,0,0.12)',
+            ...pos,
+          }}
+        />
+      ))}
     </>
   )
 }
 
-function StarField() {
-  const canvasRef = useRef<HTMLCanvasElement>(null)
-
-  useEffect(() => {
-    const canvas = canvasRef.current
-    if (!canvas) return
-    const ctx = canvas.getContext('2d')
-    if (!ctx) return
-
-    const resize = () => {
-      canvas.width = window.innerWidth
-      canvas.height = window.innerHeight
-    }
-    resize()
-    window.addEventListener('resize', resize)
-
-    const stars = Array.from({ length: 220 }, () => ({
-      x: Math.random() * window.innerWidth,
-      y: Math.random() * window.innerHeight,
-      r: Math.random() * 1.2 + 0.2,
-      alpha: Math.random() * 0.6 + 0.1,
-      speed: Math.random() * 0.003 + 0.001,
-      phase: Math.random() * Math.PI * 2,
-    }))
-
-    let animId: number
-    let t = 0
-    const draw = () => {
-      ctx.clearRect(0, 0, canvas.width, canvas.height)
-      t += 0.01
-      for (const s of stars) {
-        ctx.globalAlpha = s.alpha * (0.5 + 0.5 * Math.sin(t * s.speed * 100 + s.phase))
-        ctx.fillStyle = Math.random() > 0.98 ? '#7C3AED' : '#00D4FF'
-        ctx.beginPath()
-        ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2)
-        ctx.fill()
-      }
-      ctx.globalAlpha = 1
-      animId = requestAnimationFrame(draw)
-    }
-    draw()
-
-    return () => {
-      cancelAnimationFrame(animId)
-      window.removeEventListener('resize', resize)
-    }
-  }, [])
-
-  return <canvas ref={canvasRef} className="absolute inset-0 pointer-events-none" style={{ opacity: 0.7 }} />
-}
-
-function HudGrid() {
-  return (
-    <div
-      className="absolute inset-0 pointer-events-none animate-grid-pulse"
-      style={{
-        backgroundImage:
-          'linear-gradient(rgba(0,212,255,0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(0,212,255,0.03) 1px, transparent 1px)',
-        backgroundSize: '60px 60px',
-      }}
-    />
-  )
-}
-
-function cityColor(id: string): string {
+function cityColorLight(id: string): string {
   const map: Record<string, string> = {
-    new_york: '#1a2a4a',
-    los_angeles: '#2a1a0a',
-    tokyo: '#0a1a2a',
-    lagos: '#1a2a0a',
-    london: '#0a1a1a',
-    sao_paulo: '#1a0a2a',
-    singapore: '#0a2a1a',
-    dubai: '#2a1a0a',
-    mumbai: '#1a1a0a',
+    new_york:    '#c8d8e8',
+    los_angeles: '#e8d8c8',
+    tokyo:       '#c8d8e8',
+    lagos:       '#c8e8d0',
+    london:      '#d0d8e0',
+    sao_paulo:   '#d8c8e8',
+    singapore:   '#c8e8d8',
+    dubai:       '#e8dcc8',
+    mumbai:      '#e8d8c0',
+    fremont:     '#d8e8d0',
+    fremon:      '#e8e0d8',
+    san_jose:    '#d8d0e8',
+    sacramento:  '#e8e8d0',
+    stockton:    '#d0e8e0',
+    austin:      '#e8d8d8',
+    phoenix:     '#e8e0c8',
   }
-  return map[id] ?? '#0F2035'
+  return map[id] ?? '#cdd5e0'
 }
 
 function formatPopulation(value: number) {

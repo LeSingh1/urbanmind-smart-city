@@ -105,17 +105,15 @@ export const FREMON_EXISTING_INFRASTRUCTURE: InfrastructureItem[] = [
   point('fremon-police-core', 'Fremon Safety Center', 'police_station', [-121.986, 37.543], 'Public safety office near the civic core.', 0, 74, 0.86),
   point('fremon-innovation', 'Innovation District', 'commercial_zone', [-121.956, 37.565], 'Employment growth district with daytime population pressure.', 0, 68, 0.82),
   point('fremon-housing-expansion', 'New Housing Expansion Zone', 'housing_zone', [-121.945, 37.512], 'Projected housing growth needs schools, utilities, clinics, and emergency access.', 0, 65, 0.84),
-  line('fremon-west-arterial', 'West Arterial', 'road', [[-122.054, 37.548], [-122.02, 37.548], [-121.985, 37.545]], 'Primary commute corridor through the west congestion zone.', 0, 66, 0.78),
-  line('fremon-grid-spine', 'Central Grid Spine', 'road', [[-121.99, 37.506], [-121.99, 37.548], [-121.99, 37.59]], 'Generated north-south mobility spine for the simulated city grid.', 0, 70, 0.82),
 ]
 
 export const FREMON_AI_RECOMMENDATIONS: InfrastructureItem[] = [
   point('fremon-ai-south-clinic', 'South Emergency Gap Clinic', 'clinic', [-121.990, 37.500], 'Improves emergency and primary care access for South Fremon growth households.', 18_000_000, 92, 0.87, 'ai_recommended'),
   point('fremon-ai-east-school', 'East Education Gap School', 'school', [-121.936, 37.548], 'Adds classroom capacity near East Fremon residential growth.', 32_000_000, 88, 0.85, 'ai_recommended'),
-  line('fremon-ai-north-transit', 'North Transit Gap Corridor', 'transit_line', [[-122.020, 37.586], [-121.990, 37.586], [-121.956, 37.565], [-121.945, 37.512]], 'Links North Fremon, Innovation District, and new housing with frequent transit.', 45_000_000, 90, 0.84, 'ai_recommended'),
-  line('fremon-ai-central-green', 'Central Green Corridor', 'park', [[-122.005, 37.548], [-121.990, 37.552], [-121.974, 37.548]], 'Creates a walkable green-space spine through the central gap.', 14_000_000, 82, 0.82, 'ai_recommended'),
+  point('fremon-ai-north-transit', 'North Transit Gap Hub', 'transit_stop', [-121.990, 37.586], 'Places frequent transit service at the strongest north-side access gap without drawing corridors.', 45_000_000, 90, 0.84, 'ai_recommended'),
+  point('fremon-ai-central-green', 'Central Green Space Node', 'park', [-121.990, 37.552], 'Adds walkable open space at the central green-space deficit.', 14_000_000, 82, 0.82, 'ai_recommended'),
   point('fremon-ai-mixed-use', 'Warm Springs Mixed-Use Node', 'mixed_use', [-121.952, 37.518], 'Adds housing near transit to reduce commute pressure and car dependence.', 28_000_000, 80, 0.8, 'ai_recommended'),
-  line('fremon-ai-bike-connector', 'West-to-Innovation Bike Connector', 'bike_lane', [[-122.038, 37.548], [-121.990, 37.552], [-121.956, 37.565]], 'Low-cost mobility link that relieves west corridor congestion.', 6_000_000, 74, 0.79, 'ai_recommended'),
+  point('fremon-ai-west-mobility-hub', 'West Mobility Relief Hub', 'transit_stop', [-122.030, 37.548], 'Adds a mobility service point where the west district has commute pressure.', 6_000_000, 74, 0.79, 'ai_recommended'),
 ]
 
 export const FREMON_UNDERSERVED_ZONES: UnderservedZone[] = [
@@ -123,7 +121,7 @@ export const FREMON_UNDERSERVED_ZONES: UnderservedZone[] = [
   zone('fremon-east-education-gap', 'East Education Gap', 'school_access', [37.548, -121.936], 1450, 0.88, 'East district classroom demand exceeds local seeded school capacity.', 37, ['fremon-ai-east-school']),
   zone('fremon-south-emergency-gap', 'South Emergency Gap', 'emergency_access', [37.500, -121.990], 1600, 0.92, 'South district lacks clinics near projected housing growth.', 34, ['fremon-ai-south-clinic']),
   zone('fremon-central-green-gap', 'Central Green Space Gap', 'green_space', [37.552, -121.990], 1300, 0.74, 'Central district has lower walkable park access under growth.', 46, ['fremon-ai-central-green']),
-  zone('fremon-west-congestion-zone', 'West Congestion Zone', 'congestion', [37.548, -122.038], 1500, 0.82, 'West arterial absorbs too much commute traffic without alternate mobility.', 39, ['fremon-ai-bike-connector', 'fremon-ai-north-transit']),
+  zone('fremon-west-congestion-zone', 'West Congestion Zone', 'congestion', [37.548, -122.038], 1500, 0.82, 'West commute demand has too few mobility alternatives.', 39, ['fremon-ai-west-mobility-hub', 'fremon-ai-north-transit']),
   zone('fremon-housing-utility-gap', 'New Housing Expansion Zone', 'housing_access', [37.512, -121.945], 1450, 0.8, 'New housing needs nearby services, utilities, and emergency access.', 43, ['fremon-ai-mixed-use', 'fremon-ai-south-clinic']),
 ]
 
@@ -149,7 +147,7 @@ export const FREMON_PLAN_BATTLE: PlanBattlePlan[] = [
   {
     id: 'balanced',
     label: 'Plan A: Balanced Growth',
-    summary: 'Fixes the highest urgency gaps with clinics, schools, parks, and low-cost mobility.',
+    summary: 'Fixes the highest urgency gaps with clinics, schools, parks, and low-cost mobility hubs.',
     tradeoff: 'Moderate gains across all services, but transit and equity improve less dramatically.',
     cost: 70_000_000,
     budgetUsed: 70_000_000,
@@ -157,12 +155,12 @@ export const FREMON_PLAN_BATTLE: PlanBattlePlan[] = [
     gapsFixed: 4,
     isRecommended: false,
     metrics: FREMON_BALANCED_METRICS,
-    featureIds: ['fremon-ai-south-clinic', 'fremon-ai-east-school', 'fremon-ai-central-green', 'fremon-ai-bike-connector'],
+    featureIds: ['fremon-ai-south-clinic', 'fremon-ai-east-school', 'fremon-ai-central-green', 'fremon-ai-west-mobility-hub'],
   },
   {
     id: 'transit_first',
     label: 'Plan B: Transit First',
-    summary: 'Prioritizes the north corridor, bike link, and mixed-use node to reduce commute pressure.',
+    summary: 'Prioritizes north and west mobility hubs plus a mixed-use node to reduce commute pressure.',
     tradeoff: 'Best commute and CO2 outcome, but leaves more emergency and education gaps open.',
     cost: 91_000_000,
     budgetUsed: 91_000_000,
@@ -170,7 +168,7 @@ export const FREMON_PLAN_BATTLE: PlanBattlePlan[] = [
     gapsFixed: 3,
     isRecommended: false,
     metrics: FREMON_TRANSIT_FIRST_METRICS,
-    featureIds: ['fremon-ai-north-transit', 'fremon-ai-mixed-use', 'fremon-ai-bike-connector', 'fremon-ai-central-green'],
+    featureIds: ['fremon-ai-north-transit', 'fremon-ai-mixed-use', 'fremon-ai-west-mobility-hub', 'fremon-ai-central-green'],
   },
   {
     id: 'equity_first',
@@ -234,8 +232,8 @@ export const FREMON_BUDGET_AMOUNTS: Record<BudgetLevel, number> = {
 }
 
 export const FREMON_BUDGET_FEATURE_IDS: Record<BudgetLevel, string[]> = {
-  low: ['fremon-ai-south-clinic', 'fremon-ai-bike-connector'],
-  medium: ['fremon-ai-south-clinic', 'fremon-ai-east-school', 'fremon-ai-central-green', 'fremon-ai-bike-connector'],
+  low: ['fremon-ai-south-clinic', 'fremon-ai-west-mobility-hub'],
+  medium: ['fremon-ai-south-clinic', 'fremon-ai-east-school', 'fremon-ai-central-green', 'fremon-ai-west-mobility-hub'],
   high: FREMON_AI_RECOMMENDATIONS.map((item) => item.id),
 }
 
@@ -254,7 +252,7 @@ export function getFremonBudgetSummary(level: BudgetLevel): BudgetSummary {
     populationServedPerMillion: Math.round(populationServed / Math.max(1, used / 1_000_000)),
     label: level === 'low' ? 'Low Budget: $25M' : level === 'medium' ? 'Medium Budget: $75M' : 'High Budget: $150M',
     guidance: level === 'low'
-      ? 'Best impact per dollar: clinic plus bike lane.'
+      ? 'Best impact per dollar: clinic plus west mobility hub.'
       : level === 'medium'
       ? 'Best impact per dollar while fixing emergency, school, green-space, and congestion gaps.'
       : 'Full capital plan: major transit, school, clinic, green corridor, housing, and mobility upgrades.',
@@ -293,20 +291,6 @@ function point(
   status: InfrastructureItem['status'] = 'existing',
 ): InfrastructureItem {
   return { id, name, category, status, source: status === 'existing' ? 'simulation' : 'ai_recommended', coordinates, geometryType: 'Point', geometry: { type: 'Point', coordinates }, reason, costEstimate, impactScore, confidence, createdAt, updatedAt: createdAt }
-}
-
-function line(
-  id: string,
-  name: string,
-  category: InfrastructureCategory,
-  coordinates: GeoJSON.Position[],
-  reason: string,
-  costEstimate: number,
-  impactScore: number,
-  confidence: number,
-  status: InfrastructureItem['status'] = 'existing',
-): InfrastructureItem {
-  return { id, name, category, status, source: status === 'existing' ? 'simulation' : 'ai_recommended', coordinates, geometryType: 'LineString', geometry: { type: 'LineString', coordinates }, reason, costEstimate, impactScore, confidence, createdAt, updatedAt: createdAt }
 }
 
 function zone(id: string, name: string, gapType: UnderservedZone['gapType'], center: [number, number], radiusMeters: number, severity: number, reason: string, beforeScore: number, improvedBy: string[]): UnderservedZone {

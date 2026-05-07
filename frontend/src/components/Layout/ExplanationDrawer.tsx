@@ -46,23 +46,23 @@ export function ExplanationDrawer() {
           <button className="icon-btn" onClick={close} style={{ position: 'absolute', top: 14, right: 14 }} aria-label="Close explanation drawer"><X size={16} /></button>
           <header style={{ display: 'flex', alignItems: 'center', gap: 10, paddingRight: 48 }}>
             <span style={{ width: 14, height: 14, borderRadius: 3, background: getZoneColor(content.zone_type_id) }} />
-            <h2 id="explanation-title" style={{ margin: 0, color: 'white', fontSize: 18, fontWeight: 700 }}>{content.zone_display_name}</h2>
+            <h2 id="explanation-title" style={{ margin: 0, color: 'var(--color-text-primary)', fontSize: 18, fontWeight: 700 }}>{content.zone_display_name}</h2>
           </header>
 
           <section style={cardStyle}>
-            <div style={{ fontFamily: 'var(--font-mono)', color: 'white' }}>({content.x}, {content.y})</div>
+            <div style={{ fontFamily: 'var(--font-mono)', color: 'var(--color-text-primary)' }}>({content.x}, {content.y})</div>
             <div style={{ color: 'var(--color-text-secondary)', fontSize: 13 }}>Year {content.year} · ECC-{Math.max(1, Math.min(5, Math.round((content.x + content.y) % 5) + 1))}</div>
           </section>
 
           {content.placement_reason && (
             <Section title="Why placed here">
-              <div style={{ ...cardStyle, borderColor: 'rgba(96,165,250,0.3)', background: 'rgba(96,165,250,0.06)' }}>
+              <div style={{ ...cardStyle, borderColor: 'rgba(108,92,231,0.34)', background: 'rgba(108,92,231,0.07)' }}>
                 {content.sps_score != null && (
-                  <div style={{ fontSize: 11, color: '#FBBF24', fontWeight: 700, marginBottom: 6, fontFamily: 'var(--font-mono)' }}>
+                  <div style={{ fontSize: 11, color: 'var(--color-accent-warning)', fontWeight: 700, marginBottom: 6, fontFamily: 'var(--font-mono)' }}>
                     SPS Score: {content.sps_score.toFixed(2)}
                   </div>
                 )}
-                <p style={{ margin: 0, color: 'rgba(203,213,225,0.9)', fontSize: 13, lineHeight: 1.6 }}>
+                <p style={{ margin: 0, color: 'var(--color-text-secondary)', fontSize: 13, lineHeight: 1.6 }}>
                   {content.placement_reason}
                 </p>
               </div>
@@ -99,7 +99,7 @@ export function ExplanationDrawer() {
             <div style={{ display: 'grid', gap: 8 }}>
               {(alternatives.length ? alternatives : actions.slice(0, 3)).map((action, index) => (
                 <div key={`${action.x}-${action.y}-${index}`} style={cardStyle}>
-                  <strong style={{ color: 'white', fontSize: 13 }}>Cell ({action.x}, {action.y}) · SPS {action.sps_score.toFixed(1)}</strong>
+                  <strong style={{ color: 'var(--color-text-primary)', fontSize: 13 }}>Cell ({action.x}, {action.y}) · SPS {action.sps_score.toFixed(1)}</strong>
                   <p style={{ margin: '4px 0 0', color: 'var(--color-text-muted)', fontSize: 12 }}>{action.rejection_reason ?? 'Lower service leverage than selected placement.'}</p>
                 </div>
               ))}
@@ -118,14 +118,14 @@ export function ExplanationDrawer() {
 }
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
-  return <section style={{ marginTop: 18 }}><h3 style={{ margin: '0 0 8px', color: 'var(--color-text-muted)', fontSize: 11, textTransform: 'uppercase', letterSpacing: 0.8 }}>{title}</h3>{children}</section>
+  return <section style={{ marginTop: 18 }}><h3 style={{ margin: '0 0 8px', color: 'var(--color-text-muted)', fontSize: 10, fontFamily: 'var(--font-mono)', textTransform: 'uppercase', letterSpacing: '0.12em' }}>{title}</h3>{children}</section>
 }
 
 function MetricDelta({ label, before, after }: { label: string; before: string; after: string }) {
-  return <div style={{ display: 'flex', justifyContent: 'space-between', border: '1px solid var(--color-border-subtle)', borderRadius: 8, padding: 10, background: 'rgba(13,17,23,0.25)' }}><span style={{ color: 'var(--color-text-secondary)', fontSize: 12 }}>{label}</span><strong style={{ color: 'var(--color-brand-accent)', fontSize: 12 }}>{before} to {after}</strong></div>
+  return <div style={{ display: 'flex', justifyContent: 'space-between', border: '1px solid var(--color-border-subtle)', borderRadius: 8, padding: 10, background: 'var(--color-bg-hover)', boxShadow: 'var(--shadow-inset)' }}><span style={{ color: 'var(--color-text-secondary)', fontSize: 12 }}>{label}</span><strong style={{ color: 'var(--color-accent-green)', fontSize: 12 }}>{before} to {after}</strong></div>
 }
 
-const cardStyle: React.CSSProperties = { border: '1px solid var(--color-border-subtle)', borderRadius: 8, background: 'rgba(13,17,23,0.28)', padding: 12 }
+const cardStyle: React.CSSProperties = { border: '1px solid var(--color-border-subtle)', borderRadius: 8, background: 'var(--color-bg-hover)', boxShadow: 'var(--shadow-inset)', padding: 12 }
 const cellKey: React.CSSProperties = { color: 'var(--color-text-muted)', padding: '7px 0', width: 120, verticalAlign: 'top' }
 const cellValue: React.CSSProperties = { color: 'var(--color-text-secondary)', padding: '7px 0', verticalAlign: 'top' }
-const dangerButton: React.CSSProperties = { flex: 1, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 8, border: '1px solid var(--color-brand-danger)', borderRadius: 8, background: 'transparent', color: 'var(--color-brand-danger)', fontWeight: 700 }
+const dangerButton: React.CSSProperties = { flex: 1, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 8, border: '1px solid rgba(225,112,85,0.5)', borderRadius: 8, background: 'var(--color-bg-panel)', boxShadow: 'var(--shadow-sm)', color: 'var(--color-accent-danger)', fontWeight: 700, cursor: 'pointer' }

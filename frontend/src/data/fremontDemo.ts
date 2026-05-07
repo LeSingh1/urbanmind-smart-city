@@ -25,8 +25,6 @@ export const FREMONT_EXISTING_INFRASTRUCTURE: InfrastructureItem[] = [
   point('fremont-fire-1', 'Fremont Fire Station 1', 'fire_station', 'demo_seed', [-121.9746, 37.5513], 'Existing emergency response station near central Fremont.', 0, 74, 0.82),
   point('fremont-fire-6', 'Fremont Fire Station 6', 'fire_station', 'demo_seed', [-121.9402, 37.5145], 'Existing fire coverage in the south employment corridor.', 0, 70, 0.8),
   point('fremont-police', 'Fremont Police Department', 'police_station', 'openstreetmap', [-121.9829, 37.5522], 'Existing public safety anchor near civic center.', 0, 78, 0.9),
-  line('fremont-i880', 'I-880 Corridor', 'road', 'openstreetmap', [[-122.029, 37.585], [-121.996, 37.551], [-121.961, 37.504]], 'Major north-south highway corridor carrying regional trips.', 0, 80, 0.88),
-  line('fremont-i680', 'I-680 Corridor', 'road', 'openstreetmap', [[-121.938, 37.575], [-121.922, 37.535], [-121.914, 37.493]], 'Major eastern highway corridor and commute pressure line.', 0, 78, 0.86),
   point('fremont-warm-springs-housing', 'Warm Springs Housing Growth Area', 'housing_zone', 'demo_seed', [-121.937, 37.506], 'Seeded housing growth area used by the scenario comparison model.', 0, 65, 0.78),
 ]
 
@@ -106,7 +104,7 @@ export const FREMONT_AI_RECOMMENDATIONS: InfrastructureItem[] = [
   point('ai-ardenwood-transit-stop', 'North Fremont Frequent Transit Stop', 'transit_stop', 'ai_recommended', [-122.037, 37.573], 'Adds walkable transit coverage to north Fremont growth pockets.', 7_500_000, 74, 0.84, 'ai_recommended'),
   line('ai-decoto-transit-line', 'North Fremont to Warm Springs Bus Corridor', 'transit_line', 'ai_recommended', [[-122.037, 37.573], [-121.994, 37.552], [-121.939, 37.503]], 'Connects underserved north and south Fremont zones to BART anchors.', 42_000_000, 88, 0.8, 'ai_recommended'),
   point('ai-mixed-use-warm-springs', 'Warm Springs Mixed-Use Housing Zone', 'mixed_use', 'ai_recommended', [-121.943, 37.508], 'Adds housing near regional transit so growth does not increase car dependency as sharply.', 55_000_000, 82, 0.8, 'ai_recommended'),
-  line('ai-auto-mall-bus-priority', 'Auto Mall Bus Priority and Signal Upgrade', 'road', 'ai_recommended', [[-122.003, 37.508], [-121.975, 37.506], [-121.943, 37.503]], 'Targets projected east-west congestion with lower-cost transit priority.', 22_000_000, 72, 0.78, 'ai_recommended'),
+  line('ai-auto-mall-bus-priority', 'Auto Mall Bus Priority Upgrade', 'transit_line', 'ai_recommended', [[-122.003, 37.508], [-121.975, 37.506], [-121.943, 37.503]], 'Targets projected east-west congestion with lower-cost transit priority.', 22_000_000, 72, 0.78, 'ai_recommended'),
 ]
 
 export const FREMONT_TOP_RECOMMENDATION: AIRecommendation = {
@@ -156,7 +154,7 @@ export function calculatePlanningScores(
   const improvedSeverity = zones.reduce((sum, zone) => sum + (zone.isImproved ? zone.severity : 0), 0)
   const remainingSeverity = zones.reduce((sum, zone) => sum + (zone.isImproved ? zone.severity * 0.35 : zone.severity), 0)
   const count = (category: InfrastructureCategory) => active.filter((item) => item.category === category).length
-  const lineCount = active.filter((item) => item.category === 'transit_line' || item.category === 'road').length
+  const lineCount = active.filter((item) => item.category === 'transit_line').length
   const weights = SCENARIO_SCORE_WEIGHTS[scenario]
 
   const transitCoverage = clamp(58 + count('transit_stop') * 7 + count('transit_line') * 9 + improvedSeverity * 2.2 - growthPressure * 4)
