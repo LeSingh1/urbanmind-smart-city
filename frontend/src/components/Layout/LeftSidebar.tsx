@@ -12,19 +12,12 @@ import {
   Layers,
   Leaf,
   Map,
-  Mountain,
-  Plus,
   Scale,
   Shield,
   Sparkles,
   Train,
   Users,
-  Waves,
-  Zap,
 } from 'lucide-react'
-import { MetricsDashboard } from '@/components/Simulation/MetricsDashboard'
-import { AIPanel } from '@/components/AI/AIPanel'
-import { ActionsPanel } from '@/components/Simulation/ActionsPanel'
 import { ZonePalette } from '@/components/UI/ZonePalette'
 import { useCityStore } from '@/stores/cityStore'
 import { useScenarioStore, scenarioColors, scenarioLabels } from '@/stores/scenarioStore'
@@ -32,21 +25,17 @@ import { useSimulationStore } from '@/stores/simulationStore'
 import { useUIStore } from '@/stores/uiStore'
 import type { CityProfile, ScenarioId } from '@/types/city.types'
 
-const CITY_PRESETS = ['fremon', 'fremont', 'san_jose', 'sacramento', 'phoenix', 'austin']
+const CITY_PRESETS = ['fremon', 'fremont', 'san_jose']
 
 const TABS = [
   { id: 'planner', icon: Map, label: 'Planner' },
-  { id: 'metrics', icon: Scale, label: 'Metrics' },
-  { id: 'ai', icon: Sparkles, label: 'Copilot' },
-  { id: 'actions', icon: Layers, label: 'Actions' },
-  { id: 'placement', icon: Crosshair, label: 'Tools' },
 ] as const
 
 type TabId = typeof TABS[number]['id']
 
 const CITY_META: Record<string, { type: string; growth: string; challenge: string; badge: string }> = {
   san_jose: { type: 'Bay Area metro', growth: '22% in 10 years', challenge: 'housing, transit, heat', badge: 'Preset' },
-  fremon: { type: 'Generated future suburb', growth: '35% in 10 years', challenge: 'clinics, schools, transit, parks, congestion, utilities', badge: 'Generated' },
+  fremon: { type: 'Generated future suburb', growth: '35% in 10 years', challenge: 'emergency access, schools, transit, green space, housing growth', badge: 'Demo ready' },
   fremont: { type: 'Bay Area suburb', growth: '30% in 10 years', challenge: 'transit, schools, clinics, housing growth', badge: 'Demo ready' },
   sacramento: { type: 'Capital region', growth: '18% in 10 years', challenge: 'flood, heat, service access', badge: 'Preset' },
   phoenix: { type: 'Desert growth city', growth: '26% in 10 years', challenge: 'heat, water, service access', badge: 'Preset' },
@@ -73,17 +62,8 @@ const LAYER_ITEMS = [
   { id: 'Proposed infrastructure', icon: Crosshair, label: 'Proposed Infrastructure', color: '#00D4FF', group: 'Future Scenario' },
   { id: 'AI Recommendations', icon: Sparkles, label: 'AI Recommendations', color: '#00D4FF', group: 'Future Scenario' },
   { id: 'Underserved zones', icon: CloudSun, label: 'Underserved Zones', color: '#FF5A3D', group: 'Analysis Overlays' },
-  { id: 'Heatmap Mode', icon: Zap, label: 'Heatmap Mode', color: '#6C5CE7', group: 'Analysis Overlays' },
+  { id: 'Coverage Rings', icon: Crosshair, label: 'Coverage Rings', color: '#00B894', group: 'Analysis Overlays' },
 ] as const
-
-const TERRAIN_OPTIONS = [
-  { id: 'coastal', label: 'Coastal', icon: Waves },
-  { id: 'suburban', label: 'Suburban', icon: Home },
-  { id: 'desert', label: 'Desert', icon: CloudSun },
-  { id: 'mountain', label: 'Mountain', icon: Mountain },
-  { id: 'river_valley', label: 'River Valley', icon: Waves },
-  { id: 'dense_urban', label: 'Dense Urban', icon: Building2 },
-]
 
 export function LeftSidebar() {
   const [activePanel, setActivePanel] = useState<TabId | null>('planner')
@@ -190,10 +170,6 @@ export function LeftSidebar() {
 
             <div className="flex-1 overflow-y-auto">
               {activePanel === 'planner' && <PlannerPanel />}
-              {activePanel === 'metrics' && <MetricsDashboard />}
-              {activePanel === 'ai' && <AIPanel />}
-              {activePanel === 'actions' && <ActionsPanel />}
-              {activePanel === 'placement' && <ZonePalette />}
             </div>
           </motion.div>
         )}
@@ -203,37 +179,45 @@ export function LeftSidebar() {
 }
 
 function PlannerPanel() {
-  const { cities, selectedCity, selectCity, addCity } = useCityStore()
+  const { cities, selectedCity, selectCity } = useCityStore()
   const { activeScenario, setScenario } = useScenarioStore()
-  const { planning, analyzeDemo, setPlanningConstraint, setBudgetLevel, setTimelineYear } = useSimulationStore()
+  const { planning, hydratePlanningForCity, setBudgetLevel, setTimelineYear } = useSimulationStore()
   const { activeLayers, toggleLayer } = useUIStore()
-  const [createOpen, setCreateOpen] = useState(false)
 
   const presetCities = useMemo(
     () => CITY_PRESETS.map((id) => cities.find((city) => city.id === id)).filter(Boolean) as CityProfile[],
     [cities]
   )
-
-  const createCity = (city: CityProfile) => {
-    addCity(city)
-    setCreateOpen(false)
-      selectCity(city)
-      analyzeDemo(city.id, activeScenario)
-  }
-
   const chooseCity = (city: CityProfile) => {
     selectCity(city)
-    analyzeDemo(city.id, activeScenario)
+    hydratePlanningForCity(city.id)
   }
 
   const chooseScenario = (id: ScenarioId) => {
     setScenario(id)
-    if (selectedCity) analyzeDemo(selectedCity.id, id)
+    useSimulationStore.setState((s) => ({ planning: { ...s.planning, priority: id } }))
+    const st = useSimulationStore.getState()
+    if (selectedCity && !st.planning.hasAnalyzed) {
+      st.hydratePlanningForCity(selectedCity.id)
+    }
   }
 
   return (
     <div className="p-3 space-y-4">
-      <PanelSection title="Growth Scenario">
+      <PanelSection title="City">
+        <div className="grid gap-2">
+          {presetCities.map((city) => (
+            <CityPresetCard
+              key={city.id}
+              city={city}
+              active={selectedCity?.id === city.id}
+              onSelect={() => chooseCity(city)}
+            />
+          ))}
+        </div>
+      </PanelSection>
+
+      <PanelSection title="Scenario">
         <div className="grid gap-2">
           {(Object.keys(SCENARIO_DETAILS) as ScenarioId[]).map((id) => (
             <ScenarioCard key={id} id={id} active={activeScenario === id} onSelect={() => chooseScenario(id)} />
@@ -272,47 +256,7 @@ function PlannerPanel() {
         </div>
       </PanelSection>
 
-      <PanelSection title="Timeline">
-        <div className="grid grid-cols-5 gap-1">
-          {([2026, 2028, 2030, 2032, 2036] as const).map((year) => (
-            <button
-              key={year}
-              onClick={() => setTimelineYear(year)}
-              className="rounded-lg py-2 font-mono text-[9px]"
-              style={{
-                border: year === planning.timelineYear ? '1px solid rgba(255,71,87,0.4)' : '1px solid var(--color-border-subtle)',
-                color: year === planning.timelineYear ? 'var(--color-accent-cyan)' : 'var(--color-text-muted)',
-                background: year === planning.timelineYear ? 'var(--color-bg-hover)' : 'var(--color-bg-card)',
-              }}
-            >
-              {year}
-            </button>
-          ))}
-        </div>
-        <div className="mt-2 text-[10px] leading-relaxed" style={{ color: 'var(--color-text-secondary)' }}>
-          {planning.timelinePhase}
-        </div>
-        <div className="mt-1 font-mono text-[10px]" style={{ color: 'var(--color-accent-warning)' }}>
-          Population: {planning.timelinePopulation.toLocaleString()}
-        </div>
-      </PanelSection>
-
-      <PanelSection title="Advanced Constraints">
-        <div className="grid gap-3">
-          <ConstraintRow label="Budget" value={planning.budget / 1_000_000} min={25} max={250} suffix="M" onChange={(value) => setPlanningConstraint('budget', value * 1_000_000)} />
-          <ConstraintRow label="Population Growth" value={planning.growthPercent} min={5} max={60} suffix="%" onChange={() => undefined} disabled />
-          <ConstraintRow label="Service Radius" value={planning.serviceRadius} min={600} max={2400} suffix="m" onChange={(value) => setPlanningConstraint('serviceRadius', value)} />
-          <div className="grid grid-cols-4 gap-1">
-            {[5, 10, 20, 50].map((year) => (
-              <button key={year} className="rounded-lg py-2 font-mono text-[10px]" style={{ border: year === planning.horizonYears ? '1px solid rgba(255,71,87,0.4)' : '1px solid var(--color-border-subtle)', color: year === planning.horizonYears ? 'var(--color-accent-cyan)' : 'var(--color-text-muted)', background: year === planning.horizonYears ? 'var(--color-bg-hover)' : 'var(--color-bg-card)' }}>
-                {year}Y
-              </button>
-            ))}
-          </div>
-        </div>
-      </PanelSection>
-
-      <PanelSection title="Map Layers">
+      <PanelSection title="Layers">
         <div className="grid gap-3">
           {['Existing Infrastructure', 'Future Scenario', 'Analysis Overlays'].map((group) => (
             <div key={group}>
@@ -336,9 +280,31 @@ function PlannerPanel() {
         <ZonePalette compact />
       </PanelSection>
 
-      <TrustCard />
+      <PanelSection title="2026 to 2036 Growth Timeline">
+        <details>
+          <summary className="cursor-pointer text-xs font-semibold" style={{ color: 'var(--color-text-secondary)' }}>
+            Expand timeline
+          </summary>
+          <div className="mt-2 grid grid-cols-5 gap-1">
+            {([2026, 2028, 2030, 2032, 2036] as const).map((year) => (
+              <button
+                key={year}
+                onClick={() => setTimelineYear(year)}
+                className="rounded-lg py-2 font-mono text-[9px]"
+                style={{
+                  border: year === planning.timelineYear ? '1px solid rgba(255,71,87,0.4)' : '1px solid var(--color-border-subtle)',
+                  color: year === planning.timelineYear ? 'var(--color-accent-cyan)' : 'var(--color-text-muted)',
+                  background: year === planning.timelineYear ? 'var(--color-bg-hover)' : 'var(--color-bg-card)',
+                }}
+              >
+                {year}
+              </button>
+            ))}
+          </div>
+        </details>
+      </PanelSection>
 
-      <CreateCityModal open={createOpen} onClose={() => setCreateOpen(false)} onCreate={createCity} />
+      <TrustCard />
     </div>
   )
 }
@@ -434,129 +400,6 @@ function LayerSwitch({ item, checked, onToggle }: { item: typeof LAYER_ITEMS[num
   )
 }
 
-function CreateCityModal({ open, onClose, onCreate }: { open: boolean; onClose: () => void; onCreate: (city: CityProfile) => void }) {
-  const [name, setName] = useState('Fremon')
-  const [terrain, setTerrain] = useState('suburban')
-  const [population, setPopulation] = useState(420000)
-  const [growth, setGrowth] = useState(35)
-  const [priority, setPriority] = useState('balanced')
-  const [budget, setBudget] = useState('medium')
-  const [layout, setLayout] = useState('grid')
-  const [horizon, setHorizon] = useState(10)
-
-  const generate = () => {
-    const cityName = name.trim() || 'Fremon'
-    const id = cityName.toLowerCase() === 'fremon' ? 'fremon' : `generated_${cityName.toLowerCase().replace(/[^a-z0-9]+/g, '_')}_${Date.now()}`
-    onCreate({
-      id,
-      name: cityName,
-      country: 'Simulated City',
-      center_lat: 37.5485,
-      center_lng: -121.9886,
-      default_zoom: 12,
-      climate_zone: terrain.replace(/_/g, ' '),
-      population_current: population,
-      gdp_per_capita: 82000,
-      urban_growth_rate: growth / 10,
-      key_planning_challenge: `${cityName} is a generated ${terrain.replace(/_/g, ' ')} ${layout.replace(/_/g, ' ')} planning scenario focused on ${priority}, ${growth}% growth, ${budget} budget, and a ${horizon}-year horizon.`,
-      expansion_constraint: 'Generated scenario constraints from local demo inputs',
-      bbox: [-122.09, 37.45, -121.86, 37.62],
-      landmarks: [
-        { name: `${cityName} Civic Clinic`, lat: 37.548, lng: -121.982, zone_type_id: 'HEALTH_CLINIC', category: 'Healthcare', data_source: 'projected' },
-        { name: `${cityName} Central School`, lat: 37.537, lng: -121.984, zone_type_id: 'EDU_HIGH', category: 'Education', data_source: 'projected' },
-        { name: `${cityName} Green Corridor`, lat: 37.542, lng: -121.972, zone_type_id: 'PARK_SMALL', category: 'Parks & Green', data_source: 'projected' },
-        { name: `${cityName} Transit Hub`, lat: 37.557, lng: -121.976, zone_type_id: 'BUS_STATION', category: 'Transit', data_source: 'projected' },
-        { name: `${cityName} Mixed-Use Growth Area`, lat: 37.506, lng: -121.943, zone_type_id: 'RES_MIXED_USE', category: 'Residential', data_source: 'projected' },
-      ],
-    })
-  }
-
-  return (
-    <AnimatePresence>
-      {open && (
-        <motion.div
-          className="fixed inset-0 z-[90] flex items-center justify-center p-6"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          style={{ background: 'rgba(0,0,0,0.72)', backdropFilter: 'blur(8px)' }}
-          onClick={onClose}
-        >
-          <motion.div
-            initial={{ opacity: 0, scale: 0.96, y: 18 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.96, y: 18 }}
-            className="scanline"
-            style={{ width: 680, maxWidth: '94vw', background: 'var(--color-bg-panel)', border: '1px solid var(--color-border-subtle)', borderRadius: 18, boxShadow: 'var(--shadow-lg)' }}
-            onClick={(event) => event.stopPropagation()}
-          >
-            <div className="p-5" style={{ borderBottom: '1px solid var(--color-border-subtle)' }}>
-              <div className="font-display text-xl font-bold" style={{ color: 'var(--color-text-primary)' }}>Create New City</div>
-              <p className="mt-1 text-sm" style={{ color: 'var(--color-text-muted)' }}>Generate a simulated city plan with starter zones, services, and growth gaps.</p>
-            </div>
-            <div className="p-5 grid grid-cols-2 gap-4">
-              <Field label="City Name">
-                <input value={name} onChange={(event) => setName(event.target.value)} placeholder="Fremon" className="premium-input" />
-              </Field>
-              <Field label="Population Size">
-                <input type="number" value={population} onChange={(event) => setPopulation(Number(event.target.value))} className="premium-input" />
-              </Field>
-              <Field label="Growth Rate">
-                <input type="range" min={5} max={60} value={growth} onChange={(event) => setGrowth(Number(event.target.value))} style={{ width: '100%', accentColor: 'var(--color-accent-cyan)' }} />
-                <div className="font-mono text-[10px]" style={{ color: 'var(--color-accent-cyan)' }}>{growth}% growth</div>
-              </Field>
-              <Field label="Time Horizon">
-                <select value={horizon} onChange={(event) => setHorizon(Number(event.target.value))} className="premium-input">
-                  {[5, 10, 20, 50].map((value) => <option key={value} value={value}>{value} years</option>)}
-                </select>
-              </Field>
-              <Field label="Terrain Type">
-                <div className="grid grid-cols-3 gap-2">
-                  {TERRAIN_OPTIONS.map((option) => {
-                    const Icon = option.icon
-                    const active = terrain === option.id
-                    return (
-                      <button key={option.id} onClick={() => setTerrain(option.id)} className="rounded-lg p-2 text-[10px]" style={{ border: active ? '1px solid rgba(255,71,87,0.4)' : '1px solid var(--color-border-subtle)', color: active ? 'var(--color-accent-cyan)' : 'var(--color-text-muted)', background: active ? 'var(--color-bg-hover)' : 'var(--color-bg-card)' }}>
-                        <Icon size={13} className="mx-auto mb-1" />
-                        {option.label}
-                      </button>
-                    )
-                  })}
-                </div>
-              </Field>
-              <Field label="City Layout">
-                <select value={layout} onChange={(event) => setLayout(event.target.value)} className="premium-input">
-                  {['grid', 'radial', 'transit_corridor', 'sprawling_suburb', 'mixed_use'].map((value) => <option key={value} value={value}>{value.replace(/_/g, ' ')}</option>)}
-                </select>
-              </Field>
-              <Field label="Planning Priority">
-                <select value={priority} onChange={(event) => setPriority(event.target.value)} className="premium-input">
-                  {['balanced', 'transit', 'climate', 'equity', 'emergency', 'housing'].map((value) => <option key={value} value={value}>{value}</option>)}
-                </select>
-              </Field>
-              <Field label="Budget Level">
-                <select value={budget} onChange={(event) => setBudget(event.target.value)} className="premium-input">
-                  {['low', 'medium', 'high'].map((value) => <option key={value} value={value}>{value}</option>)}
-                </select>
-              </Field>
-              <div className="rounded-xl p-3" style={{ border: '1px solid var(--color-border-subtle)', background: 'var(--color-bg-hover)' }}>
-                <div className="font-mono text-[10px] uppercase tracking-widest" style={{ color: 'var(--color-accent-cyan)' }}>Generated plan includes</div>
-                <p className="mt-2 text-xs leading-relaxed" style={{ color: 'var(--color-text-secondary)' }}>
-                  Residential, commercial, parks, transit corridors, schools, clinics, utilities, starting metrics, and seeded infrastructure gaps.
-                </p>
-              </div>
-            </div>
-            <div className="flex justify-end gap-2 p-5" style={{ borderTop: '1px solid var(--color-border-subtle)' }}>
-              <button onClick={onClose} className="px-4 py-2 rounded-lg text-sm" style={{ border: '1px solid rgba(255,255,255,0.1)', color: 'var(--color-text-secondary)' }}>Cancel</button>
-              <button onClick={generate} className="px-4 py-2 rounded-lg text-sm font-semibold" style={{ border: '1px solid rgba(255,71,87,0.4)', color: 'var(--color-accent-cyan)', background: 'var(--color-bg-hover)' }}>Generate City</button>
-            </div>
-          </motion.div>
-        </motion.div>
-      )}
-    </AnimatePresence>
-  )
-}
-
 function PanelSection({ title, action, children }: { title: string; action?: React.ReactNode; children: React.ReactNode }) {
   return (
     <section>
@@ -566,27 +409,6 @@ function PanelSection({ title, action, children }: { title: string; action?: Rea
       </div>
       {children}
     </section>
-  )
-}
-
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <label className="block">
-      <div className="mb-1.5 font-mono text-[10px] uppercase tracking-widest" style={{ color: 'var(--color-text-muted)' }}>{label}</div>
-      {children}
-    </label>
-  )
-}
-
-function ConstraintRow({ label, value, min, max, suffix, onChange, disabled = false }: { label: string; value: number; min: number; max: number; suffix: string; onChange: (value: number) => void; disabled?: boolean }) {
-  return (
-    <label>
-      <div className="mb-1 flex justify-between">
-        <span className="font-mono text-[10px]" style={{ color: 'var(--color-text-muted)' }}>{label}</span>
-        <span className="font-mono text-[10px]" style={{ color: 'var(--color-accent-cyan)' }}>{Math.round(value)}{suffix}</span>
-      </div>
-      <input type="range" min={min} max={max} value={value} disabled={disabled} onChange={(event) => onChange(Number(event.target.value))} className="w-full disabled:opacity-45" style={{ accentColor: 'var(--color-accent-cyan)' }} />
-    </label>
   )
 }
 

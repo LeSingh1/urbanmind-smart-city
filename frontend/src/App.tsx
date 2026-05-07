@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { subscribeNotify } from '@/lib/notify'
 import { AnimatePresence, motion } from 'framer-motion'
 import { MainLayout } from '@/components/Layout/MainLayout'
 import { LandingScreen } from '@/components/UI/LandingScreen'
@@ -387,6 +388,7 @@ function chooseNeededZone(year: number, index: number, lat: number, lng: number,
 
 export default function App() {
   const [showLanding, setShowLanding] = useState(true)
+  const [banner, setBanner] = useState<{ message: string; variant?: 'info' | 'error' } | null>(null)
   const fetchCities = useCityStore((state) => state.fetchCities)
   const cities = useCityStore((state) => state.cities)
   const selectedCity = useCityStore((state) => state.selectedCity)
@@ -401,6 +403,13 @@ export default function App() {
   useEffect(() => {
     fetchCities()
   }, [fetchCities])
+
+  useEffect(() => {
+    return subscribeNotify((detail) => {
+      setBanner(detail)
+      window.setTimeout(() => setBanner(null), 5200)
+    })
+  }, [])
 
 
   // Offline simulation loop — adds new zone features to the map each year
@@ -472,6 +481,19 @@ export default function App() {
           </motion.div>
         )}
       </AnimatePresence>
+      {banner && (
+        <div
+          className="fixed bottom-16 left-1/2 z-[100] max-w-lg -translate-x-1/2 rounded-xl px-4 py-3 text-sm shadow-lg"
+          role="status"
+          style={{
+            background: banner.variant === 'error' ? 'rgba(120,22,22,0.95)' : 'rgba(28,42,62,0.95)',
+            color: '#f4f8ff',
+            border: '1px solid rgba(255,255,255,0.14)',
+          }}
+        >
+          {banner.message}
+        </div>
+      )}
     </div>
   )
 }

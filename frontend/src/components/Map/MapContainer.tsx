@@ -2,7 +2,7 @@ import { useEffect, useMemo, useCallback, useRef, useState } from 'react'
 import { MapContainer as LeafletMap, TileLayer, CircleMarker, Circle, Marker, Popup, useMap, useMapEvents } from 'react-leaflet'
 import L from 'leaflet'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Box, Building2, Bus, Cross, Flame, GraduationCap, Home, Layers, Shield, TreePine, Zap } from 'lucide-react'
+import { Building2, Bus, Cross, Flame, GraduationCap, Home, Layers, Shield, TreePine, Zap } from 'lucide-react'
 import { useCityStore } from '@/stores/cityStore'
 import { useSimulationStore } from '@/stores/simulationStore'
 import type { UserPlacedZone } from '@/stores/simulationStore'
@@ -14,7 +14,6 @@ import { getZoneColor, getZoneToken } from '@/utils/colorUtils'
 import { ExplanationTooltip } from './ExplanationTooltip'
 import { MiniMetricsPanel } from './MiniMetricsPanel'
 import { SplitScreenView } from '@/components/Layout/SplitScreenView'
-import { ZoneLegend } from './ZoneLegend'
 import { Map3DView } from './Map3DView'
 import type { Landmark } from '@/types/city.types'
 import type { GrowthPressureZone, InfrastructureCategory, InfrastructureItem, UnderservedZone } from '@/types/city.types'
@@ -118,16 +117,6 @@ function CleanPlanningGridLayer() {
           ctx.stroke()
         }
 
-        const seed = Math.abs(coords.x * 928371 + coords.y * 364479 + coords.z * 1021)
-        for (let i = 0; i < 7; i += 1) {
-          const px = (seed + i * 47) % size
-          const py = (seed * 3 + i * 71) % size
-          ctx.fillStyle = i % 3 === 0 ? 'rgba(0,184,148,0.035)' : 'rgba(255,255,255,0.08)'
-          ctx.beginPath()
-          ctx.arc(px, py, 18 + (i % 2) * 10, 0, Math.PI * 2)
-          ctx.fill()
-        }
-
         done?.(null, tile)
         return tile
       },
@@ -209,7 +198,7 @@ const LAYER_GROUPS = [
   { title: 'Existing real world infrastructure', items: ['Existing hospitals', 'Existing schools', 'Existing parks', 'Existing transit', 'Existing police stations', 'Existing fire stations'] },
   { title: 'Proposed future scenario infrastructure', items: ['Proposed infrastructure'] },
   { title: 'AI recommended infrastructure', items: ['AI Recommendations'] },
-  { title: 'Scenario overlays', items: ['Underserved zones', 'Growth Pressure', 'Heatmap Mode'] },
+  { title: 'Scenario overlays', items: ['Underserved zones', 'Growth Pressure', 'Coverage Rings'] },
 ]
 
 const CATEGORY_LAYER: Partial<Record<InfrastructureCategory, string>> = {
@@ -241,16 +230,16 @@ const CATEGORY_COLOR: Record<InfrastructureCategory, string> = {
   water: '#ff4757',
   power: '#F59E0B',
   mixed_use: '#E67E22',
-  community_center: '#2E86C1',
+  community_center: '#0097A7',
 }
 
 const CATEGORY_ICON: Record<InfrastructureCategory, string> = {
   hospital: '&#10010;',
   clinic: '&#10010;',
-  school: '&#8962;',
-  park: '&#9827;',
-  transit_stop: '&#9636;',
-  transit_line: '&#9636;',
+  school: '&#127891;',
+  park: '&#127794;',
+  transit_stop: '&#128652;',
+  transit_line: '&#128646;',
   fire_station: '&#9650;',
   police_station: '&#9670;',
   housing_zone: '&#8962;',
@@ -262,7 +251,7 @@ const CATEGORY_ICON: Record<InfrastructureCategory, string> = {
   water: '&#9679;',
   power: '&#9889;',
   mixed_use: '&#8962;',
-  community_center: '&#9671;',
+  community_center: '&#128101;',
 }
 
 const TOOL_ZONE_TO_CATEGORY: Record<string, InfrastructureCategory> = {
@@ -342,8 +331,8 @@ function PlanningLegend() {
       <div style={{ borderTop: '1px solid var(--color-border-subtle)', marginTop: 8, paddingTop: 7, display: 'grid', gap: 4 }}>
         {[
           ['Existing', '#636e72'],
-          ['Proposed', '#ff4757'],
-          ['AI Recommended', '#ff4757'],
+          ['Proposed', '#00D4FF'],
+          ['AI Recommended', '#00D4FF'],
           ['Underserved Zone', '#FF5A3D'],
         ].map(([label, color]) => (
           <div key={label} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 9, color: 'var(--color-text-muted)' }}>
@@ -359,11 +348,14 @@ function PlanningLegend() {
 function infraIcon(item: InfrastructureItem) {
   const isProposed = item.status === 'proposed'
   const isAi = item.status === 'ai_recommended'
-  const color = isProposed || isAi ? '#ff4757' : CATEGORY_COLOR[item.category]
-  const border = isProposed ? `1px dashed ${color}` : `1px solid ${color}`
+  const color = isAi ? '#00D4FF' : CATEGORY_COLOR[item.category]
+  const border = isProposed ? `2px solid ${color}` : `1px solid ${color}`
+  const shadow = isAi
+    ? '0 0 0 4px rgba(0,212,255,0.16),0 0 22px rgba(0,212,255,0.52)'
+    : '4px 4px 8px #babecc,-4px -4px 8px #ffffff'
   return L.divIcon({
     className: 'urbanmind-infra-icon',
-    html: `<div style="width:30px;height:30px;border-radius:10px;background:#e0e5ec;border:${border};box-shadow:4px 4px 8px #babecc,-4px -4px 8px #ffffff;display:grid;place-items:center;color:${color};font:800 15px Inter,system-ui;">${isAi ? '&#10022;' : CATEGORY_ICON[item.category]}</div>`,
+    html: `<div style="width:32px;height:32px;border-radius:10px;background:#f4f7fb;border:${border};box-shadow:${shadow};display:grid;place-items:center;color:${color};font:800 15px Inter,system-ui;">${isAi ? '&#9673;' : CATEGORY_ICON[item.category]}</div>`,
     iconSize: [30, 30],
     iconAnchor: [15, 15],
   })
@@ -384,10 +376,11 @@ function coverageRadiusForCategory(category: InfrastructureCategory) {
     clinic: 1800,
     school: 1100,
     park: 900,
-    transit_stop: 650,
-    fire_station: 1900,
-    police_station: 1700,
-    community_center: 900,
+  transit_stop: 650,
+  housing_zone: 850,
+  fire_station: 1900,
+  police_station: 1700,
+  community_center: 900,
   }
   return radii[category] ?? null
 }
@@ -435,6 +428,69 @@ function isLayerVisible(item: InfrastructureItem, activeLayers: Set<string>, sho
   if (item.status === 'ai_recommended') return showAIRecommendations && activeLayers.has('AI Recommendations')
   const layer = CATEGORY_LAYER[item.category]
   return layer ? activeLayers.has(layer) : true
+}
+
+interface DisplayPoint {
+  id: string
+  lat: number
+  lng: number
+}
+
+function spreadDisplayPositions(points: DisplayPoint[], city?: { bbox: number[] } | null) {
+  const positions = new Map<string, [number, number]>()
+  const used = new Set<string>()
+  const [west, south, east, north] = city?.bbox ?? [0, 0, 0, 0]
+  const citySpan = city?.bbox ? Math.max(Math.abs(east - west), Math.abs(north - south)) : 0.18
+  const clusterThreshold = Math.min(0.035, Math.max(0.014, citySpan * 0.1))
+  const offsetStep = Math.min(0.022, Math.max(0.009, clusterThreshold * 0.72))
+
+  points.forEach((item) => {
+    if (used.has(item.id)) return
+    const cluster = points.filter((other) => {
+      if (used.has(other.id)) return false
+      return Math.hypot(item.lat - other.lat, item.lng - other.lng) < clusterThreshold
+    })
+
+    if (cluster.length <= 1) {
+      positions.set(item.id, [item.lat, item.lng])
+      used.add(item.id)
+      return
+    }
+
+    const center = cluster.reduce(
+      (acc, clusterItem) => ({ lat: acc.lat + clusterItem.lat, lng: acc.lng + clusterItem.lng }),
+      { lat: 0, lng: 0 },
+    )
+    center.lat /= cluster.length
+    center.lng /= cluster.length
+
+    cluster.forEach((clusterItem, index) => {
+      const angle = (Math.PI * 2 * index) / cluster.length
+      const ring = offsetStep * (1 + Math.floor(index / 8) * 0.55)
+      let displayLat = center.lat + Math.sin(angle) * ring
+      let displayLng = center.lng + Math.cos(angle) * ring
+      if (city?.bbox) {
+        displayLng = Math.max(west + 0.006, Math.min(east - 0.006, displayLng))
+        displayLat = Math.max(south + 0.006, Math.min(north - 0.006, displayLat))
+      }
+      positions.set(clusterItem.id, [displayLat, displayLng])
+      used.add(clusterItem.id)
+    })
+  })
+
+  return positions
+}
+
+function spreadMarkerDisplayPositions(items: InfrastructureItem[], city?: { bbox: number[] } | null) {
+  return spreadDisplayPositions(
+    items
+      .filter((item) => item.geometryType === 'Point')
+      .map((item) => {
+        const [lng, lat] = item.coordinates as GeoJSON.Position
+        return { id: item.id, lat, lng }
+      }),
+    city,
+  )
 }
 
 // ─── Animated overlay for "no city selected" state ──────────────────────────
@@ -500,7 +556,6 @@ export function MapContainer() {
   const isOverrideModeActive = useUIStore((s) => s.isOverrideModeActive)
   const selectedOverrideZone = useUIStore((s) => s.selectedOverrideZone)
   const is3DMode = useUIStore((s) => s.is3DMode)
-  const toggle3D = useUIStore((s) => s.toggle3D)
   const userZones = useSimulationStore((s) => s.userZones)
   const addUserZone = useSimulationStore((s) => s.addUserZone)
   const planning = useSimulationStore((s) => s.planning)
@@ -515,7 +570,37 @@ export function MapContainer() {
     (lat: number, lng: number) => {
       if (!selectedOverrideZone) return
       if (!city || !isValidCityPlacement(city, lat, lng)) {
-        notify('warning', 'Place proposed infrastructure inside the selected city planning area.', 2800)
+        useSimulationStore.setState((state) => ({
+          planning: {
+            ...state.planning,
+            placementFeedback: {
+              type: 'invalid',
+              title: 'Invalid Placement',
+              message: 'This location is outside the planning area or too close to water.',
+            },
+          },
+        }))
+        notify('warning', 'This location is outside the planning area.', 2800)
+        return
+      }
+      const category = TOOL_ZONE_TO_CATEGORY[selectedOverrideZone] ?? 'housing_zone'
+      const duplicate = planning.infrastructure.some((item) => {
+        if (item.geometryType !== 'Point' || item.category !== category) return false
+        const [otherLng, otherLat] = item.coordinates as GeoJSON.Position
+        return Math.hypot(lat - otherLat, lng - otherLng) < 0.008
+      })
+      if (duplicate) {
+        useSimulationStore.setState((state) => ({
+          planning: {
+            ...state.planning,
+            placementFeedback: {
+              type: 'invalid',
+              title: 'Invalid Placement',
+              message: 'This location is outside the planning area or too close to water.',
+            },
+          },
+        }))
+        notify('warning', 'Move farther from duplicate infrastructure.', 2800)
         return
       }
       const zone: UserPlacedZone = {
@@ -525,7 +610,6 @@ export function MapContainer() {
         zone_type_id: selectedOverrideZone,
       }
       addUserZone(zone)
-      const category = TOOL_ZONE_TO_CATEGORY[selectedOverrideZone] ?? 'housing_zone'
       const label = selectedOverrideZone.replace(/_/g, ' ').toLowerCase().replace(/\b\w/g, (c) => c.toUpperCase())
       const infrastructureId = `user-${Date.now()}`
       const placement = describePlacement(category, lat, lng, planning.underservedZones)
@@ -547,7 +631,7 @@ export function MapContainer() {
       })
       notify('success', `Proposed ${label} added near ${placement.locationName}.`, 2800)
     },
-    [selectedOverrideZone, city, planning.underservedZones, addUserZone, addInfrastructure, notify]
+    [selectedOverrideZone, city, planning.infrastructure, planning.underservedZones, addUserZone, addInfrastructure, notify]
   )
 
   const placeSuggestedInfrastructure = useCallback((suggestionId: string) => {
@@ -682,7 +766,18 @@ export function MapContainer() {
     })), ...userDots]
   }, [city, frame, isRunning, isPaused, detailedGrid, userZones])
 
-  const showDots = activeLayers.has('Zones')
+  const showDots = false
+  const dotDisplayPositions = useMemo(
+    () => spreadDisplayPositions(dots.map((dot) => ({ id: dot.id, lat: dot.lat, lng: dot.lng })), city),
+    [city, dots]
+  )
+  const displayDots = useMemo(
+    () => dots.map((dot) => {
+      const position = dotDisplayPositions.get(dot.id)
+      return position ? { ...dot, lat: position[0], lng: position[1] } : dot
+    }),
+    [dotDisplayPositions, dots]
+  )
   const showPlanning = Boolean(city)
   const visibleInfrastructure = useMemo(() => {
     if (!showPlanning) return []
@@ -691,6 +786,16 @@ export function MapContainer() {
       item.geometryType === 'Point' && isLayerVisible(item, activeLayers, planning.hasAnalyzed)
     )
   }, [activeLayers, planning.aiRecommendations, planning.hasAnalyzed, planning.hasAppliedAIPlan, planning.infrastructure, showPlanning])
+
+  const displayPositions = useMemo(
+    () => spreadMarkerDisplayPositions(visibleInfrastructure, city),
+    [city, visibleInfrastructure]
+  )
+
+  const getDisplayPosition = useCallback((item: InfrastructureItem): [number, number] => {
+    const [lng, lat] = item.coordinates as GeoJSON.Position
+    return displayPositions.get(item.id) ?? [lat, lng]
+  }, [displayPositions])
 
   const selectedDistrictCenter = useMemo(() => {
     const district = planning.districtProfiles.find((item) => item.id === planning.selectedDistrictId)
@@ -704,9 +809,23 @@ export function MapContainer() {
     return planning.placementSuggestions.filter((suggestion) => suggestion.category === activeSuggestionCategory).slice(0, 3)
   }, [activeSuggestionCategory, isOverrideModeActive, planning.hasAnalyzed, planning.placementSuggestions])
 
+  const suggestionDisplayPositions = useMemo(
+    () => spreadDisplayPositions(
+      visibleSuggestions.map((suggestion) => ({
+        id: suggestion.id,
+        lat: suggestion.coordinates[1],
+        lng: suggestion.coordinates[0],
+      })),
+      city,
+    ),
+    [city, visibleSuggestions],
+  )
+
   const coverageInfrastructure = useMemo(
-    () => visibleInfrastructure.filter((item) => item.geometryType === 'Point' && coverageRadiusForCategory(item.category)),
-    [visibleInfrastructure]
+    () => activeLayers.has('Coverage Rings')
+      ? visibleInfrastructure.filter((item) => item.geometryType === 'Point' && coverageRadiusForCategory(item.category))
+      : [],
+    [activeLayers, visibleInfrastructure]
   )
 
   const initialCenter: [number, number] = city
@@ -771,35 +890,6 @@ export function MapContainer() {
           <Layers size={16} />
         </motion.button>
       )}
-      {/* 2D / 3D toggle */}
-      <motion.button
-        onClick={toggle3D}
-        whileHover={{ scale: 1.08 }}
-        whileTap={{ scale: 0.94 }}
-        title={is3DMode ? 'Switch to 2D map' : 'Switch to 3D map'}
-        style={{
-          position: 'absolute',
-          top: 118,
-          right: 16,
-          zIndex: 20,
-          width: 38,
-          height: 38,
-          borderRadius: 8,
-          border: is3DMode
-            ? '1px solid var(--color-border-active)'
-            : '1px solid var(--color-border-subtle)',
-          background: 'var(--color-bg-panel)',
-          color: is3DMode ? 'var(--color-accent-cyan)' : 'var(--color-text-muted)',
-          display: 'grid',
-          placeItems: 'center',
-          cursor: 'pointer',
-          transition: 'all 200ms ease',
-          boxShadow: is3DMode ? 'var(--shadow-pressed)' : 'var(--shadow-sm)',
-        }}
-      >
-        <Box size={16} />
-      </motion.button>
-
       {isSplitScreen ? (
         <SplitScreenView />
       ) : is3DMode ? (
@@ -843,7 +933,7 @@ export function MapContainer() {
             />
             {showDots && (
               <DotLayer
-                dots={dots}
+                dots={displayDots}
                 onHover={handleHover}
                 onClick={handleClick}
                 highlightedToken={highlightedZoneToken}
@@ -898,11 +988,11 @@ export function MapContainer() {
               <Circle
                 key={zone.id}
                 center={zone.center}
-                radius={activeLayers.has('Heatmap Mode') ? zone.radiusMeters * 1.2 : zone.radiusMeters}
+                radius={zone.radiusMeters}
                 pathOptions={{
                   color: zone.pressure === 'high' ? '#6C5CE7' : '#ff4757',
                   fillColor: zone.pressure === 'high' ? '#6C5CE7' : '#ff4757',
-                  fillOpacity: activeLayers.has('Heatmap Mode') ? (zone.pressure === 'high' ? 0.2 : 0.16) : 0.1,
+                  fillOpacity: 0.1,
                   weight: 1.2,
                   opacity: 0.55,
                   dashArray: '7 5',
@@ -917,7 +1007,7 @@ export function MapContainer() {
               </Circle>
             ))}
             {showPlanning && planning.hasAnalyzed && coverageInfrastructure.map((item) => {
-              const [lng, lat] = item.coordinates as GeoJSON.Position
+              const [lat, lng] = getDisplayPosition(item)
               const radius = coverageRadiusForCategory(item.category)
               if (!radius) return null
               return (
@@ -926,8 +1016,8 @@ export function MapContainer() {
                   center={[lat, lng]}
                   radius={item.status === 'proposed' ? radius * 1.08 : radius}
                   pathOptions={{
-                    color: item.status === 'proposed' ? '#ff4757' : CATEGORY_COLOR[item.category],
-                    fillColor: item.status === 'proposed' ? '#ff4757' : CATEGORY_COLOR[item.category],
+                    color: CATEGORY_COLOR[item.category],
+                    fillColor: CATEGORY_COLOR[item.category],
                     fillOpacity: item.status === 'proposed' ? 0.075 : 0.035,
                     weight: item.status === 'proposed' ? 1.8 : 1,
                     opacity: item.status === 'proposed' ? 0.58 : 0.28,
@@ -937,7 +1027,7 @@ export function MapContainer() {
               )
             })}
             {visibleInfrastructure.map((item) => {
-              const [lng, lat] = item.coordinates as GeoJSON.Position
+              const [lat, lng] = getDisplayPosition(item)
               return (
                 <Marker
                   key={item.id}
@@ -967,7 +1057,7 @@ export function MapContainer() {
               )
             })}
             {visibleSuggestions.map((suggestion) => {
-              const [lng, lat] = suggestion.coordinates
+              const [lat, lng] = suggestionDisplayPositions.get(suggestion.id) ?? [suggestion.coordinates[1], suggestion.coordinates[0]]
               return (
                 <Marker key={suggestion.id} position={[lat, lng]} icon={suggestionIcon(suggestion.rank)}>
                   <Popup>
@@ -1072,7 +1162,6 @@ export function MapContainer() {
       )}
 
       <MiniMetricsPanel />
-      <ZoneLegend />
     </main>
   )
 }

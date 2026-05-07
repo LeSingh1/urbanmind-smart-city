@@ -43,9 +43,6 @@ export function TopBar({ onHome }: { onHome: () => void }) {
           <div className="font-display text-sm font-semibold" style={{ color: 'var(--color-text-primary)' }}>
             UrbanMind
           </div>
-          <div className="text-xs truncate" style={{ color: 'var(--color-text-secondary)' }}>
-            AI infrastructure planning simulator
-          </div>
         </div>
       </div>
 
@@ -68,7 +65,7 @@ export function TopBar({ onHome }: { onHome: () => void }) {
           background: 'rgba(0,184,148,0.07)',
         }}
       >
-        Demo data ready
+        Demo Ready
       </span>
 
       <div className="flex-1" />
@@ -85,7 +82,7 @@ export function TopBar({ onHome }: { onHome: () => void }) {
         }}
       >
         <Search size={15} />
-        Analyze Infrastructure Gaps
+        {planning.hasAnalyzed ? 'Reanalyze' : 'Analyze Infrastructure Gaps'}
       </button>
 
       <button
@@ -99,7 +96,7 @@ export function TopBar({ onHome }: { onHome: () => void }) {
         }}
       >
         <FileText size={15} />
-        Report
+        Generate Report
       </button>
     </header>
   )
