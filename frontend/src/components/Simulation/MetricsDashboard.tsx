@@ -101,13 +101,7 @@ function Sparkline({ history, config, color, height = 28 }: SparklineProps) {
       .y1((d) => y(d[config.key] as number))
       .curve(d3.curveCatmullRom)
 
-    const gradId = `spark-grad-${String(config.key)}`
-    const defs = svg.append('defs')
-    const grad = defs.append('linearGradient').attr('id', gradId).attr('x1', 0).attr('y1', 0).attr('x2', 0).attr('y2', 1)
-    grad.append('stop').attr('offset', '0%').attr('stop-color', color).attr('stop-opacity', 0.25)
-    grad.append('stop').attr('offset', '100%').attr('stop-color', color).attr('stop-opacity', 0)
-
-    svg.append('path').datum(history).attr('fill', `url(#${gradId})`).attr('d', area)
+    svg.append('path').datum(history).attr('fill', color).attr('opacity', 0.12).attr('d', area)
     svg.append('path').datum(history).attr('fill', 'none').attr('stroke', color)
       .attr('stroke-width', 1.5).attr('opacity', 0.9).attr('d', line)
       .style('filter', `drop-shadow(0 0 2px ${color})`)
@@ -167,15 +161,9 @@ function FullChart({ history, config, color }: FullChartProps) {
       .attr('stroke', 'var(--chart-grid)').attr('stroke-width', 0.5)
 
     // Area
-    const gradId = `full-grad-${String(config.key)}`
-    const defs = svg.append('defs')
-    const grad = defs.append('linearGradient').attr('id', gradId).attr('x1', 0).attr('y1', 0).attr('x2', 0).attr('y2', 1)
-    grad.append('stop').attr('offset', '0%').attr('stop-color', color).attr('stop-opacity', 0.22)
-    grad.append('stop').attr('offset', '100%').attr('stop-color', color).attr('stop-opacity', 0)
-
     const area = d3.area<MetricsSnapshot>()
       .x((_, i) => xScale(i)).y0(innerH).y1((d) => yScale(d[config.key] as number)).curve(d3.curveCatmullRom)
-    g.append('path').datum(history).attr('fill', `url(#${gradId})`).attr('d', area)
+    g.append('path').datum(history).attr('fill', color).attr('opacity', 0.1).attr('d', area)
 
     // Line
     const line = d3.line<MetricsSnapshot>()

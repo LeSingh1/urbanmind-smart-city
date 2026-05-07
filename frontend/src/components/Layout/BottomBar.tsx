@@ -5,8 +5,7 @@ import { useScenarioStore } from '@/stores/scenarioStore'
 import { useSimulationStore } from '@/stores/simulationStore'
 
 const START_YEAR = 2026
-const END_YEAR = 2036
-const KEY_YEARS = [2026, 2028, 2030, 2032, 2036] as const
+const END_YEAR = 2076
 
 export function BottomBar() {
   const selectedCity = useCityStore((state) => state.selectedCity)
@@ -51,26 +50,23 @@ export function BottomBar() {
       scrubToYear(year)
       return
     }
-    const nearest = KEY_YEARS.reduce((best, candidate) =>
-      Math.abs(candidate - year) < Math.abs(best - year) ? candidate : best
-    )
-    setTimelineYear(nearest)
+    setTimelineYear(year)
   }
 
   return (
     <footer
-      className="fixed bottom-0 left-0 right-0 z-[70] flex h-[72px] items-center gap-4 px-5"
+      className="fixed bottom-0 left-0 right-0 z-[70] flex h-[58px] items-center gap-3 px-4"
       style={{
         background: 'var(--color-bg-sidebar)',
         borderTop: '1px solid var(--color-border-subtle)',
         boxShadow: '0 -10px 30px rgba(0,0,0,0.18)',
       }}
     >
-      <div className="flex min-w-[180px] items-center gap-2">
+      <div className="flex min-w-[164px] items-center gap-2">
         <button
           onClick={togglePlayback}
           disabled={!selectedCity}
-          className="grid h-10 w-10 place-items-center rounded-lg disabled:cursor-not-allowed disabled:opacity-40"
+          className="grid h-9 w-9 place-items-center rounded-lg disabled:cursor-not-allowed disabled:opacity-40"
           style={{ color: 'var(--color-accent-cyan)', border: '1px solid rgba(255,71,87,0.32)', background: 'var(--color-bg-panel)', boxShadow: 'var(--shadow-sm)' }}
           aria-label={isRunning ? 'Pause simulation' : 'Play simulation'}
           title={isRunning ? 'Pause simulation' : 'Play simulation'}
@@ -80,7 +76,7 @@ export function BottomBar() {
         <button
           onClick={reset}
           disabled={!selectedCity}
-          className="grid h-10 w-10 place-items-center rounded-lg disabled:cursor-not-allowed disabled:opacity-40"
+          className="grid h-9 w-9 place-items-center rounded-lg disabled:cursor-not-allowed disabled:opacity-40"
           style={{ color: 'var(--color-text-secondary)', border: '1px solid var(--color-border-subtle)', background: 'var(--color-bg-panel)', boxShadow: 'var(--shadow-sm)' }}
           aria-label="Reset simulation"
           title="Reset simulation"
@@ -94,7 +90,7 @@ export function BottomBar() {
             initial={{ opacity: 0.55, y: 5 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.28, ease: [0.16, 1, 0.3, 1] }}
-            className="font-mono text-xl font-bold"
+            className="font-mono text-lg font-bold"
             style={{ color: 'var(--color-text-primary)' }}
           >
             {displayYear}
@@ -103,7 +99,7 @@ export function BottomBar() {
       </div>
 
       <div className="min-w-0 flex-1">
-        <div className="mb-2 flex items-center justify-between gap-2">
+        <div className="mb-1.5 flex items-center justify-between gap-2">
           <span className="text-xs font-semibold" style={{ color: 'var(--color-text-secondary)' }}>
             {planning.timelinePhase || 'Move the timeline or press play to run the growth simulation.'}
           </span>
@@ -112,17 +108,17 @@ export function BottomBar() {
           </span>
         </div>
         <div className="relative">
-          <div className="absolute left-0 right-0 top-1/2 h-2 -translate-y-1/2 rounded-full" style={{ background: 'var(--color-bg-hover)', boxShadow: 'var(--shadow-inset)' }} />
+          <div className="absolute left-0 right-0 top-1/2 h-1.5 -translate-y-1/2 rounded-full" style={{ background: 'var(--color-bg-hover)', boxShadow: 'var(--shadow-inset)' }} />
           <motion.div
-            className="absolute left-0 top-1/2 h-2 -translate-y-1/2 rounded-full"
+            className="absolute left-0 top-1/2 h-1.5 -translate-y-1/2 rounded-full"
             animate={{ width: `${progress}%` }}
-            transition={{ duration: isRunning ? 0.42 : 0.28, ease: [0.16, 1, 0.3, 1] }}
+            transition={{ type: 'spring', stiffness: 90, damping: 22, mass: 0.4 }}
             style={{ background: 'var(--color-accent-cyan)', opacity: 0.72 }}
           />
           <motion.div
             className="pointer-events-none absolute top-1/2 h-5 w-5 -translate-x-1/2 -translate-y-1/2 rounded-full"
             animate={{ left: `${progress}%` }}
-            transition={{ duration: isRunning ? 0.42 : 0.28, ease: [0.16, 1, 0.3, 1] }}
+            transition={{ type: 'spring', stiffness: 100, damping: 18, mass: 0.45 }}
             style={{
               background: 'var(--color-accent-cyan)',
               border: '2px solid var(--color-bg-sidebar)',
@@ -143,11 +139,11 @@ export function BottomBar() {
         </div>
       </div>
 
-      <div className="hidden min-w-[150px] text-right md:block">
+      <div className="hidden min-w-[132px] text-right md:block">
         <div className="font-mono text-[10px] uppercase tracking-widest" style={{ color: 'var(--color-text-muted)' }}>
           Population
         </div>
-        <div className="font-mono text-lg font-bold" style={{ color: 'var(--color-text-primary)' }}>
+        <div className="font-mono text-base font-bold" style={{ color: 'var(--color-text-primary)' }}>
           {planning.timelinePopulation.toLocaleString()}
         </div>
       </div>

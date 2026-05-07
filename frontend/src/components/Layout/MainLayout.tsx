@@ -8,7 +8,7 @@ export function MainLayout({ onHome }: { onHome: () => void }) {
   return (
     <div
       className="flex flex-col w-full overflow-hidden"
-      style={{ height: '100vh', paddingBottom: 72, background: 'var(--color-bg-app)' }}
+      style={{ height: '100vh', paddingBottom: 58, background: 'var(--color-bg-app)' }}
     >
       <TopBar onHome={onHome} />
       <div className="flex flex-1 overflow-hidden">

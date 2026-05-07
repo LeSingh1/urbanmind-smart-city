@@ -21,19 +21,6 @@ export function LandingScreen({ onEnter }: Props) {
 
   return (
     <div className="relative h-screen overflow-auto noise-overlay" style={{ background: 'var(--color-bg-app)' }}>
-      {/* Blueprint grid */}
-      <div
-        className="fixed inset-0 pointer-events-none"
-        style={{
-          backgroundImage:
-            'linear-gradient(var(--color-border-subtle) 1px, transparent 1px), linear-gradient(90deg, var(--color-border-subtle) 1px, transparent 1px)',
-          backgroundSize: '48px 48px',
-          opacity: 0.18,
-        }}
-      />
-      {/* Light source */}
-      <div className="fixed pointer-events-none" style={{ top: -120, left: -120, width: 600, height: 600, borderRadius: '50%', background: 'radial-gradient(circle, rgba(255,255,255,0.35) 0%, transparent 70%)' }} />
-
       <div className="relative z-10 max-w-6xl mx-auto px-8 py-14">
         {/* Hero row */}
         <motion.div
@@ -159,18 +146,9 @@ function CityCard({ city, onSelect }: { city: CityProfile; onSelect: (c: CityPro
       <div
         className="relative h-36 flex items-end p-5"
         style={{
-          background: `linear-gradient(135deg, ${cityColorLight(city.id)} 0%, var(--color-bg-card) 100%)`,
+          background: cityColorLight(city.id),
         }}
       >
-        {/* Light blueprint grid */}
-        <div
-          className="absolute inset-0"
-          style={{
-            backgroundImage: 'linear-gradient(var(--color-border-subtle) 1px, transparent 1px), linear-gradient(90deg, var(--color-border-subtle) 1px, transparent 1px)',
-            backgroundSize: '18px 18px',
-            opacity: 0.3,
-          }}
-        />
         <div className="absolute top-2 right-3 flex gap-1">
           {[0, 1, 2].map((i) => (
             <div key={i} style={{ width: 2, height: 14, borderRadius: 99, background: 'var(--color-border-subtle)', boxShadow: 'inset 1px 1px 1px rgba(0,0,0,0.1)' }} />
@@ -257,16 +235,10 @@ export function Logo({ large = false }: { large?: boolean }) {
 function CityIcon() {
   return (
     <svg width={52} height={42} viewBox="0 0 56 44" aria-hidden="true">
-      <defs>
-        <linearGradient id="city-icon-grad" x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0%" stopColor="#ff4757" />
-          <stop offset="100%" stopColor="#d63031" />
-        </linearGradient>
-      </defs>
       {/* Building silhouette — subtle drop shadow for depth */}
       <path
         d="M4 40V22h7V10h9v30h5V16h8v24h5V4h11v36h4v4H1v-4h3z"
-        fill="url(#city-icon-grad)"
+        fill="var(--color-accent-cyan)"
         style={{ filter: 'drop-shadow(0 2px 3px rgba(0,0,0,0.15)) drop-shadow(0 -1px 0 rgba(255,255,255,0.4))' }}
       />
     </svg>
@@ -290,7 +262,7 @@ function ScrewCorners() {
             width: 10,
             height: 10,
             borderRadius: '50%',
-            background: 'radial-gradient(circle at 35% 35%, #f0f2f5 20%, var(--color-border-subtle) 55%, #a3b1c6 100%)',
+            background: 'var(--color-border-subtle)',
             boxShadow: 'inset 1px 1px 2px rgba(255,255,255,0.8), inset -1px -1px 2px rgba(0,0,0,0.12)',
             ...pos,
           }}

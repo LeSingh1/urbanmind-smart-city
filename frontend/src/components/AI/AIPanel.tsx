@@ -5,6 +5,7 @@ import { Copy, Cpu, FileText, Sparkles, X, Zap } from 'lucide-react'
 import { getZoneColor } from '@/utils/colorUtils'
 import { useScenarioStore } from '@/stores/scenarioStore'
 import { useSimulationStore } from '@/stores/simulationStore'
+import { STATIC_CITIES } from '@/data/staticCities'
 import type { ZoneExplanation } from '@/types/simulation.types'
 
 export function AIPanel() {
@@ -206,15 +207,17 @@ function Impact({ label, value }: { label: string; value: string; positive?: boo
 
 function PlanningReport({ onClose }: { onClose: () => void }) {
   const planning = useSimulationStore((s) => s.planning)
+  const city = STATIC_CITIES.find((item) => item.id === planning.cityId)
+  const cityName = planning.cityId === 'fremon' ? 'Fremon' : city?.name ?? planning.cityId
   const before = planning.beforeScores
   const after = planning.afterScores ?? before
   const proposed = planning.infrastructure.filter((item) => item.status === 'proposed')
   const activeGaps = planning.underservedZones.filter((zone) => !zone.isImproved)
   const pitchSummary = planning.cityId === 'fremon'
     ? 'UrbanMind analyzed Fremon under 35 percent projected growth, detected emergency, education, transit, and green space gaps, compared three infrastructure plans, and recommended an Equity First plan that improves City Health from 61 to 82 while serving 74,000 residents.'
-    : `UrbanMind analyzed ${planning.cityId} under ${planning.growthPercent} percent projected growth, detected infrastructure service gaps, and generated a decision-support plan for scenario comparison.`
+    : `UrbanMind analyzed the visible map dots for ${cityName} under ${planning.growthPercent} percent projected growth, detected infrastructure service gaps, and generated a city-specific decision-support plan.`
   const reportJson = JSON.stringify({
-    city: planning.cityId === 'fremon' ? 'Fremon' : 'Fremont, CA',
+    city: cityName,
     growthScenario: `${planning.growthPercent}% over ${planning.horizonYears} years`,
     gaps: planning.underservedZones,
     recommendations: planning.aiRecommendations,
@@ -261,7 +264,7 @@ function PlanningReport({ onClose }: { onClose: () => void }) {
         <div className="flex items-center justify-between px-5 py-4" style={{ borderBottom: '1px solid var(--color-border-subtle)' }}>
           <div>
             <div className="font-display font-semibold text-lg" style={{ color: 'var(--color-text-primary)' }}>UrbanMind Planning Report</div>
-            <div className="font-mono text-[10px] tracking-widest uppercase" style={{ color: 'var(--color-text-muted)' }}>{planning.cityId === 'fremon' ? 'Fremon · Generated City' : 'Fremont, CA'} · {planning.growthPercent}% growth over {planning.horizonYears} years</div>
+            <div className="font-mono text-[10px] tracking-widest uppercase" style={{ color: 'var(--color-text-muted)' }}>{cityName} · {planning.growthPercent}% growth over {planning.horizonYears} years</div>
           </div>
           <button onClick={onClose} className="w-8 h-8 rounded-lg grid place-items-center" style={{ border: '1px solid var(--color-border-subtle)', color: 'var(--color-text-muted)' }}>
             <X size={14} />
@@ -277,7 +280,7 @@ function PlanningReport({ onClose }: { onClose: () => void }) {
           <section>
             <h3 className="font-mono text-[10px] tracking-widest uppercase mb-2" style={{ color: 'var(--color-accent-cyan)' }}>Executive Summary</h3>
             <p className="text-xs leading-relaxed" style={{ color: 'var(--color-text-secondary)' }}>
-              UrbanMind identified emergency access, school access, transit coverage, green space, congestion, and housing pressure gaps under the selected growth scenario. The proposed plan estimates improved city health while prioritizing underserved zones.
+              UrbanMind identified emergency access, school access, transit coverage, green space, congestion, and housing pressure gaps from the dots currently visible on the {cityName} map. The proposed plan estimates improved city health while prioritizing underserved zones.
             </p>
             <div className="mt-3 rounded-lg p-3" style={{ border: '1px solid rgba(0,184,148,0.3)', background: 'rgba(0,184,148,0.06)' }}>
               <div className="font-mono text-[9px] uppercase tracking-widest mb-1" style={{ color: 'var(--color-accent-green)' }}>Pitch Summary</div>
@@ -286,7 +289,7 @@ function PlanningReport({ onClose }: { onClose: () => void }) {
           </section>
           <section>
             <h3 className="font-mono text-[10px] tracking-widest uppercase mb-2" style={{ color: 'var(--color-accent-cyan)' }}>City and Scenario</h3>
-            <DataLine label="City" value={planning.cityId === 'fremon' ? 'Fremon' : 'Fremont, CA'} />
+            <DataLine label="City" value={cityName} />
             <DataLine label="Growth Scenario" value={`${planning.growthPercent}% growth over ${planning.horizonYears} years`} />
             <DataLine label="Scenario Type" value="Balanced Growth default, adjustable by scenario controls" />
             <DataLine label="Timeline Year" value={`${planning.timelineYear} · ${planning.timelinePopulation.toLocaleString()} projected residents`} />

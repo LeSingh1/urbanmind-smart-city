@@ -101,7 +101,7 @@ export interface PlanningScores {
 
 export type CityMode = 'real' | 'generated'
 export type BudgetLevel = 'low' | 'medium' | 'high'
-export type TimelineYear = 2026 | 2028 | 2030 | 2032 | 2036
+export type TimelineYear = number
 
 export interface PlanBattlePlan {
   id: 'balanced' | 'transit_first' | 'equity_first'

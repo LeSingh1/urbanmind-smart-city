@@ -37,6 +37,8 @@ const ZONE_DISPLAY: Record<string, string> = {
   INFRA_POWER_SUBSTATION: 'Power Substation',
 }
 const ZONE_TYPES = Object.keys(ZONE_DISPLAY)
+const SIM_START_YEAR = 2026
+const SIM_END_YEAR = 2076
 const NEED_SEQUENCE = [
   'HEALTH_HOSPITAL',
   'EDU_HIGH',
@@ -248,7 +250,7 @@ function makeOfflineZoneFeatures(
 }
 
 function offlineMetrics(city: CityProfile, year: number): MetricsSnapshot {
-  const t = Math.max(0, Math.min(1, (year - 2026) / 10))
+  const t = Math.max(0, Math.min(1, (year - SIM_START_YEAR) / (SIM_END_YEAR - SIM_START_YEAR)))
   return {
     year,
     pop_total: Math.round(city.population_current * (1 + city.urban_growth_rate * t * 0.3)),
@@ -407,8 +409,8 @@ export default function App() {
     const ms = Math.max(300, 1200 / speed)
     const id = setInterval(() => {
       const store = useSimulationStore.getState()
-      const nextYear = store.currentYear < 2026 ? 2026 : store.currentYear + 1
-      if (nextYear > 2036) {
+      const nextYear = store.currentYear < SIM_START_YEAR ? SIM_START_YEAR : store.currentYear + 1
+      if (nextYear > SIM_END_YEAR) {
         store.pauseSimulation()
         return
       }
@@ -426,7 +428,7 @@ export default function App() {
       const capped = [...prevFeatures, ...newFeatures].slice(-300)
 
       store.receiveFrame({
-        type: nextYear >= 50 ? 'SIM_COMPLETE' : 'SIM_FRAME',
+        type: nextYear >= SIM_END_YEAR ? 'SIM_COMPLETE' : 'SIM_FRAME',
         year: nextYear,
         zones_geojson: { type: 'FeatureCollection', features: capped },
         roads_geojson: { type: 'FeatureCollection', features: [] },

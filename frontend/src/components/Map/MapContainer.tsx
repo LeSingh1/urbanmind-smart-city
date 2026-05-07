@@ -731,7 +731,7 @@ export function MapContainer() {
         height: 'calc(100% - 8px)',
         margin: 4,
         overflow: 'hidden',
-        background: 'linear-gradient(145deg, var(--color-bg-app), var(--color-bg-sidebar))',
+        background: 'var(--color-bg-app)',
         borderRadius: 10,
         border: '1px solid rgba(186,190,204,0.72)',
         boxShadow: 'inset 1px 1px 0 rgba(255,255,255,0.8), 8px 8px 18px rgba(186,190,204,0.75), -8px -8px 18px rgba(255,255,255,0.72)',

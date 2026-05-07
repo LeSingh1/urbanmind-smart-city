@@ -8,30 +8,6 @@ export function LoadingScreen() {
       exit={{ opacity: 0, scale: 0.98 }}
       transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
     >
-      {/* Blueprint grid */}
-      <div
-        className="absolute inset-0 pointer-events-none"
-        style={{
-          backgroundImage:
-            'linear-gradient(var(--color-border-subtle) 1px, transparent 1px), linear-gradient(90deg, var(--color-border-subtle) 1px, transparent 1px)',
-          backgroundSize: '48px 48px',
-          opacity: 0.18,
-        }}
-      />
-
-      {/* Top-left light hotspot */}
-      <div
-        className="absolute pointer-events-none"
-        style={{
-          top: -80,
-          left: -80,
-          width: 400,
-          height: 400,
-          borderRadius: '50%',
-          background: 'radial-gradient(circle, rgba(255,255,255,0.3) 0%, transparent 70%)',
-        }}
-      />
-
       <motion.div
         initial={{ opacity: 0, y: 24 }}
         animate={{ opacity: 1, y: 0 }}
@@ -45,13 +21,7 @@ export function LoadingScreen() {
           transition={{ duration: 2, repeat: Infinity }}
         >
           <svg width={64} height={52} viewBox="0 0 64 52" aria-hidden="true">
-            <defs>
-              <linearGradient id="loading-grad" x1="0" y1="0" x2="1" y2="1">
-                <stop offset="0%" stopColor="#ff4757" />
-                <stop offset="100%" stopColor="#d63031" />
-              </linearGradient>
-            </defs>
-            <path d="M4 48V26h8V12h10v36h6V20h9v28h5V6h12v42h4v4H2v-4h2z" fill="url(#loading-grad)" />
+            <path d="M4 48V26h8V12h10v36h6V20h9v28h5V6h12v42h4v4H2v-4h2z" fill="var(--color-accent-cyan)" />
           </svg>
         </motion.div>
 
@@ -82,7 +52,7 @@ export function LoadingScreen() {
           <motion.div
             className="h-full rounded-full"
             style={{
-              background: 'linear-gradient(90deg, var(--color-accent-cyan), #d63031)',
+              background: 'var(--color-accent-cyan)',
             }}
             initial={{ width: '0%' }}
             animate={{ width: '100%' }}

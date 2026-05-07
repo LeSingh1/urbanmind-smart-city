@@ -184,12 +184,7 @@ button, select, input, a, [role="button"] {
 }
 .skeleton {
   display: block;
-  background: linear-gradient(
-    90deg,
-    var(--color-bg-hover) 25%,
-    var(--color-border-subtle) 50%,
-    var(--color-bg-hover) 75%
-  );
+  background: var(--color-bg-hover);
   background-size: 800px 100%;
   animation: shimmer 1.6s infinite linear;
   border-radius: 4px;
@@ -219,7 +214,7 @@ button, select, input, a, [role="button"] {
   width: 10px;
   height: 10px;
   border-radius: 50%;
-  background: radial-gradient(circle at 35% 35%, #e8edf3 20%, #babecc 55%, #a3b1c6 100%);
+  background: #d7dee8;
   box-shadow: inset 1px 1px 2px rgba(255,255,255,0.7), inset -1px -1px 2px rgba(0,0,0,0.15);
 }
 .screw-tl { top: 10px; left: 10px; }
@@ -244,13 +239,7 @@ button, select, input, a, [role="button"] {
   position: absolute;
   inset: 0;
   pointer-events: none;
-  background: repeating-linear-gradient(
-    0deg,
-    transparent,
-    transparent 2px,
-    rgba(186, 190, 204, 0.04) 2px,
-    rgba(186, 190, 204, 0.04) 4px
-  );
+  background: rgba(186, 190, 204, 0.04);
   border-radius: inherit;
 }
 
@@ -258,11 +247,7 @@ button, select, input, a, [role="button"] {
 .leaflet-container {
   width: 100% !important;
   height: 100% !important;
-  background:
-    radial-gradient(circle at 20% 18%, rgba(255,255,255,0.45), transparent 28%),
-    linear-gradient(var(--color-border-subtle) 1px, transparent 1px),
-    linear-gradient(90deg, var(--color-border-subtle) 1px, transparent 1px),
-    var(--color-bg-app) !important;
+  background: var(--color-bg-app) !important;
   background-size: auto, 64px 64px, 64px 64px, auto !important;
 }
 

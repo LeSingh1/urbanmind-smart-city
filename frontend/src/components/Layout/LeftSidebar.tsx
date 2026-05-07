@@ -128,9 +128,19 @@ export function LeftSidebar() {
               <Icon size={16} />
               {active && (
                 <motion.div
-                  layoutId="sidebar-active-dot"
-                  className="absolute right-0.5 top-1/2 h-5 w-1 -translate-y-1/2 rounded-full"
-                  style={{ background: 'var(--color-accent-cyan)' }}
+                  initial={{ opacity: 0, scaleY: 0.65 }}
+                  animate={{ opacity: 1, scaleY: 1 }}
+                  exit={{ opacity: 0, scaleY: 0.65 }}
+                  transition={{ duration: 0.16, ease: 'easeOut' }}
+                  className="absolute rounded-full"
+                  style={{
+                    right: 5,
+                    top: 8,
+                    bottom: 8,
+                    width: 4,
+                    transformOrigin: 'center',
+                    background: 'var(--color-accent-cyan)',
+                  }}
                 />
               )}
             </motion.button>
