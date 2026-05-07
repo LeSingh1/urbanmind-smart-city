@@ -236,10 +236,10 @@ const CATEGORY_COLOR: Record<InfrastructureCategory, string> = {
 const CATEGORY_ICON: Record<InfrastructureCategory, string> = {
   hospital: '&#10010;',
   clinic: '&#10010;',
-  school: '&#127891;',
-  park: '&#127794;',
-  transit_stop: '&#128652;',
-  transit_line: '&#128646;',
+  school: 'S',
+  park: 'P',
+  transit_stop: 'T',
+  transit_line: 'R',
   fire_station: '&#9650;',
   police_station: '&#9670;',
   housing_zone: '&#8962;',
@@ -251,7 +251,7 @@ const CATEGORY_ICON: Record<InfrastructureCategory, string> = {
   water: '&#9679;',
   power: '&#9889;',
   mixed_use: '&#8962;',
-  community_center: '&#128101;',
+  community_center: 'C',
 }
 
 const TOOL_ZONE_TO_CATEGORY: Record<string, InfrastructureCategory> = {
@@ -355,7 +355,7 @@ function infraIcon(item: InfrastructureItem) {
     : '4px 4px 8px #babecc,-4px -4px 8px #ffffff'
   return L.divIcon({
     className: 'urbanmind-infra-icon',
-    html: `<div style="width:32px;height:32px;border-radius:10px;background:#f4f7fb;border:${border};box-shadow:${shadow};display:grid;place-items:center;color:${color};font:800 15px Inter,system-ui;">${isAi ? '&#9673;' : CATEGORY_ICON[item.category]}</div>`,
+    html: `<div style="width:32px;height:32px;border-radius:10px;background:#f4f7fb;border:${border};box-shadow:${shadow};display:grid;place-items:center;color:${color};font:800 15px Inter,system-ui;">${isAi ? '&#9678;' : CATEGORY_ICON[item.category]}</div>`,
     iconSize: [30, 30],
     iconAnchor: [15, 15],
   })
@@ -391,6 +391,16 @@ function isValidCityPlacement(city: { bbox: number[] }, lat: number, lng: number
 }
 
 const WATER_EXCLUSION_BOXES: Record<string, Array<[number, number, number, number]>> = {
+  fremon: [
+    [37.4500, 37.6200, -122.0900, -122.0380],
+    [37.4500, 37.6200, -121.9150, -121.8600],
+    [37.5850, 37.6200, -122.0380, -121.9150],
+  ],
+  fremont: [
+    [37.4500, 37.6200, -122.0900, -122.0380],
+    [37.4500, 37.6200, -121.9150, -121.8600],
+    [37.5850, 37.6200, -122.0380, -121.9150],
+  ],
   new_york: [
     [40.7000, 40.9000, -74.0350, -74.0120],
     [40.6900, 40.7950, -73.9940, -73.9340],
@@ -554,15 +564,14 @@ function spreadDisplayPositions(points: DisplayPoint[], city?: { bbox: number[] 
 }
 
 function spreadMarkerDisplayPositions(items: InfrastructureItem[], city?: { bbox: number[] } | null) {
-  return spreadDisplayPositions(
-    items
-      .filter((item) => item.geometryType === 'Point')
-      .map((item) => {
-        const [lng, lat] = item.coordinates as GeoJSON.Position
-        return { id: item.id, lat, lng }
-      }),
-    city,
-  )
+  const positions = new Map<string, [number, number]>()
+  items
+    .filter((item) => item.geometryType === 'Point')
+    .forEach((item) => {
+      const [lng, lat] = item.coordinates as GeoJSON.Position
+      positions.set(item.id, [lat, lng])
+    })
+  return positions
 }
 
 // ─── Animated overlay for "no city selected" state ──────────────────────────
