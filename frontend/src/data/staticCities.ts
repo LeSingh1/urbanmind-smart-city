@@ -7,10 +7,10 @@ export const STATIC_CITIES: CityProfile[] = [
     [-122.09, 37.45, -121.86, 37.62],
     [
       { name: 'North Transit Gap', lat: 37.586, lng: -121.990, zone_type_id: 'BUS_STATION', category: 'District', data_source: 'projected', w_deg: 0.018, h_deg: 0.012 },
-      { name: 'East Education Gap', lat: 37.548, lng: -121.936, zone_type_id: 'EDU_HIGH', category: 'District', data_source: 'projected', w_deg: 0.018, h_deg: 0.012 },
+      { name: 'East Education District', lat: 37.548, lng: -121.936, zone_type_id: 'EDU_HIGH', category: 'District', data_source: 'projected', w_deg: 0.018, h_deg: 0.012 },
       { name: 'South Emergency Gap', lat: 37.500, lng: -121.990, zone_type_id: 'HEALTH_CLINIC', category: 'District', data_source: 'projected', w_deg: 0.018, h_deg: 0.012 },
       { name: 'Central Green Space Gap', lat: 37.552, lng: -121.990, zone_type_id: 'PARK_SMALL', category: 'District', data_source: 'projected', w_deg: 0.018, h_deg: 0.012 },
-      { name: 'West Congestion Zone', lat: 37.548, lng: -122.038, zone_type_id: 'SMART_TRAFFIC_LIGHT', category: 'District', data_source: 'projected', w_deg: 0.018, h_deg: 0.012 },
+      { name: 'West Congestion Zone', lat: 37.548, lng: -122.038, zone_type_id: 'BUS_STATION', category: 'District', data_source: 'projected', w_deg: 0.018, h_deg: 0.012 },
       { name: 'Innovation District', lat: 37.565, lng: -121.956, zone_type_id: 'COM_OFFICE_PLAZA', category: 'District', data_source: 'projected', w_deg: 0.016, h_deg: 0.011 },
       { name: 'New Housing Expansion Zone', lat: 37.512, lng: -121.945, zone_type_id: 'RES_MIXED_USE', category: 'District', data_source: 'projected', w_deg: 0.018, h_deg: 0.012 },
     ]
@@ -29,7 +29,7 @@ export const STATIC_CITIES: CityProfile[] = [
     ]
   ),
   city('san_jose', 'San Jose, CA', 'United States', 37.3382, -121.8863, 11, 'Mediterranean', 970000, 105000, 1.0,
-    'San Jose preset for regional infrastructure scenario comparison. Fremont has the complete seeded demo data.',
+    'San Jose preset for regional infrastructure scenario comparison, housing growth, transit access, heat resilience, and service coverage.',
     'Housing pressure, transit corridors, heat, and regional commute demand',
     [-122.05, 37.19, -121.68, 37.47],
   ),

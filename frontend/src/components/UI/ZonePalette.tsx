@@ -1,5 +1,5 @@
 import { motion, AnimatePresence } from 'framer-motion'
-import { X, Crosshair, Undo2, Save, Trash2 } from 'lucide-react'
+import { X, Crosshair, Undo2, Save } from 'lucide-react'
 import { getZoneColor } from '@/utils/colorUtils'
 import { useUIStore } from '@/stores/uiStore'
 import { useSimulationStore } from '@/stores/simulationStore'
@@ -69,7 +69,7 @@ const ZONE_CATEGORIES: { label: string; zones: { id: string; label: string }[] }
 
 export function ZonePalette({ compact = false }: { compact?: boolean }) {
   const { isOverrideModeActive, selectedOverrideZone, setOverrideZone } = useUIStore()
-  const { planning, deleteInfrastructure, undoInfrastructure, saveScenario } = useSimulationStore()
+  const { planning, undoInfrastructure, saveScenario } = useSimulationStore()
 
   const toggleMode = () => {
     if (isOverrideModeActive) setOverrideZone(null)
@@ -87,21 +87,21 @@ export function ZonePalette({ compact = false }: { compact?: boolean }) {
           color: 'var(--color-text-muted)',
         }}
       >
-        Select a proposed infrastructure tool, then click the map to place it. New items are stored as GeoJSON-like scenario features.
+        {selectedOverrideZone
+          ? selectedOverrideZone === 'HEALTH_CLINIC'
+            ? 'Placing clinic: click inside an underserved emergency zone.'
+            : `Placing ${selectedOverrideZone.replace(/_/g, ' ').toLowerCase()}: click a valid area on the map.`
+          : 'Select a tool, then click a valid area on the map.'}
       </div>
 
       <div className="grid grid-cols-2 gap-1">
         {[
           ['Select', ''],
-          ['Add Hospital', 'HEALTH_HOSPITAL'],
           ['Add Clinic', 'HEALTH_CLINIC'],
           ['Add School', 'EDU_HIGH'],
           ['Add Park', 'PARK_SMALL'],
           ['Add Transit Stop', 'BUS_STATION'],
-          ['Add Transit Hub', 'TRAIN_STATION'],
-          ['Draw Housing Zone', 'RES_MED_APARTMENT'],
-          ['Draw Commercial Zone', 'COM_OFFICE_PLAZA'],
-          ['Draw Mixed-Use Zone', 'RES_MIXED_USE'],
+          ['Add Housing Zone', 'RES_MED_APARTMENT'],
         ].map(([label, id]) => (
           <button
             key={id}
@@ -119,15 +119,7 @@ export function ZonePalette({ compact = false }: { compact?: boolean }) {
         ))}
       </div>
 
-      <div className="grid grid-cols-3 gap-1">
-        <button
-          onClick={() => planning.selectedInfrastructureId && deleteInfrastructure(planning.selectedInfrastructureId)}
-          disabled={!planning.selectedInfrastructureId}
-          className="flex items-center justify-center gap-1 py-1.5 rounded-lg text-[10px] disabled:opacity-40"
-          style={{ border: '1px solid var(--color-border-subtle)', color: 'var(--color-text-muted)' }}
-        >
-          <Trash2 size={10} /> Delete
-        </button>
+      <div className="grid grid-cols-2 gap-1">
         <button
           onClick={undoInfrastructure}
           className="flex items-center justify-center gap-1 py-1.5 rounded-lg text-[10px]"

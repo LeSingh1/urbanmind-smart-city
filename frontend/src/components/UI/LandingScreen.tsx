@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { X, Plus } from 'lucide-react'
 import { useCityStore } from '@/stores/cityStore'
@@ -11,8 +11,17 @@ interface Props {
 
 export function LandingScreen({ onEnter }: Props) {
   const [sandboxOpen, setSandboxOpen] = useState(false)
+  const [showMoreCities, setShowMoreCities] = useState(false)
   const cities = useCityStore((state) => state.cities)
   const selectCity = useCityStore((state) => state.selectCity)
+  const mainCities = useMemo(
+    () => ['fremon', 'fremont', 'san_jose'].map((id) => cities.find((city) => city.id === id)).filter(Boolean) as CityProfile[],
+    [cities],
+  )
+  const moreCities = useMemo(
+    () => cities.filter((city) => !['fremon', 'fremont', 'san_jose'].includes(city.id)),
+    [cities],
+  )
 
   const chooseCity = (city: CityProfile) => {
     selectCity(city)
@@ -51,13 +60,12 @@ export function LandingScreen({ onEnter }: Props) {
               AI infrastructure planning simulator
             </p>
 
-            <div className="flex items-center gap-2 mb-4">
-              <span className="led" style={{ width: 8, height: 8, borderRadius: '50%', background: '#00b894', color: '#00b894', display: 'inline-block', boxShadow: '0 0 6px 1px rgba(0,184,148,0.45)', flexShrink: 0 }} />
-              <span className="font-mono text-[9px] tracking-widest uppercase" style={{ color: '#00b894' }}>SYSTEM OPERATIONAL</span>
+            <div className="mb-4">
+              <span className="font-mono text-[9px] tracking-widest uppercase" style={{ color: '#00b894' }}>DEMO READY</span>
             </div>
 
             <p style={{ color: 'var(--color-text-secondary)', fontSize: 12, lineHeight: 1.7 }} className="mb-6">
-              Find service gaps, test future infrastructure, and compare city expansion scenarios.
+              Analyze underserved districts, apply a targeted AI plan, and present measurable before/after impact.
             </p>
 
             <TactileButton variant="secondary" onClick={() => setSandboxOpen(true)} icon={<Plus size={13} />}>
@@ -67,7 +75,7 @@ export function LandingScreen({ onEnter }: Props) {
             <div className="mt-4 flex items-center gap-1.5">
               <span className="inline-block w-1.5 h-1.5 rounded-full" style={{ background: 'var(--color-accent-cyan)' }} />
               <span className="font-mono text-[9px]" style={{ color: 'var(--color-text-muted)', letterSpacing: '0.15em' }}>
-                {cities.length} CITIES · FREMONT DEMO
+                {cities.length} CITY OPTIONS · FREMON DEMO READY
               </span>
             </div>
           </motion.div>
@@ -78,9 +86,21 @@ export function LandingScreen({ onEnter }: Props) {
             className="flex-1 grid gap-6"
             style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(210px, 1fr))' }}
           >
-            {cities.map((city) => (
+            {mainCities.map((city) => (
               <CityCard key={city.id} city={city} onSelect={chooseCity} />
             ))}
+            {showMoreCities && moreCities.map((city) => (
+              <CityCard key={city.id} city={city} onSelect={chooseCity} compact />
+            ))}
+            {moreCities.length > 0 && (
+              <button
+                onClick={() => setShowMoreCities((v) => !v)}
+                className="rounded-xl border px-4 py-3 text-left text-sm font-semibold"
+                style={{ borderColor: 'var(--color-border-subtle)', color: 'var(--color-text-secondary)', background: 'var(--color-bg-card)' }}
+              >
+                {showMoreCities ? 'Hide More Cities' : `More Cities (${moreCities.length})`}
+              </button>
+            )}
           </motion.div>
         </motion.div>
       </div>
@@ -128,7 +148,9 @@ function TactileButton({
   )
 }
 
-function CityCard({ city, onSelect }: { city: CityProfile; onSelect: (c: CityProfile) => void }) {
+function CityCard({ city, onSelect, compact = false }: { city: CityProfile; onSelect: (c: CityProfile) => void; compact?: boolean }) {
+  const typeLabel = city.id === 'fremon' ? 'Generated Future City' : 'Real City'
+  const populationLabel = city.population_current.toLocaleString()
   return (
     <motion.button
       variants={{ hidden: { opacity: 0, y: 16 }, visible: { opacity: 1, y: 0, transition: { duration: 0.4, ease: [0.16, 1, 0.3, 1] } } }}
@@ -144,7 +166,7 @@ function CityCard({ city, onSelect }: { city: CityProfile; onSelect: (c: CityPro
     >
       {/* City thumbnail */}
       <div
-        className="relative h-36 flex items-end p-5"
+        className={`relative flex items-end p-5 ${compact ? 'h-24' : 'h-32'}`}
         style={{
           background: cityColorLight(city.id),
         }}
@@ -164,18 +186,14 @@ function CityCard({ city, onSelect }: { city: CityProfile; onSelect: (c: CityPro
 
       {/* City info */}
       <div className="p-5">
-        <p className="font-mono text-xs mb-2" style={{ color: 'var(--color-text-muted)' }}>
-          {city.country} · {formatPopulation(city.population_current)}
+        <p className="font-mono text-[11px] mb-2" style={{ color: 'var(--color-text-muted)' }}>
+          {typeLabel} · {populationLabel} residents
         </p>
         <p className="text-xs leading-relaxed line-clamp-2" style={{ color: 'var(--color-text-secondary)', fontSize: 12, lineHeight: 1.6 }}>
           {city.key_planning_challenge}
         </p>
-        <div
-          className="mt-3 flex items-center gap-1.5 text-xs font-bold font-mono tracking-widest uppercase opacity-0 group-hover:opacity-100 transition-opacity"
-          style={{ color: 'var(--color-accent-cyan)' }}
-        >
-          <span>SIMULATE</span>
-          <span>→</span>
+        <div className="mt-3 inline-flex items-center gap-1.5 rounded-lg border px-2 py-1 text-[10px] font-bold font-mono tracking-widest uppercase" style={{ color: 'var(--color-accent-cyan)', borderColor: 'var(--color-border-subtle)' }}>
+          SIMULATE →
         </div>
       </div>
     </motion.button>
@@ -292,8 +310,4 @@ function cityColorLight(id: string): string {
     phoenix:     '#e8e0c8',
   }
   return map[id] ?? '#cdd5e0'
-}
-
-function formatPopulation(value: number) {
-  return `${(value / 1_000_000).toFixed(value > 10_000_000 ? 1 : 2)}M`
 }

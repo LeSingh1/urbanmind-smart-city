@@ -144,7 +144,7 @@ export interface PlacementSuggestion {
 }
 
 export interface PlacementFeedback {
-  type: 'good' | 'warning'
+  type: 'good' | 'warning' | 'invalid'
   title: string
   message: string
 }
