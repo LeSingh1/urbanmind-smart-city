@@ -390,6 +390,78 @@ function isValidCityPlacement(city: { bbox: number[] }, lat: number, lng: number
   return lng >= west && lng <= east && lat >= south && lat <= north
 }
 
+const WATER_EXCLUSION_BOXES: Record<string, Array<[number, number, number, number]>> = {
+  new_york: [
+    [40.7000, 40.9000, -74.0350, -74.0120],
+    [40.6900, 40.7950, -73.9940, -73.9340],
+    [40.5600, 40.7000, -74.0700, -73.9600],
+    [40.5900, 40.6700, -73.9000, -73.7450],
+  ],
+  singapore: [
+    [1.2300, 1.3000, 103.6100, 103.7400],
+    [1.2200, 1.3000, 103.8400, 104.0850],
+  ],
+  mumbai: [
+    [18.8900, 19.0600, 72.7800, 72.8150],
+    [19.0000, 19.2300, 72.9300, 72.9900],
+  ],
+  dubai: [
+    [24.9200, 25.1700, 55.0200, 55.1100],
+  ],
+  lagos: [
+    [6.3900, 6.4700, 3.3900, 3.4700],
+  ],
+}
+
+function isInvalidPlacementZone(city: { id: string; landmarks?: Landmark[] }, lat: number, lng: number) {
+  const inWaterBox = (WATER_EXCLUSION_BOXES[city.id] ?? []).some(([minLat, maxLat, minLng, maxLng]) =>
+    lat >= minLat && lat <= maxLat && lng >= minLng && lng <= maxLng
+  )
+  if (inWaterBox) return true
+
+  return (city.landmarks ?? []).some((landmark) => {
+    const isWater = landmark.zone_type_id.includes('WATER') || landmark.category.toLowerCase().includes('water')
+    if (!isWater) return false
+    const halfLat = (landmark.h_deg ?? 0.01) / 2
+    const halfLng = (landmark.w_deg ?? 0.01) / 2
+    return lat >= landmark.lat - halfLat && lat <= landmark.lat + halfLat && lng >= landmark.lng - halfLng && lng <= landmark.lng + halfLng
+  })
+}
+
+function placementFit(category: InfrastructureCategory, lat: number, lng: number, zones: UnderservedZone[]) {
+  const relevantGap: Partial<Record<InfrastructureCategory, string[]>> = {
+    clinic: ['hospital_access', 'emergency_access'],
+    hospital: ['hospital_access', 'emergency_access'],
+    school: ['school_access'],
+    park: ['park_access', 'green_space'],
+    transit_stop: ['transit_access'],
+    transit_line: ['transit_access'],
+    housing_zone: ['housing_access'],
+    mixed_use: ['housing_access', 'transit_access'],
+    community_center: ['equity', 'housing_access'],
+  }
+  const gapTypes = relevantGap[category] ?? []
+  const candidates = zones
+    .filter((zone) => !zone.isImproved && gapTypes.includes(zone.gapType))
+    .map((zone) => {
+      const distanceMeters = approxMeters(lat, lng, zone.center[0], zone.center[1])
+      return { zone, distanceMeters }
+    })
+    .sort((a, b) => a.distanceMeters - b.distanceMeters)
+  const best = candidates[0]
+  if (!zones.length || !gapTypes.length) return { status: 'good' as const, zone: null, message: 'Placement is inside the selected city planning area.' }
+  if (!best) return { status: 'warning' as const, zone: zones[0] ?? null, message: `This ${category.replace(/_/g, ' ')} does not match an active gap type. It can be placed, but it may not improve the analysis much.` }
+  const targetRadius = Math.max(650, best.zone.radiusMeters * 1.05)
+  if (best.distanceMeters <= targetRadius) return { status: 'good' as const, zone: best.zone, message: `This ${category.replace(/_/g, ' ')} fills ${best.zone.name} and is within the target service radius.` }
+  return { status: 'warning' as const, zone: best.zone, message: `This ${category.replace(/_/g, ' ')} is ${Math.round(best.distanceMeters).toLocaleString()}m from ${best.zone.name}. Move it closer for stronger impact.` }
+}
+
+function approxMeters(latA: number, lngA: number, latB: number, lngB: number) {
+  const latMeters = (latA - latB) * 111_000
+  const lngMeters = (lngA - lngB) * 111_000 * Math.cos((latA * Math.PI) / 180)
+  return Math.hypot(latMeters, lngMeters)
+}
+
 function describePlacement(category: InfrastructureCategory, lat: number, lng: number, zones: UnderservedZone[]) {
   const relevantGap: Partial<Record<InfrastructureCategory, string[]>> = {
     clinic: ['hospital_access', 'emergency_access'],
@@ -569,7 +641,7 @@ export function MapContainer() {
   const handlePlaceZone = useCallback(
     (lat: number, lng: number) => {
       if (!selectedOverrideZone) return
-      if (!city || !isValidCityPlacement(city, lat, lng)) {
+      if (!city || !isValidCityPlacement(city, lat, lng) || isInvalidPlacementZone(city, lat, lng)) {
         useSimulationStore.setState((state) => ({
           planning: {
             ...state.planning,
@@ -584,10 +656,13 @@ export function MapContainer() {
         return
       }
       const category = TOOL_ZONE_TO_CATEGORY[selectedOverrideZone] ?? 'housing_zone'
+      const [west, south, east, north] = city.bbox
+      const citySpan = Math.max(Math.abs(east - west), Math.abs(north - south))
+      const duplicateThreshold = Math.min(0.012, Math.max(0.006, citySpan * 0.018))
       const duplicate = planning.infrastructure.some((item) => {
         if (item.geometryType !== 'Point' || item.category !== category) return false
         const [otherLng, otherLat] = item.coordinates as GeoJSON.Position
-        return Math.hypot(lat - otherLat, lng - otherLng) < 0.008
+        return Math.hypot(lat - otherLat, lng - otherLng) < duplicateThreshold
       })
       if (duplicate) {
         useSimulationStore.setState((state) => ({
@@ -603,6 +678,7 @@ export function MapContainer() {
         notify('warning', 'Move farther from duplicate infrastructure.', 2800)
         return
       }
+      const fit = placementFit(category, lat, lng, planning.underservedZones)
       const zone: UserPlacedZone = {
         id: `user-${Date.now()}`,
         lat,
@@ -629,7 +705,17 @@ export function MapContainer() {
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       })
-      notify('success', `Proposed ${label} added near ${placement.locationName}.`, 2800)
+      useSimulationStore.setState((state) => ({
+        planning: {
+          ...state.planning,
+          placementFeedback: {
+            type: fit.status === 'good' ? 'good' : 'warning',
+            title: fit.status === 'good' ? 'Good Placement' : 'Placement Warning',
+            message: fit.message,
+          },
+        },
+      }))
+      notify(fit.status === 'good' ? 'success' : 'warning', `Proposed ${label} added near ${placement.locationName}.`, 2800)
     },
     [selectedOverrideZone, city, planning.infrastructure, planning.underservedZones, addUserZone, addInfrastructure, notify]
   )

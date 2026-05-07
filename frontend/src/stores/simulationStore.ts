@@ -694,25 +694,18 @@ export const useSimulationStore = create<SimulationStore>((set, get) => ({
     if (item.category === 'road' || item.category === 'bike_lane') return state
     const infrastructure = withoutRoadInfrastructure([...state.planning.infrastructure, item])
     const underservedZones = state.planning.underservedZones.map((zone) =>
-      item.category === 'clinic' && (zone.gapType === 'hospital_access' || zone.gapType === 'emergency_access')
+      itemImprovesZone(item, zone)
         ? { ...zone, isImproved: true, improved: true, afterScore: Math.min(100, zone.beforeScore + 18) }
-        : item.category === 'school' && zone.gapType === 'school_access'
-        ? { ...zone, isImproved: true, improved: true, afterScore: Math.min(100, zone.beforeScore + 14) }
-        : item.category === 'park' && (zone.gapType === 'park_access' || zone.gapType === 'green_space')
-        ? { ...zone, isImproved: true, improved: true, afterScore: Math.min(100, zone.beforeScore + 12) }
-        : item.category === 'transit_stop' && zone.gapType === 'transit_access'
-        ? { ...zone, isImproved: true, improved: true, afterScore: Math.min(100, zone.beforeScore + 13) }
-        : item.category === 'mixed_use' && zone.gapType === 'housing_access'
-        ? { ...zone, isImproved: true, improved: true, afterScore: Math.min(100, zone.beforeScore + 10) }
         : zone
     )
     const before = state.planning.beforeScores ?? calculatePlanningScores(state.planning.infrastructure, state.planning.underservedZones, state.planning.growthPercent, 'balanced')
     const afterScores = calculatePlanningScores(infrastructure, underservedZones, state.planning.growthPercent, 'balanced')
     const frame = scoresToFrame(afterScores, state.planning.horizonYears, infrastructure, underservedZones, state.planning.cityId)
     const placementFeedback = detectPlacementFeedback(item, state.planning)
+    const city = STATIC_CITIES.find((city) => city.id === state.planning.cityId)
     return {
       currentFrame: frame,
-      metricsHistory: [before, afterScores].map((score, index) => scoresToMetrics(score, index === 0 ? 0 : state.planning.horizonYears)),
+      metricsHistory: [before, afterScores].map((score, index) => scoresToMetrics(score, index === 0 ? 2026 : state.planning.horizonYears, city)),
       planning: {
         ...state.planning,
         infrastructure,
@@ -1691,12 +1684,33 @@ function scoresToMetrics(scores: PlanningScores, year: number, city?: CityProfil
   }
 }
 
+function itemImprovesZone(item: InfrastructureItem, zone: UnderservedZone) {
+  if (zone.isImproved || item.geometryType !== 'Point') return false
+  const matchingGaps: Partial<Record<InfrastructureItem['category'], UnderservedZone['gapType'][]>> = {
+    clinic: ['hospital_access', 'emergency_access'],
+    hospital: ['hospital_access', 'emergency_access'],
+    school: ['school_access'],
+    park: ['park_access', 'green_space'],
+    transit_stop: ['transit_access'],
+    transit_line: ['transit_access'],
+    housing_zone: ['housing_access'],
+    mixed_use: ['housing_access', 'transit_access'],
+    community_center: ['equity', 'housing_access'],
+  }
+  if (!(matchingGaps[item.category] ?? []).includes(zone.gapType)) return false
+  const [lng, lat] = item.coordinates as GeoJSON.Position
+  const distance = distanceMeters(lat, lng, zone.center[0], zone.center[1])
+  return distance <= Math.max(650, zone.radiusMeters * 1.08)
+}
+
+function distanceMeters(latA: number, lngA: number, latB: number, lngB: number) {
+  const latMeters = (latA - latB) * 111_000
+  const lngMeters = (lngA - lngB) * 111_000 * Math.cos((latA * Math.PI) / 180)
+  return Math.hypot(latMeters, lngMeters)
+}
+
 function detectPlacementFeedback(item: InfrastructureItem, planning: PlanningState): PlacementFeedback {
   const coords = item.geometryType === 'Point' ? item.coordinates as GeoJSON.Position : null
-  const near = (target: [number, number], threshold = 0.026) => {
-    if (!coords) return false
-    return Math.hypot((coords[1] as number) - target[0], (coords[0] as number) - target[1]) < threshold
-  }
   const duplicate = coords && planning.infrastructure.some((other) => {
     if (other.geometryType !== 'Point' || other.category !== item.category) return false
     const otherCoords = other.coordinates as GeoJSON.Position
@@ -1710,20 +1724,17 @@ function detectPlacementFeedback(item: InfrastructureItem, planning: PlanningSta
   if (duplicate) {
     return { type: 'warning', title: 'Planning Conflict', message: 'Duplicate infrastructure is too close to an existing item. Move it to serve a different gap.' }
   }
-  if (item.category === 'school' && near([37.515, -122.035], 0.032)) {
-    return { type: 'warning', title: 'Planning Conflict', message: 'This school is too close to the Industrial Edge. Move it closer to East or New Housing growth to improve Education Access.' }
-  }
-  if (item.category === 'school' && !near([37.548, -121.936], 0.04) && !near([37.512, -121.945], 0.04)) {
-    return { type: 'warning', title: 'Planning Conflict', message: 'This school is too far from the projected housing growth zone. Move it closer to improve Education Access.' }
-  }
-  if ((item.category === 'clinic' || item.category === 'hospital') && near([37.500, -121.990], 0.045)) {
-    return { type: 'good', title: 'Good Placement', message: 'This clinic fills the South Emergency Gap and serves 18,000 projected residents.' }
-  }
-  if (item.category === 'transit_stop' && !near([37.586, -121.990], 0.05) && !near([37.512, -121.945], 0.05)) {
-    return { type: 'warning', title: 'Planning Conflict', message: 'Transit stop is too far from housing growth. Place it near North Transit Gap or New Housing Expansion.' }
-  }
-  if (item.category === 'park' && near([37.552, -121.990], 0.045)) {
-    return { type: 'good', title: 'Good Placement', message: 'This park expands 15 Minute City coverage in the central green-space gap.' }
+  if (coords) {
+    const relevant = planning.underservedZones
+      .filter((zone) => itemImprovesZone(item, zone))
+      .sort((a, b) => distanceMeters(coords[1] as number, coords[0] as number, a.center[0], a.center[1]) - distanceMeters(coords[1] as number, coords[0] as number, b.center[0], b.center[1]))
+    if (relevant[0]) {
+      const residents = Math.round(planning.timelinePopulation * 0.018)
+      return { type: 'good', title: 'Good Placement', message: `This ${item.category.replace(/_/g, ' ')} fills ${relevant[0].name} and serves about ${residents.toLocaleString()} projected residents.` }
+    }
+    if (planning.underservedZones.length) {
+      return { type: 'warning', title: 'Planning Conflict', message: `This ${item.category.replace(/_/g, ' ')} is placeable, but it is too far from the matching underserved gap to improve the analysis score.` }
+    }
   }
   return { type: 'good', title: 'Good Placement', message: 'This proposed infrastructure improves local access in the current scenario.' }
 }
