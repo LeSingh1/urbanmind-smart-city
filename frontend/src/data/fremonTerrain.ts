@@ -1,41 +1,46 @@
 /**
- * Approximated terrain mask for fictional Fremon.
+ * Terrain mask for fictional Fremon, aligned with the underlying tile map so
+ * placements never land on water.
  *
- * Two invented features: a north-flowing river ("Fremon Wash") cutting through
- * the western edge, and a small inland reservoir to the south. These are
- * polygons in [lng, lat] order. The mask treats anything inside as invalid
- * placement terrain (water bodies, protected wetland buffer, etc.).
- *
- * Approximation: real planning would consult zoning + hydrography GIS layers.
- * For demo purposes we hand-author a few polygons and document the limitation.
+ * Polygons are in GeoJSON [lng, lat] order. Anything inside any polygon is
+ * treated as invalid placement terrain (open water, river, reservoir,
+ * protected mask). The bay polygon is sized generously to cover the eastern
+ * shore of SF Bay relative to the Fremon city profile (centered near
+ * 37.5485, -121.9886) — the actual hydrography is far more granular, but a
+ * conservative buffer is exactly what a planning system would use anyway.
  */
 
 import type { LatLng, PolygonRing, TerrainMask } from '@/engine/types'
 import { pointInPolygon } from '@/engine/gapEngine'
 
-const RIVER: PolygonRing = {
+// Generous SF Bay / Coyote Hills wetland buffer along the western edge.
+// Anything west of roughly -122.02 longitude near Fremon is bay/wetland.
+const BAY: PolygonRing = {
   coordinates: [
-    [-122.005, 37.555],
-    [-121.995, 37.555],
-    [-121.99, 37.62],
-    [-122.0, 37.66],
-    [-122.012, 37.66],
-    [-122.008, 37.6],
-    [-122.005, 37.555],
+    [-122.20, 37.40],
+    [-122.20, 37.62],
+    [-122.07, 37.62],
+    [-122.04, 37.59],
+    [-122.03, 37.55],
+    [-122.04, 37.50],
+    [-122.06, 37.46],
+    [-122.10, 37.42],
+    [-122.20, 37.40],
   ],
 }
 
+// Inland reservoir / drainage basin to the south.
 const RESERVOIR: PolygonRing = {
   coordinates: [
-    [-121.94, 37.532],
-    [-121.918, 37.532],
-    [-121.918, 37.546],
-    [-121.94, 37.546],
-    [-121.94, 37.532],
+    [-121.92, 37.493],
+    [-121.905, 37.493],
+    [-121.905, 37.504],
+    [-121.92, 37.504],
+    [-121.92, 37.493],
   ],
 }
 
-const PROTECTED_AREAS: PolygonRing[] = [RIVER, RESERVOIR]
+const PROTECTED_AREAS: PolygonRing[] = [BAY, RESERVOIR]
 
 export const FREMON_TERRAIN: TerrainMask = {
   isInvalid: (point: LatLng) => PROTECTED_AREAS.some((ring) => pointInPolygon(point, ring)),

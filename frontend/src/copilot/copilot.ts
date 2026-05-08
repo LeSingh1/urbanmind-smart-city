@@ -11,7 +11,7 @@
  * call must be timeout-bounded and fall back to the template on any failure.
  */
 
-import { COVERAGE_RADII } from '@/engine/gapEngine'
+import { COVERAGE_RADII, boundsBBox, pointInPolygon } from '@/engine/gapEngine'
 import type {
   District,
   DistrictGapReport,
@@ -130,31 +130,69 @@ export function generateAlerts(reports: DistrictGapReport[]): PlanningAlert[] {
 
 /**
  * Pick a deterministic placement inside the district that targets the
- * weakest dimension. Strategy: shift from the centroid by half the bounding
- * box extent in the direction of the existing-infra gap. If no existing
- * infra of that type, place at centroid.
+ * weakest dimension AND avoids invalid terrain.
+ *
+ * Strategy:
+ *  1. Compute a "mirror" candidate opposite the existing-infra centroid (or
+ *     just the district centroid if no same-type infra exists).
+ *  2. If that candidate is on terrain or outside bounds, scan a deterministic
+ *     grid of points inside the district bounds and pick the first one that
+ *     lies inside bounds AND off the terrain mask.
+ *  3. Always fall back to the district centroid; the validator's terrain
+ *     rule will catch the residual case if even that fails.
  */
+function isInsideRing(point: LatLng, district: District): boolean {
+  return pointInPolygon(point, district.bounds)
+}
+
+function isPlacementValid(point: LatLng, district: District, terrain: TerrainMask): boolean {
+  return isInsideRing(point, district) && !terrain.isInvalid(point)
+}
+
 function pickPlacementWithinDistrict(
   district: District,
   type: InfrastructureType,
+  terrain: TerrainMask,
 ): LatLng {
+  // Mirror candidate
   const sameType = district.existingInfrastructure.filter((i) => i.type === type)
-  if (sameType.length === 0) return district.centroid
+  let preferred: LatLng = district.centroid
+  if (sameType.length > 0) {
+    let dLat = 0
+    let dLng = 0
+    for (const i of sameType) {
+      dLat += i.location.lat - district.centroid.lat
+      dLng += i.location.lng - district.centroid.lng
+    }
+    dLat /= sameType.length
+    dLng /= sameType.length
+    preferred = { lat: district.centroid.lat - dLat, lng: district.centroid.lng - dLng }
+  }
+  if (isPlacementValid(preferred, district, terrain)) return preferred
 
-  // Move opposite the average existing-infra direction so we backfill the gap area.
-  let dLat = 0
-  let dLng = 0
-  for (const i of sameType) {
-    dLat += i.location.lat - district.centroid.lat
-    dLng += i.location.lng - district.centroid.lng
+  // Half-step from preferred toward centroid — often all it takes to step off the bay edge.
+  const halfway: LatLng = {
+    lat: (preferred.lat + district.centroid.lat) / 2,
+    lng: (preferred.lng + district.centroid.lng) / 2,
   }
-  dLat /= sameType.length
-  dLng /= sameType.length
-  // Mirror direction, scaled to ~half the bbox extent.
-  return {
-    lat: district.centroid.lat - dLat,
-    lng: district.centroid.lng - dLng,
+  if (isPlacementValid(halfway, district, terrain)) return halfway
+
+  // Centroid fallback
+  if (isPlacementValid(district.centroid, district, terrain)) return district.centroid
+
+  // Last resort: scan a 5x5 deterministic grid inside bounds and pick the first valid point.
+  const [minLng, minLat, maxLng, maxLat] = boundsBBox(district.bounds)
+  for (let i = 1; i <= 5; i++) {
+    for (let j = 1; j <= 5; j++) {
+      const candidate = {
+        lat: minLat + ((maxLat - minLat) * i) / 6,
+        lng: minLng + ((maxLng - minLng) * j) / 6,
+      }
+      if (isPlacementValid(candidate, district, terrain)) return candidate
+    }
   }
+  // No valid land found — return centroid; validator will reject this.
+  return district.centroid
 }
 
 function simulateImpact(
@@ -210,10 +248,11 @@ function templateRationale(
 function buildRecommendation(
   report: DistrictGapReport,
   district: District,
+  terrain: TerrainMask,
 ): CopilotRecommendation {
-  // STEP 1 — engine picks type and location
+  // STEP 1 — engine picks type and location (terrain-aware)
   const type = report.recommendedInfrastructureType
-  const location = pickPlacementWithinDistrict(district, type)
+  const location = pickPlacementWithinDistrict(district, type, terrain)
   // STEP 2 — engine simulates impact
   const expectedImpact = simulateImpact(report, type)
   // STEP 3 — engine pulls cost from table
@@ -252,7 +291,7 @@ export function generateRecommendations(
     if (r.severity !== 'critical' && r.severity !== 'high') continue
     const district = districtById.get(r.districtId)
     if (!district) continue
-    const draft = buildRecommendation(r, district)
+    const draft = buildRecommendation(r, district, terrain)
     const candidate: CandidateRecommendation = {
       id: draft.id,
       sourceDistrictId: draft.sourceDistrictId,
