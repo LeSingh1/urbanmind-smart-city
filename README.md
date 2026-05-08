@@ -27,11 +27,30 @@ docker-compose up
 
 React, TypeScript, Vite, Mapbox GL, D3, Zustand, Framer Motion, Python, FastAPI, PostgreSQL/PostGIS, Redis, RQ, MinIO, Docker Compose, OSMnx, GeoPandas, PyTorch, Stable Baselines3, Anthropic Claude.
 
-## AI Architecture
+## Architecture
 
-UrbanMind AI is structured around a reinforcement-learning simulation loop. The agent observes a geospatial grid, existing roads, terrain suitability, city metrics, and scenario weights, then chooses the next zone or infrastructure placement. Phase 2 provides the AI-engine foundation for PPO-style optimization, constraint validation, road generation, demand forecasting, and population modeling.
+UrbanMind uses a **deterministic infrastructure gap engine** plus an **AI copilot**, with a **validation layer** between them. The mental model is a bounded planning decision system: the engine computes truth from data, the copilot explains and ranks, the validator gates every output before it touches map state. The AI does not place infrastructure — the engine does. The AI explains why.
 
-The backend streams each simulation frame through Redis and WebSockets. The frontend renders those frames as Mapbox layers and D3 analytics. Claude powers the narrative layer: hover explanations, annual summaries, decision history, report summaries, and recommendations.
+### Layer 1 — Gap Engine (deterministic)
+
+The engine in `frontend/src/engine/gapEngine.ts` analyzes each district for clinic, school, park, transit, and emergency access. It uses pure scoring functions — no LLM calls, no side effects — so the same inputs always produce the same gap reports. Coverage is approximated with haversine distance and a 1.4× detour factor (documented in code) since the demo has no routing engine. Output is `DistrictGapReport[]` ranked by severity and population affected.
+
+### Layer 2 — AI Copilot (explanation)
+
+The copilot in `frontend/src/copilot/copilot.ts` converts engine output into prioritized planning alerts and validated recommendations. It does not invent placements, costs, or population numbers — those all come from the engine and a hardcoded cost table. The copilot's only LLM-shaped responsibility is generating the rationale string, and that has a template fallback so the system works without an API key configured.
+
+### Layer 3 — Validator
+
+Every copilot recommendation is gated by 12 rules in `frontend/src/validation/validator.ts`:
+must reference a real district gap; type must address an actual access deficit; type must match the engine's choice or a sensible substitute; placement must lie inside district bounds; must avoid invalid terrain (river, reservoir, protected mask in `frontend/src/data/fremonTerrain.ts`); must improve at least one metric; impact deltas must be plausible; cost must be in the expected band; population served must be positive; must not duplicate an existing facility within 250m; coverage radius must be defined for the type; confidence must be in [0, 100]. Confidence decays by 30 with 1–2 failures, drops to 0 with 3 or more.
+
+Failed recommendations never reach map state — they fall back to the engine's deterministic recommendation and are logged via `console.warn`. Append `?debug=1` to the URL to surface a panel listing every recommendation, its validation status, and the per-rule failure reasons.
+
+This three-layer structure means UrbanMind is a bounded planning decision system, not an AI chatbot with a map. The engine ensures correctness, the copilot accelerates explanation, validation enforces trust.
+
+### What the simulation does
+
+The user picks a city, runs Analyze, scrubs a year-by-year timeline (decade chips for 2026/2030/2040/.../2080), and watches underserved zones grow more stressed as population rises. Apply Plan drops engine-validated infrastructure with cyan coverage rings, deltas animate up, and the report modal opens after a brief generation step. The Copilot panel narrates each stage with character-by-character typed text.
 
 ## Features
 

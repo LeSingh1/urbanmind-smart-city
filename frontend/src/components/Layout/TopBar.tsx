@@ -4,6 +4,7 @@ import { useScenarioStore } from '@/stores/scenarioStore'
 import { useSimulationStore } from '@/stores/simulationStore'
 import { useNotification } from '@/hooks/useNotification'
 import { Logo } from '@/components/UI/LandingScreen'
+import { ArchitectureBadge } from '@/components/UI/ArchitectureModal'
 
 export function TopBar({ onHome }: { onHome: () => void }) {
   const selectedCity = useCityStore((state) => state.selectedCity)
@@ -69,6 +70,8 @@ export function TopBar({ onHome }: { onHome: () => void }) {
       </span>
 
       <div className="flex-1" />
+
+      <ArchitectureBadge />
 
       <button
         onClick={handleAnalyze}

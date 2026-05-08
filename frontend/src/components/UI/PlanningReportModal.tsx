@@ -1,8 +1,15 @@
+import { useEffect, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Copy, FileText, X } from 'lucide-react'
+import { Copy, FileText, Sparkles, X } from 'lucide-react'
 import { createPortal } from 'react-dom'
 import { useSimulationStore } from '@/stores/simulationStore'
 import { STATIC_CITIES } from '@/data/staticCities'
+
+const GENERATING_STEPS = [
+  'Analyzing applied infrastructure...',
+  'Summarizing before/after impact...',
+  'Preparing planning memo...',
+] as const
 
 export function PlanningReportModal() {
   const planning = useSimulationStore((s) => s.planning)
@@ -18,6 +25,14 @@ export function PlanningReportModal() {
 
 function PlanningReport({ onClose }: { onClose: () => void }) {
   const planning = useSimulationStore((s) => s.planning)
+  const [generatingStep, setGeneratingStep] = useState(0)
+  const [generating, setGenerating] = useState(true)
+  useEffect(() => {
+    const t1 = window.setTimeout(() => setGeneratingStep(1), 380)
+    const t2 = window.setTimeout(() => setGeneratingStep(2), 760)
+    const done = window.setTimeout(() => setGenerating(false), 1180)
+    return () => { window.clearTimeout(t1); window.clearTimeout(t2); window.clearTimeout(done) }
+  }, [])
   const city = STATIC_CITIES.find((item) => item.id === planning.cityId)
   const cityName =
     planning.cityId === 'fremon'
@@ -90,8 +105,8 @@ function PlanningReport({ onClose }: { onClose: () => void }) {
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      className="fixed inset-0 z-[95] flex items-center justify-center p-6"
-      style={{ background: 'rgba(0,0,0,0.72)', backdropFilter: 'blur(6px)' }}
+      className="flex items-center justify-center p-6"
+      style={{ position: 'fixed', inset: 0, zIndex: 9999, background: 'rgba(0,0,0,0.72)', backdropFilter: 'blur(6px)' }}
       onClick={onClose}
     >
       <motion.div
@@ -107,9 +122,39 @@ function PlanningReport({ onClose }: { onClose: () => void }) {
           border: '1px solid var(--color-border-subtle)',
           borderRadius: 10,
           boxShadow: '0 16px 70px rgba(0,0,0,0.65)',
+          position: 'relative',
         }}
         onClick={(e) => e.stopPropagation()}
       >
+        <AnimatePresence>
+          {generating && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.18 }}
+              style={{ position: 'absolute', inset: 0, zIndex: 5, display: 'grid', placeItems: 'center', background: 'var(--color-bg-panel)', borderRadius: 10 }}
+            >
+              <div className="flex flex-col items-center gap-3 px-6">
+                <div className="flex items-center gap-2">
+                  <Sparkles size={18} style={{ color: 'var(--color-accent-green)' }} />
+                  <div className="font-display text-base font-semibold" style={{ color: 'var(--color-text-primary)' }}>Generating Planning Report</div>
+                </div>
+                <div className="w-[280px] h-1.5 rounded-full overflow-hidden" style={{ background: 'var(--color-bg-hover)' }}>
+                  <motion.div
+                    initial={{ width: '8%' }}
+                    animate={{ width: ['8%', '40%', '78%', '100%'][generatingStep] ?? '100%' }}
+                    transition={{ duration: 0.35, ease: 'easeOut' }}
+                    style={{ height: '100%', background: 'var(--color-accent-cyan)' }}
+                  />
+                </div>
+                <div className="font-mono text-[11px]" style={{ color: 'var(--color-text-secondary)' }}>
+                  {GENERATING_STEPS[generatingStep] ?? GENERATING_STEPS[GENERATING_STEPS.length - 1]}
+                </div>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
         <div className="flex items-center justify-between px-5 py-4" style={{ borderBottom: '1px solid var(--color-border-subtle)' }}>
           <div className="flex items-center gap-2">
             <FileText size={18} style={{ color: 'var(--color-accent-cyan)' }} />
@@ -236,7 +281,7 @@ function PlanningReport({ onClose }: { onClose: () => void }) {
                   ['Education', before.educationAccess, after.educationAccess],
                   ['15‑Min City', before.fifteenMinuteCityScore ?? 0, after.fifteenMinuteCityScore ?? 0],
                   ['Avg Commute', before.averageCommute, after.averageCommute],
-                  ['CO₂ est.', before.co2Estimate, after.co2Estimate],
+                  ['CO2 est.', before.co2Estimate, after.co2Estimate],
                   ['Equity', before.equityScore, after.equityScore],
                 ].map(([label, b, a]) => (
                   <div key={label as string} className="rounded-lg p-3" style={{ border: '1px solid var(--color-border-subtle)', background: 'var(--color-bg-card)' }}>
@@ -244,7 +289,7 @@ function PlanningReport({ onClose }: { onClose: () => void }) {
                       {label}
                     </div>
                     <div className="font-mono text-sm font-semibold" style={{ color: 'var(--color-text-primary)' }}>
-                      {Number(b).toFixed(label === 'Avg Commute' ? 1 : 0)} → {Number(a).toFixed(label === 'Avg Commute' ? 1 : 0)}
+                      {Number(b).toFixed(label === 'Avg Commute' ? 1 : 0)} to {Number(a).toFixed(label === 'Avg Commute' ? 1 : 0)}
                     </div>
                   </div>
                 ))}

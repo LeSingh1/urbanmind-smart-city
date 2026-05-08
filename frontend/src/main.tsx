@@ -26,7 +26,7 @@ try {
 } catch (error) {
   const bootStatus = document.getElementById('boot-status')
   if (bootStatus) {
-    bootStatus.innerHTML = `<b>⚠ Startup crash</b><br>${error instanceof Error ? error.message : String(error)}`
+    bootStatus.innerHTML = `<b>Startup crash</b><br>${error instanceof Error ? error.message : String(error)}`
     bootStatus.style.borderColor = '#ef4444'
     bootStatus.style.color = '#fecaca'
     bootStatus.style.background = '#1a0a0a'

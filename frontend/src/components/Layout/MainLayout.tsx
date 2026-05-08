@@ -4,6 +4,7 @@ import { LeftSidebar } from './LeftSidebar'
 import { RightPanel } from './RightPanel'
 import { BottomBar } from './BottomBar'
 import { PlanningReportModal } from '@/components/UI/PlanningReportModal'
+import { EngineDebugPanel } from '@/components/UI/EngineDebugPanel'
 import { MapContainer } from '@/components/Map/MapContainer'
 import { useCityStore } from '@/stores/cityStore'
 import { useSimulationStore } from '@/stores/simulationStore'
@@ -34,6 +35,7 @@ export function MainLayout({ onHome }: { onHome: () => void }) {
       </div>
       <BottomBar />
       <PlanningReportModal />
+      <EngineDebugPanel />
     </div>
   )
 }

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { forwardRef, useEffect, useRef, useState, type Ref } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useUIStore } from '@/stores/uiStore'
 import { useSimulationStore } from '@/stores/simulationStore'
@@ -43,12 +43,16 @@ interface MetricCardProps {
   formatter?: (v: number) => string
 }
 
-function MetricCard({ label, value, unit, color, delay, formatter }: MetricCardProps) {
+const MetricCard = forwardRef(function MetricCard(
+  { label, value, unit, color, delay, formatter }: MetricCardProps,
+  ref: Ref<HTMLDivElement>,
+) {
   const animated = useAnimatedValue(value)
   const display = formatter ? formatter(animated) : String(animated)
 
   return (
     <motion.div
+      ref={ref}
       initial={{ opacity: 0, y: 12, scale: 0.92 }}
       animate={{ opacity: 1, y: 0, scale: 1 }}
       exit={{ opacity: 0, y: 6, scale: 0.95 }}
@@ -118,7 +122,7 @@ function MetricCard({ label, value, unit, color, delay, formatter }: MetricCardP
       </div>
     </motion.div>
   )
-}
+})
 
 function compact(value: number) {
   return Intl.NumberFormat('en', { notation: 'compact', maximumFractionDigits: 1 }).format(value)
@@ -153,7 +157,7 @@ export function MiniMetricsPanel() {
       delay: 0.1,
     },
     {
-      label: 'CO₂',
+      label: 'CO2',
       value: Math.round(metrics?.env_co2_est ?? 0),
       unit: 'kt',
       color: '#e17055',

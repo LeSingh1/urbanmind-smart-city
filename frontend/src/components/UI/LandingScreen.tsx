@@ -193,7 +193,7 @@ function CityCard({ city, onSelect, compact = false }: { city: CityProfile; onSe
           {city.key_planning_challenge}
         </p>
         <div className="mt-3 inline-flex items-center gap-1.5 rounded-lg border px-2 py-1 text-[10px] font-bold font-mono tracking-widest uppercase" style={{ color: 'var(--color-accent-cyan)', borderColor: 'var(--color-border-subtle)' }}>
-          SIMULATE →
+          SIMULATE
         </div>
       </div>
     </motion.button>

@@ -22,7 +22,7 @@ export const METRIC_CONFIGS: MetricConfig[] = [
   { key: 'econ_housing_afford', label: 'Housing Afford.', unit: '/100', min: 0, max: 100, higherIsBetter: true, category: 'economy', format: (v) => `${v.toFixed(0)}/100` },
   { key: 'econ_jobs_created', label: 'Jobs Created', unit: '', min: 0, max: 500000, higherIsBetter: true, category: 'economy', format: (v) => v >= 1e3 ? `${(v/1e3).toFixed(0)}K` : `${v}` },
   { key: 'env_green_ratio', label: 'Green Space', unit: '%', min: 0, max: 40, higherIsBetter: true, category: 'environment', format: (v) => `${v.toFixed(1)}%` },
-  { key: 'env_co2_est', label: 'CO₂ Estimate', unit: 'kt', min: 0, max: 2000, higherIsBetter: false, category: 'environment', format: (v) => `${v.toFixed(0)}kt` },
+  { key: 'env_co2_est', label: 'CO2 Estimate', unit: 'kt', min: 0, max: 2000, higherIsBetter: false, category: 'environment', format: (v) => `${v.toFixed(0)}kt` },
   { key: 'env_flood_exposure', label: 'Flood Exposure', unit: '%', min: 0, max: 100, higherIsBetter: false, category: 'environment', format: (v) => `${v.toFixed(0)}%` },
   { key: 'equity_hosp_coverage', label: 'Healthcare Access', unit: '%', min: 0, max: 100, higherIsBetter: true, category: 'social', format: (v) => `${v.toFixed(0)}%` },
   { key: 'equity_school_access', label: 'School Access', unit: '%', min: 0, max: 100, higherIsBetter: true, category: 'social', format: (v) => `${v.toFixed(0)}%` },

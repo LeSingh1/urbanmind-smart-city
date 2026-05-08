@@ -286,3 +286,62 @@ button, select, input, a, [role="button"] {
   0%, 100% { opacity: 0.2; }
   50%       { opacity: 0.6; }
 }
+
+/* ── Copilot caret ── */
+.copilot-caret {
+  display: inline-block;
+  margin-left: 1px;
+  font-weight: 600;
+  color: var(--color-accent-cyan);
+  animation: copilotCaret 900ms steps(2, end) infinite;
+}
+@keyframes copilotCaret {
+  0%, 49%   { opacity: 1; }
+  50%, 100% { opacity: 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .copilot-caret { animation: none; opacity: 1; }
+}
+
+/* ── Infrastructure marker drop-in (proposed/AI items) ── */
+@keyframes infraDrop {
+  0%   { transform: translateY(-18px) scale(0.4); opacity: 0; filter: blur(2px); }
+  60%  { transform: translateY(2px) scale(1.18);  opacity: 1; filter: blur(0);  }
+  80%  { transform: translateY(-1px) scale(0.96); }
+  100% { transform: translateY(0) scale(1);       opacity: 1; }
+}
+
+@keyframes infraPulseRing {
+  0%   { transform: scale(0.6); opacity: 0.7; }
+  100% { transform: scale(2.6); opacity: 0;   }
+}
+
+.urbanmind-infra-icon .infra-pop {
+  animation: infraDrop 620ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  transform-origin: 50% 100%;
+  position: relative;
+}
+
+.urbanmind-infra-icon .infra-pop::after {
+  content: "";
+  position: absolute;
+  inset: -6px;
+  border-radius: 999px;
+  border: 2px solid currentColor;
+  opacity: 0;
+  pointer-events: none;
+  animation: infraPulseRing 1100ms cubic-bezier(0.16, 1, 0.3, 1) 240ms both;
+}
+
+.urbanmind-infra-icon .infra-focused {
+  animation: infraFocusPulse 1500ms ease-in-out infinite;
+}
+@keyframes infraFocusPulse {
+  0%, 100% { transform: scale(1);    box-shadow: 0 0 0 5px rgba(0,212,255,0.20), 0 0 28px rgba(0,212,255,0.65); }
+  50%      { transform: scale(1.10); box-shadow: 0 0 0 9px rgba(0,212,255,0.05), 0 0 36px rgba(0,212,255,0.85); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .urbanmind-infra-icon .infra-pop,
+  .urbanmind-infra-icon .infra-pop::after { animation: none; }
+}

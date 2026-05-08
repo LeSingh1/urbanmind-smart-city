@@ -1,17 +1,39 @@
+import { useMemo } from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
 import { FileText, Search, Sparkles } from 'lucide-react'
 import { useCityStore } from '@/stores/cityStore'
 import { useScenarioStore } from '@/stores/scenarioStore'
 import { useSimulationStore } from '@/stores/simulationStore'
+import { useTypewriter } from '@/hooks/useTypewriter'
+
+type CopilotStage = 'standby' | 'diagnosed' | 'applied'
 
 export function RightPanel() {
   const selectedCity = useCityStore((state) => state.selectedCity)
   const activeScenario = useScenarioStore((state) => state.activeScenario)
-  const { planning, analyzeDemo, applyAIPlan, openReport } = useSimulationStore()
+  const { planning, analyzeDemo, applyAIPlan, openReport, focusRecommendation } = useSimulationStore()
   const topRecommendation = planning.topRecommendation
   const topItem = planning.aiRecommendations.find((item) => topRecommendation.itemIds?.includes(item.id)) ?? planning.aiRecommendations[0]
   const before = planning.beforeScores
   const afterPreview = previewAfterMetrics(planning)
   const populationServed = topRecommendation.expectedImpact.populationServed ?? Math.round((selectedCity?.population_current ?? planning.timelinePopulation) * 0.018)
+
+  const stage: CopilotStage = planning.hasAppliedAIPlan ? 'applied' : planning.hasAnalyzed ? 'diagnosed' : 'standby'
+  const cityName = selectedCity?.name ?? 'this city'
+  const narration = useMemo(() => {
+    if (stage === 'standby') {
+      return `Standing by. I will scan ${cityName} for service-coverage gaps and growth pressure when you press analyze.`
+    }
+    if (stage === 'applied') {
+      const residents = (planning.impactSummary?.residentsServed ?? planning.afterScores?.populationServed ?? 0).toLocaleString()
+      const cityHealthAfter = planning.afterScores?.cityHealth ?? '—'
+      return `Plan applied. ${residents} residents now reached, City Health at ${cityHealthAfter}. Open the report or scrub the timeline to watch each year unfold.`
+    }
+    const reason = topRecommendation.reason || `${topRecommendation.zoneName} shows the largest unmet demand.`
+    const target = topItem?.name ?? topRecommendation.title.replace(/^Add\s+/i, '')
+    return `Analysis complete for ${cityName}. ${reason} I recommend adding ${target}.`
+  }, [stage, cityName, topRecommendation, topItem, planning.impactSummary, planning.afterScores])
+  const { output: copilotText, done: copilotDone } = useTypewriter(narration, { speedMs: 16, startDelayMs: 60 })
 
   return (
     <aside
@@ -23,18 +45,28 @@ export function RightPanel() {
       }}
     >
       <div className="space-y-3 p-3">
+        <CopilotHeader stage={stage} />
+        <p className="text-sm leading-relaxed min-h-[3.5em]" style={{ color: 'var(--color-text-secondary)' }}>
+          <AnimatePresence mode="wait">
+            <motion.span
+              key={stage + narration.slice(0, 18)}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.18 }}
+            >
+              {copilotText}
+              {!copilotDone && <span className="copilot-caret" aria-hidden="true">|</span>}
+            </motion.span>
+          </AnimatePresence>
+        </p>
+
         {!planning.hasAnalyzed ? (
           <section className="rounded-lg p-4" style={{ background: 'var(--color-bg-hover)', border: '1px solid var(--color-border-subtle)' }}>
-            <h2 className="font-display text-lg font-semibold leading-tight" style={{ color: 'var(--color-text-primary)' }}>
-              Ready to analyze infrastructure gaps
-            </h2>
-            <p className="mt-2 text-sm leading-relaxed" style={{ color: 'var(--color-text-secondary)' }}>
-              Run analysis to identify underserved zones and recommended fixes.
-            </p>
             <button
               type="button"
               onClick={() => selectedCity && analyzeDemo(selectedCity.id, activeScenario)}
-              className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-lg px-3 py-3 text-sm font-semibold"
+              className="inline-flex w-full items-center justify-center gap-2 rounded-lg px-3 py-3 text-sm font-semibold"
               style={{ background: 'var(--color-bg-panel)', color: 'var(--color-accent-cyan)', border: '1px solid rgba(255,71,87,0.35)', boxShadow: 'var(--shadow-sm)' }}
             >
               <Search size={16} />
@@ -43,9 +75,17 @@ export function RightPanel() {
           </section>
         ) : (
           <section className="rounded-lg p-4" style={{ background: 'var(--color-bg-hover)', border: '1px solid rgba(255,71,87,0.3)', boxShadow: 'var(--shadow-sm)' }}>
-            <div className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-widest" style={{ color: 'var(--color-accent-cyan)' }}>
-              <Sparkles size={14} />
-              Top Recommendation
+            <div className="flex items-center justify-between gap-2 font-mono text-[10px] uppercase tracking-widest" style={{ color: 'var(--color-accent-cyan)' }}>
+              <span className="inline-flex items-center gap-2"><Sparkles size={14} />Top Recommendation</span>
+              {planning.useEngine && (
+                <span
+                  className="rounded-full px-2 py-0.5"
+                  style={{ color: 'var(--color-accent-green)', border: '1px solid rgba(0,184,148,0.4)', background: 'rgba(0,184,148,0.08)' }}
+                  title="Recommendation passed all 12 deterministic validation checks"
+                >
+                  Validated
+                </span>
+              )}
             </div>
             {!planning.hasAppliedAIPlan ? (
               <>
@@ -64,6 +104,39 @@ export function RightPanel() {
                   <Impact label="Confidence" value={`${Math.round((topItem?.confidence ?? topRecommendation.confidence ?? 0.82) * 100)}%`} />
                   <Impact label="Population Served" value={populationServed.toLocaleString()} />
                 </div>
+                {planning.aiRecommendations.length > 1 && (
+                  <div className="mt-3">
+                    <div className="font-mono text-[10px] uppercase tracking-widest mb-1.5" style={{ color: 'var(--color-text-muted)' }}>
+                      All Recommendations
+                    </div>
+                    <div className="grid gap-1.5">
+                      {planning.aiRecommendations.slice(0, 6).map((rec) => {
+                        const focused = planning.focusedRecommendationId === rec.id
+                        return (
+                          <button
+                            key={rec.id}
+                            type="button"
+                            onMouseEnter={() => focusRecommendation(rec.id)}
+                            onMouseLeave={() => focusRecommendation(null)}
+                            onClick={() => focusRecommendation(rec.id)}
+                            className="rounded-md px-2 py-1.5 text-left text-xs transition-colors"
+                            style={{
+                              background: focused ? 'rgba(0,212,255,0.10)' : 'var(--color-bg-card)',
+                              border: `1px solid ${focused ? 'rgba(0,212,255,0.45)' : 'var(--color-border-subtle)'}`,
+                              boxShadow: focused ? '0 0 0 2px rgba(0,212,255,0.15)' : 'none',
+                              color: 'var(--color-text-secondary)',
+                            }}
+                          >
+                            <div className="font-semibold" style={{ color: 'var(--color-text-primary)' }}>{rec.name}</div>
+                            <div className="font-mono text-[10px]" style={{ color: 'var(--color-text-muted)' }}>
+                              {rec.category.replace(/_/g, ' ')} · ${(rec.costEstimate / 1_000_000).toFixed(0)}M · {Math.round(rec.confidence * 100)}%
+                            </div>
+                          </button>
+                        )
+                      })}
+                    </div>
+                  </div>
+                )}
                 <div className="mt-4 grid gap-2">
                   <button
                     type="button"
@@ -86,8 +159,11 @@ export function RightPanel() {
             ) : (
               <>
                 <h2 className="mt-2 font-display text-lg font-semibold" style={{ color: 'var(--color-accent-green)' }}>
-                  AI Plan Applied
+                  Plan Applied Successfully
                 </h2>
+                <p className="mt-2 text-xs leading-relaxed" style={{ color: 'var(--color-text-secondary)' }}>
+                  {selectedCity?.name ?? 'This city'} is now closer to 15-minute city compliance.
+                </p>
                 <button
                   type="button"
                   onClick={openReport}
@@ -186,6 +262,35 @@ function ImpactSummary() {
       <Impact label="Equity Score" value={formatDelta(equity)} />
       <Impact label="15 Min City" value={formatDelta(fifteen)} />
       <Impact label="Total Cost" value={formatMoney(cost)} />
+    </div>
+  )
+}
+
+function CopilotHeader({ stage }: { stage: CopilotStage }) {
+  const statusLabel = stage === 'standby' ? 'Standby' : stage === 'diagnosed' ? 'Diagnosed' : 'Plan Applied'
+  const statusColor =
+    stage === 'standby'
+      ? 'var(--color-text-muted)'
+      : stage === 'diagnosed'
+        ? 'var(--color-accent-cyan)'
+        : 'var(--color-accent-green)'
+  return (
+    <div className="flex items-center gap-2.5 px-1 pt-1">
+      <div className="relative grid h-9 w-9 place-items-center rounded-full" style={{ background: 'rgba(0,184,148,0.10)', border: '1px solid rgba(0,184,148,0.45)' }}>
+        <Sparkles size={16} style={{ color: 'var(--color-accent-green)' }} />
+        <span
+          className="absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full"
+          style={{ background: statusColor, border: '2px solid var(--color-bg-sidebar)', boxShadow: `0 0 8px ${statusColor}` }}
+        />
+      </div>
+      <div>
+        <div className="font-display text-sm font-semibold" style={{ color: 'var(--color-text-primary)' }}>
+          UrbanMind Copilot
+        </div>
+        <div className="font-mono text-[9px] uppercase tracking-widest" style={{ color: statusColor }}>
+          {statusLabel}
+        </div>
+      </div>
     </div>
   )
 }
