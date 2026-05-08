@@ -97,50 +97,50 @@ export const FREMON_EQUITY_FIRST_METRICS: PlanningScores = {
 }
 
 export const FREMON_EXISTING_INFRASTRUCTURE: InfrastructureItem[] = [
-  point('fremon-central-clinic', 'Fremon Civic Clinic', 'clinic', [-122.010, 37.541], 'Existing clinic is central but leaves south growth districts undercovered.', 0, 70, 0.82),
-  point('fremon-north-bus-hub', 'North Loop Bus Hub', 'transit_stop', [-121.998, 37.594], 'Low-frequency transit anchor serving only part of the north district.', 0, 64, 0.78),
-  point('fremon-east-school', 'Eastside Learning Center', 'school', [-121.928, 37.546], 'Existing education capacity east of downtown, below projected demand.', 0, 66, 0.8),
-  point('fremon-central-park', 'Civic Commons Park', 'park', [-121.982, 37.560], 'Central open-space anchor, too small for 35% projected growth.', 0, 62, 0.77),
-  point('fremon-fire-west', 'West Response Station', 'fire_station', [-122.046, 37.552], 'Fire response station near the west congestion corridor.', 0, 72, 0.84),
-  point('fremon-police-core', 'Fremon Safety Center', 'police_station', [-121.979, 37.538], 'Public safety office near the civic core.', 0, 74, 0.86),
-  point('fremon-innovation', 'Innovation District', 'commercial_zone', [-121.950, 37.572], 'Employment growth district with daytime population pressure.', 0, 68, 0.82),
-  point('fremon-housing-expansion', 'New Housing Expansion Zone', 'housing_zone', [-121.940, 37.506], 'Projected housing growth needs schools, utilities, clinics, and emergency access.', 0, 65, 0.84),
+  point('fremon-central-clinic', 'Fremon Civic Clinic', 'clinic', [-121.988, 37.542], 'Existing clinic is central but leaves south growth districts undercovered.', 0, 70, 0.82),
+  point('fremon-north-bus-hub', 'North Loop Bus Hub', 'transit_stop', [-122.018, 37.572], 'Low-frequency transit anchor serving only part of the north district.', 0, 64, 0.78),
+  point('fremon-east-school', 'Eastside Learning Center', 'school', [-121.938, 37.540], 'Existing education capacity east of downtown, below projected demand.', 0, 66, 0.8),
+  point('fremon-central-park', 'Civic Commons Park', 'park', [-121.965, 37.548], 'Central open-space anchor, too small for 35% projected growth.', 0, 62, 0.77),
+  point('fremon-fire-west', 'West Response Station', 'fire_station', [-122.024, 37.548], 'Fire response station near the west congestion corridor.', 0, 72, 0.84),
+  point('fremon-police-core', 'Fremon Safety Center', 'police_station', [-121.983, 37.552], 'Public safety office near the civic core.', 0, 74, 0.86),
+  point('fremon-innovation', 'Innovation District', 'commercial_zone', [-121.946, 37.565], 'Employment growth district with daytime population pressure.', 0, 68, 0.82),
+  point('fremon-housing-expansion', 'New Housing Expansion Zone', 'housing_zone', [-121.946, 37.510], 'Projected housing growth needs schools, utilities, clinics, and emergency access.', 0, 65, 0.84),
 ]
 
 export const FREMON_AI_RECOMMENDATIONS: InfrastructureItem[] = [
-  point('fremon-ai-south-clinic', 'South Emergency Gap Clinic', 'clinic', [-121.995, 37.493], 'Improves emergency and primary care access for South Fremon growth households.', 18_000_000, 92, 0.87, 'ai_recommended'),
-  point('fremon-ai-east-school', 'East Education District School', 'school', [-121.918, 37.550], 'Adds classroom capacity near East Fremon residential growth.', 32_000_000, 88, 0.85, 'ai_recommended'),
-  point('fremon-ai-north-transit', 'North Transit Hub', 'transit_stop', [-121.998, 37.604], 'Places frequent transit service at the strongest north-side access gap without drawing corridors.', 39_000_000, 90, 0.84, 'ai_recommended'),
-  point('fremon-ai-central-green', 'Central Green Corridor', 'park', [-121.970, 37.556], 'Adds walkable open space at the central green-space deficit.', 14_000_000, 82, 0.82, 'ai_recommended'),
-  point('fremon-ai-mixed-use', 'New Housing Expansion Community Center', 'community_center', [-121.934, 37.514], 'Adds community-serving services near transit to reduce commute pressure and improve neighborhood support.', 28_000_000, 80, 0.8, 'ai_recommended'),
-  point('fremon-ai-west-mobility-hub', 'West Congestion Relief Transit Stop', 'transit_stop', [-122.055, 37.548], 'Adds a mobility service point where the west district has commute pressure.', 6_000_000, 74, 0.79, 'ai_recommended'),
+  point('fremon-ai-south-clinic', 'South Emergency Gap Clinic', 'clinic', [-121.984, 37.504], 'Improves emergency and primary care access for South Fremon growth households.', 18_000_000, 92, 0.87, 'ai_recommended'),
+  point('fremon-ai-east-school', 'East Education District School', 'school', [-121.936, 37.548], 'Adds classroom capacity near East Fremon residential growth.', 32_000_000, 88, 0.85, 'ai_recommended'),
+  point('fremon-ai-north-transit', 'North Transit Hub', 'transit_stop', [-122.018, 37.578], 'Places frequent transit service at the strongest north-side access gap without drawing corridors.', 39_000_000, 90, 0.84, 'ai_recommended'),
+  point('fremon-ai-central-green', 'Central Green Corridor', 'park', [-121.965, 37.556], 'Adds walkable open space at the central green-space deficit.', 14_000_000, 82, 0.82, 'ai_recommended'),
+  point('fremon-ai-mixed-use', 'New Housing Expansion Community Center', 'community_center', [-121.942, 37.516], 'Adds community-serving services near transit to reduce commute pressure and improve neighborhood support.', 28_000_000, 80, 0.8, 'ai_recommended'),
+  point('fremon-ai-west-mobility-hub', 'West Congestion Relief Transit Stop', 'transit_stop', [-122.026, 37.546], 'Adds a mobility service point where the west district has commute pressure.', 6_000_000, 74, 0.79, 'ai_recommended'),
 ]
 
 export const FREMON_UNDERSERVED_ZONES: UnderservedZone[] = [
-  zone('fremon-north-transit-gap', 'North Transit Gap', 'transit_access', [37.604, -121.998], 1550, 0.84, 'North district has poor frequent-transit coverage as population grows.', 40, ['fremon-ai-north-transit']),
-  zone('fremon-east-education-gap', 'East Education Gap', 'school_access', [37.550, -121.918], 1450, 0.88, 'East district classroom demand exceeds local seeded school capacity.', 37, ['fremon-ai-east-school']),
-  zone('fremon-south-emergency-gap', 'South Emergency Gap', 'emergency_access', [37.493, -121.995], 1600, 0.92, 'South district lacks clinics near projected housing growth.', 34, ['fremon-ai-south-clinic']),
-  zone('fremon-central-green-gap', 'Central Green Space Gap', 'green_space', [37.556, -121.970], 1300, 0.74, 'Central district has lower walkable park access under growth.', 46, ['fremon-ai-central-green']),
-  zone('fremon-west-congestion-zone', 'West Congestion Zone', 'congestion', [37.548, -122.055], 1500, 0.82, 'West commute demand has too few mobility alternatives.', 39, ['fremon-ai-west-mobility-hub', 'fremon-ai-north-transit']),
-  zone('fremon-housing-utility-gap', 'New Housing Expansion Zone', 'housing_access', [37.514, -121.934], 1450, 0.8, 'New housing needs nearby services, utilities, and emergency access.', 43, ['fremon-ai-mixed-use', 'fremon-ai-south-clinic']),
+  zone('fremon-north-transit-gap', 'North Transit Gap', 'transit_access', [37.578, -122.018], 1550, 0.84, 'North district has poor frequent-transit coverage as population grows.', 40, ['fremon-ai-north-transit']),
+  zone('fremon-east-education-gap', 'East Education Gap', 'school_access', [37.548, -121.936], 1450, 0.88, 'East district classroom demand exceeds local seeded school capacity.', 37, ['fremon-ai-east-school']),
+  zone('fremon-south-emergency-gap', 'South Emergency Gap', 'emergency_access', [37.504, -121.984], 1600, 0.92, 'South district lacks clinics near projected housing growth.', 34, ['fremon-ai-south-clinic']),
+  zone('fremon-central-green-gap', 'Central Green Space Gap', 'green_space', [37.556, -121.965], 1300, 0.74, 'Central district has lower walkable park access under growth.', 46, ['fremon-ai-central-green']),
+  zone('fremon-west-congestion-zone', 'West Congestion Zone', 'congestion', [37.546, -122.026], 1500, 0.82, 'West commute demand has too few mobility alternatives.', 39, ['fremon-ai-west-mobility-hub', 'fremon-ai-north-transit']),
+  zone('fremon-housing-utility-gap', 'New Housing Expansion Zone', 'housing_access', [37.516, -121.942], 1450, 0.8, 'New housing needs nearby services, utilities, clinics, and emergency access.', 43, ['fremon-ai-mixed-use', 'fremon-ai-south-clinic']),
 ]
 
 export const FREMON_GROWTH_PRESSURE_ZONES: GrowthPressureZone[] = [
-  { id: 'fremon-growth-south', name: 'South District Housing Growth', center: [37.493, -121.995], radiusMeters: 1600, pressure: 'high', projectedGrowthPercent: 38, reason: 'New housing permits concentrate south of the civic core.' },
-  { id: 'fremon-growth-east', name: 'East Family Housing Growth', center: [37.550, -121.918], radiusMeters: 1500, pressure: 'high', projectedGrowthPercent: 36, reason: 'Family-size units drive education demand.' },
-  { id: 'fremon-growth-north', name: 'North Transit Demand', center: [37.604, -121.998], radiusMeters: 1400, pressure: 'medium', projectedGrowthPercent: 28, reason: 'North district growth is transit constrained.' },
-  { id: 'fremon-growth-west', name: 'West Commute Pressure', center: [37.548, -122.055], radiusMeters: 1550, pressure: 'medium', projectedGrowthPercent: 25, reason: 'Industrial and residential trips overlap on the arterial.' },
+  { id: 'fremon-growth-south', name: 'South District Housing Growth', center: [37.504, -121.984], radiusMeters: 1600, pressure: 'high', projectedGrowthPercent: 38, reason: 'New housing permits concentrate south of the civic core.' },
+  { id: 'fremon-growth-east', name: 'East Family Housing Growth', center: [37.548, -121.936], radiusMeters: 1500, pressure: 'high', projectedGrowthPercent: 36, reason: 'Family-size units drive education demand.' },
+  { id: 'fremon-growth-north', name: 'North Transit Demand', center: [37.578, -122.018], radiusMeters: 1400, pressure: 'medium', projectedGrowthPercent: 28, reason: 'North district growth is transit constrained.' },
+  { id: 'fremon-growth-west', name: 'West Commute Pressure', center: [37.546, -122.026], radiusMeters: 1550, pressure: 'medium', projectedGrowthPercent: 25, reason: 'Industrial and residential trips overlap on the arterial.' },
 ]
 
 export const FREMON_DISTRICTS: DistrictProfile[] = [
-  district('district-north', 'North Transit Gap', 'Poor transit access', 0.84, 31_000, 'Add frequent transit corridor', 40, 72, [37.604, -121.998], 'fremon-north-transit-gap'),
-  district('district-east', 'East Education Gap', 'School access shortage', 0.88, 18_000, 'Add a school near family housing', 37, 81, [37.550, -121.918], 'fremon-east-education-gap'),
-  district('district-south', 'South Emergency Gap', 'No nearby clinic', 0.92, 22_000, 'Add clinic and response coverage', 34, 79, [37.493, -121.995], 'fremon-south-emergency-gap'),
-  district('district-central', 'Central Green Space Gap', 'Limited walkable green space', 0.74, 16_000, 'Add green corridor', 46, 74, [37.556, -121.970], 'fremon-central-green-gap'),
-  district('district-west', 'West Congestion Zone', 'Congestion risk', 0.82, 9_000, 'Add bike and transit alternatives', 39, 62, [37.548, -122.055], 'fremon-west-congestion-zone'),
-  district('district-innovation', 'Innovation District', 'Job growth pressure', 0.58, 12_000, 'Connect jobs to housing by transit', 59, 78, [37.572, -121.950]),
-  district('district-housing', 'New Housing Expansion Zone', 'Housing needs services', 0.8, 20_000, 'Add mixed-use services and utilities', 43, 77, [37.514, -121.934], 'fremon-housing-utility-gap'),
-  district('district-industrial', 'Industrial Edge', 'Land-use compatibility', 0.52, 7_000, 'Avoid schools near industrial edge', 57, 64, [37.515, -122.035]),
+  district('district-north', 'North Transit Gap', 'Poor transit access', 0.84, 31_000, 'Add frequent transit corridor', 40, 72, [37.578, -122.018], 'fremon-north-transit-gap'),
+  district('district-east', 'East Education Gap', 'School access shortage', 0.88, 18_000, 'Add a school near family housing', 37, 81, [37.548, -121.936], 'fremon-east-education-gap'),
+  district('district-south', 'South Emergency Gap', 'No nearby clinic', 0.92, 22_000, 'Add clinic and response coverage', 34, 79, [37.504, -121.984], 'fremon-south-emergency-gap'),
+  district('district-central', 'Central Green Space Gap', 'Limited walkable green space', 0.74, 16_000, 'Add green corridor', 46, 74, [37.556, -121.965], 'fremon-central-green-gap'),
+  district('district-west', 'West Congestion Zone', 'Congestion risk', 0.82, 9_000, 'Add bike and transit alternatives', 39, 62, [37.546, -122.026], 'fremon-west-congestion-zone'),
+  district('district-innovation', 'Innovation District', 'Job growth pressure', 0.58, 12_000, 'Connect jobs to housing by transit', 59, 78, [37.565, -121.946]),
+  district('district-housing', 'New Housing Expansion Zone', 'Housing needs services', 0.8, 20_000, 'Add mixed-use services and utilities', 43, 77, [37.516, -121.942], 'fremon-housing-utility-gap'),
+  district('district-industrial', 'Industrial Edge', 'Land-use compatibility', 0.52, 7_000, 'Avoid schools near industrial edge', 57, 64, [37.515, -122.026]),
 ]
 
 export const FREMON_PLAN_BATTLE: PlanBattlePlan[] = [
@@ -192,7 +192,7 @@ export const FREMON_TOP_RECOMMENDATION: AIRecommendation = {
   zoneName: 'South Emergency Gap',
   locationName: 'South Emergency Gap',
   infrastructureType: 'clinic',
-  coordinates: [-121.995, 37.493],
+  coordinates: [-121.984, 37.504],
   reason: 'South Emergency Gap lacks clinic coverage. Around 22,000 projected residents are outside the target emergency access radius.',
   expectedImpact: {
     emergencyAccess: 24,
@@ -210,11 +210,11 @@ export const FREMON_TOP_RECOMMENDATION: AIRecommendation = {
 }
 
 export const FREMON_PLACEMENT_SUGGESTIONS: PlacementSuggestion[] = [
-  { id: 'suggest-clinic-south', rank: 1, title: 'South Fremon Growth Zone', category: 'clinic', coordinates: [-121.995, 37.493], expectedImpact: 'Emergency Access +18', costEstimate: 18_000_000, reason: 'Best clinic location: fills the highest-severity emergency access gap.', confidence: 0.87 },
-  { id: 'suggest-clinic-housing', rank: 2, title: 'New Housing Expansion Edge', category: 'clinic', coordinates: [-121.934, 37.514], expectedImpact: 'Emergency Access +12', costEstimate: 16_000_000, reason: 'Serves new housing but is less central to the South Emergency Gap.', confidence: 0.78 },
-  { id: 'suggest-clinic-central', rank: 3, title: 'Central-South Connector', category: 'clinic', coordinates: [-121.982, 37.524], expectedImpact: 'Emergency Access +8', costEstimate: 14_000_000, reason: 'Lower-cost option with smaller equity improvement.', confidence: 0.69 },
-  { id: 'suggest-school-east', rank: 1, title: 'East Education Gap', category: 'school', coordinates: [-121.918, 37.550], expectedImpact: 'Education Access +21', costEstimate: 32_000_000, reason: 'Best school location: close to projected family housing growth.', confidence: 0.85 },
-  { id: 'suggest-school-housing', rank: 2, title: 'Housing Expansion School Site', category: 'school', coordinates: [-121.934, 37.522], expectedImpact: 'Education Access +15', costEstimate: 30_000_000, reason: 'Good site for new families, but farther from current east gap.', confidence: 0.76 },
+  { id: 'suggest-clinic-south', rank: 1, title: 'South Fremon Growth Zone', category: 'clinic', coordinates: [-121.984, 37.504], expectedImpact: 'Emergency Access +18', costEstimate: 18_000_000, reason: 'Best clinic location: fills the highest-severity emergency access gap.', confidence: 0.87 },
+  { id: 'suggest-clinic-housing', rank: 2, title: 'New Housing Expansion Edge', category: 'clinic', coordinates: [-121.942, 37.516], expectedImpact: 'Emergency Access +12', costEstimate: 16_000_000, reason: 'Serves new housing but is less central to the South Emergency Gap.', confidence: 0.78 },
+  { id: 'suggest-clinic-central', rank: 3, title: 'Central-South Connector', category: 'clinic', coordinates: [-121.980, 37.526], expectedImpact: 'Emergency Access +8', costEstimate: 14_000_000, reason: 'Lower-cost option with smaller equity improvement.', confidence: 0.69 },
+  { id: 'suggest-school-east', rank: 1, title: 'East Education Gap', category: 'school', coordinates: [-121.936, 37.548], expectedImpact: 'Education Access +21', costEstimate: 32_000_000, reason: 'Best school location: close to projected family housing growth.', confidence: 0.85 },
+  { id: 'suggest-school-housing', rank: 2, title: 'Housing Expansion School Site', category: 'school', coordinates: [-121.942, 37.522], expectedImpact: 'Education Access +15', costEstimate: 30_000_000, reason: 'Good site for new families, but farther from current east gap.', confidence: 0.76 },
   { id: 'suggest-school-industrial-buffer', rank: 3, title: 'Industrial Buffer School Site', category: 'school', coordinates: [-122.020, 37.518], expectedImpact: 'Education Access +5', costEstimate: 28_000_000, reason: 'Lower confidence because it approaches the industrial edge.', confidence: 0.52 },
 ]
 

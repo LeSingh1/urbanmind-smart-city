@@ -236,10 +236,10 @@ const CATEGORY_COLOR: Record<InfrastructureCategory, string> = {
 const CATEGORY_ICON: Record<InfrastructureCategory, string> = {
   hospital: '&#10010;',
   clinic: '&#10010;',
-  school: '&#127891;',
-  park: '&#127794;',
-  transit_stop: '&#128652;',
-  transit_line: '&#128646;',
+  school: 'S',
+  park: 'P',
+  transit_stop: 'T',
+  transit_line: 'R',
   fire_station: '&#9650;',
   police_station: '&#9670;',
   housing_zone: '&#8962;',
@@ -251,7 +251,7 @@ const CATEGORY_ICON: Record<InfrastructureCategory, string> = {
   water: '&#9679;',
   power: '&#9889;',
   mixed_use: '&#8962;',
-  community_center: '&#128101;',
+  community_center: 'C',
 }
 
 const TOOL_ZONE_TO_CATEGORY: Record<string, InfrastructureCategory> = {
@@ -355,7 +355,7 @@ function infraIcon(item: InfrastructureItem) {
     : '4px 4px 8px #babecc,-4px -4px 8px #ffffff'
   return L.divIcon({
     className: 'urbanmind-infra-icon',
-    html: `<div style="width:32px;height:32px;border-radius:10px;background:#f4f7fb;border:${border};box-shadow:${shadow};display:grid;place-items:center;color:${color};font:800 15px Inter,system-ui;">${isAi ? '&#9673;' : CATEGORY_ICON[item.category]}</div>`,
+    html: `<div style="width:32px;height:32px;border-radius:10px;background:#f4f7fb;border:${border};box-shadow:${shadow};display:grid;place-items:center;color:${color};font:800 15px Inter,system-ui;">${isAi ? '&#9678;' : CATEGORY_ICON[item.category]}</div>`,
     iconSize: [30, 30],
     iconAnchor: [15, 15],
   })
@@ -388,6 +388,88 @@ function coverageRadiusForCategory(category: InfrastructureCategory) {
 function isValidCityPlacement(city: { bbox: number[] }, lat: number, lng: number) {
   const [west, south, east, north] = city.bbox
   return lng >= west && lng <= east && lat >= south && lat <= north
+}
+
+const WATER_EXCLUSION_BOXES: Record<string, Array<[number, number, number, number]>> = {
+  fremon: [
+    [37.4500, 37.6200, -122.0900, -122.0380],
+    [37.4500, 37.6200, -121.9150, -121.8600],
+    [37.5850, 37.6200, -122.0380, -121.9150],
+  ],
+  fremont: [
+    [37.4500, 37.6200, -122.0900, -122.0380],
+    [37.4500, 37.6200, -121.9150, -121.8600],
+    [37.5850, 37.6200, -122.0380, -121.9150],
+  ],
+  new_york: [
+    [40.7000, 40.9000, -74.0350, -74.0120],
+    [40.6900, 40.7950, -73.9940, -73.9340],
+    [40.5600, 40.7000, -74.0700, -73.9600],
+    [40.5900, 40.6700, -73.9000, -73.7450],
+  ],
+  singapore: [
+    [1.2300, 1.3000, 103.6100, 103.7400],
+    [1.2200, 1.3000, 103.8400, 104.0850],
+  ],
+  mumbai: [
+    [18.8900, 19.0600, 72.7800, 72.8150],
+    [19.0000, 19.2300, 72.9300, 72.9900],
+  ],
+  dubai: [
+    [24.9200, 25.1700, 55.0200, 55.1100],
+  ],
+  lagos: [
+    [6.3900, 6.4700, 3.3900, 3.4700],
+  ],
+}
+
+function isInvalidPlacementZone(city: { id: string; landmarks?: Landmark[] }, lat: number, lng: number) {
+  const inWaterBox = (WATER_EXCLUSION_BOXES[city.id] ?? []).some(([minLat, maxLat, minLng, maxLng]) =>
+    lat >= minLat && lat <= maxLat && lng >= minLng && lng <= maxLng
+  )
+  if (inWaterBox) return true
+
+  return (city.landmarks ?? []).some((landmark) => {
+    const isWater = landmark.zone_type_id.includes('WATER') || landmark.category.toLowerCase().includes('water')
+    if (!isWater) return false
+    const halfLat = (landmark.h_deg ?? 0.01) / 2
+    const halfLng = (landmark.w_deg ?? 0.01) / 2
+    return lat >= landmark.lat - halfLat && lat <= landmark.lat + halfLat && lng >= landmark.lng - halfLng && lng <= landmark.lng + halfLng
+  })
+}
+
+function placementFit(category: InfrastructureCategory, lat: number, lng: number, zones: UnderservedZone[]) {
+  const relevantGap: Partial<Record<InfrastructureCategory, string[]>> = {
+    clinic: ['hospital_access', 'emergency_access'],
+    hospital: ['hospital_access', 'emergency_access'],
+    school: ['school_access'],
+    park: ['park_access', 'green_space'],
+    transit_stop: ['transit_access'],
+    transit_line: ['transit_access'],
+    housing_zone: ['housing_access'],
+    mixed_use: ['housing_access', 'transit_access'],
+    community_center: ['equity', 'housing_access'],
+  }
+  const gapTypes = relevantGap[category] ?? []
+  const candidates = zones
+    .filter((zone) => !zone.isImproved && gapTypes.includes(zone.gapType))
+    .map((zone) => {
+      const distanceMeters = approxMeters(lat, lng, zone.center[0], zone.center[1])
+      return { zone, distanceMeters }
+    })
+    .sort((a, b) => a.distanceMeters - b.distanceMeters)
+  const best = candidates[0]
+  if (!zones.length || !gapTypes.length) return { status: 'good' as const, zone: null, message: 'Placement is inside the selected city planning area.' }
+  if (!best) return { status: 'warning' as const, zone: zones[0] ?? null, message: `This ${category.replace(/_/g, ' ')} does not match an active gap type. It can be placed, but it may not improve the analysis much.` }
+  const targetRadius = Math.max(650, best.zone.radiusMeters * 1.05)
+  if (best.distanceMeters <= targetRadius) return { status: 'good' as const, zone: best.zone, message: `This ${category.replace(/_/g, ' ')} fills ${best.zone.name} and is within the target service radius.` }
+  return { status: 'warning' as const, zone: best.zone, message: `This ${category.replace(/_/g, ' ')} is ${Math.round(best.distanceMeters).toLocaleString()}m from ${best.zone.name}. Move it closer for stronger impact.` }
+}
+
+function approxMeters(latA: number, lngA: number, latB: number, lngB: number) {
+  const latMeters = (latA - latB) * 111_000
+  const lngMeters = (lngA - lngB) * 111_000 * Math.cos((latA * Math.PI) / 180)
+  return Math.hypot(latMeters, lngMeters)
 }
 
 function describePlacement(category: InfrastructureCategory, lat: number, lng: number, zones: UnderservedZone[]) {
@@ -482,15 +564,14 @@ function spreadDisplayPositions(points: DisplayPoint[], city?: { bbox: number[] 
 }
 
 function spreadMarkerDisplayPositions(items: InfrastructureItem[], city?: { bbox: number[] } | null) {
-  return spreadDisplayPositions(
-    items
-      .filter((item) => item.geometryType === 'Point')
-      .map((item) => {
-        const [lng, lat] = item.coordinates as GeoJSON.Position
-        return { id: item.id, lat, lng }
-      }),
-    city,
-  )
+  const positions = new Map<string, [number, number]>()
+  items
+    .filter((item) => item.geometryType === 'Point')
+    .forEach((item) => {
+      const [lng, lat] = item.coordinates as GeoJSON.Position
+      positions.set(item.id, [lat, lng])
+    })
+  return positions
 }
 
 // ─── Animated overlay for "no city selected" state ──────────────────────────
@@ -569,7 +650,7 @@ export function MapContainer() {
   const handlePlaceZone = useCallback(
     (lat: number, lng: number) => {
       if (!selectedOverrideZone) return
-      if (!city || !isValidCityPlacement(city, lat, lng)) {
+      if (!city || !isValidCityPlacement(city, lat, lng) || isInvalidPlacementZone(city, lat, lng)) {
         useSimulationStore.setState((state) => ({
           planning: {
             ...state.planning,
@@ -584,10 +665,13 @@ export function MapContainer() {
         return
       }
       const category = TOOL_ZONE_TO_CATEGORY[selectedOverrideZone] ?? 'housing_zone'
+      const [west, south, east, north] = city.bbox
+      const citySpan = Math.max(Math.abs(east - west), Math.abs(north - south))
+      const duplicateThreshold = Math.min(0.012, Math.max(0.006, citySpan * 0.018))
       const duplicate = planning.infrastructure.some((item) => {
         if (item.geometryType !== 'Point' || item.category !== category) return false
         const [otherLng, otherLat] = item.coordinates as GeoJSON.Position
-        return Math.hypot(lat - otherLat, lng - otherLng) < 0.008
+        return Math.hypot(lat - otherLat, lng - otherLng) < duplicateThreshold
       })
       if (duplicate) {
         useSimulationStore.setState((state) => ({
@@ -603,6 +687,7 @@ export function MapContainer() {
         notify('warning', 'Move farther from duplicate infrastructure.', 2800)
         return
       }
+      const fit = placementFit(category, lat, lng, planning.underservedZones)
       const zone: UserPlacedZone = {
         id: `user-${Date.now()}`,
         lat,
@@ -629,7 +714,17 @@ export function MapContainer() {
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       })
-      notify('success', `Proposed ${label} added near ${placement.locationName}.`, 2800)
+      useSimulationStore.setState((state) => ({
+        planning: {
+          ...state.planning,
+          placementFeedback: {
+            type: fit.status === 'good' ? 'good' : 'warning',
+            title: fit.status === 'good' ? 'Good Placement' : 'Placement Warning',
+            message: fit.message,
+          },
+        },
+      }))
+      notify(fit.status === 'good' ? 'success' : 'warning', `Proposed ${label} added near ${placement.locationName}.`, 2800)
     },
     [selectedOverrideZone, city, planning.infrastructure, planning.underservedZones, addUserZone, addInfrastructure, notify]
   )
