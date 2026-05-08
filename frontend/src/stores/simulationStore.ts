@@ -1617,15 +1617,15 @@ function squareAround(lng: number, lat: number, size: number) {
 function timelineForYear(year: number, planning: PlanningState) {
   const fremonPoint = FREMON_TIMELINE[year as keyof typeof FREMON_TIMELINE]
   if (planning.cityId === 'fremon' && fremonPoint) return fremonPoint
-  const t = Math.max(0, Math.min(1, (year - 2026) / 50))
+  const t = Math.max(0, Math.min(1, (year - 2026) / 75))
   const base = planning.beforeScores ?? FREMON_BASE_METRICS
   const city = STATIC_CITIES.find((item) => item.id === planning.cityId)
-  const basePopulation = planning.timelinePopulation || city?.population_current || FREMON_POPULATION
+  const basePopulation = city?.population_current || (planning.cityId === 'fremon' ? FREMON_POPULATION : planning.timelinePopulation || FREMON_POPULATION)
   return {
     population: Math.round(basePopulation * (1 + t * (planning.growthPercent / 100))),
     pressure: 1 + t * 0.68,
     label: `${year}`,
-    phase: `${year} · 50-year planning horizon · prioritize distributed service coverage`,
+    phase: `${year} · 75-year planning horizon · prioritize distributed service coverage`,
     metrics: {
       ...base,
       cityHealth: clampScore(base.cityHealth - t * 4),
@@ -1645,7 +1645,7 @@ function timelineForYear(year: number, planning: PlanningState) {
 function estimateTimelinePopulation(year: number) {
   const fremonPoint = FREMON_TIMELINE[year as keyof typeof FREMON_TIMELINE]
   if (fremonPoint) return fremonPoint.population
-  const t = Math.max(0, Math.min(1, (year - 2026) / 50))
+  const t = Math.max(0, Math.min(1, (year - 2026) / 75))
   return Math.round(FREMON_POPULATION * (1 + t * 0.45))
 }
 
