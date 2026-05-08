@@ -17,6 +17,14 @@ import { SplitScreenView } from '@/components/Layout/SplitScreenView'
 import { Map3DView } from './Map3DView'
 import type { Landmark } from '@/types/city.types'
 import type { GrowthPressureZone, InfrastructureCategory, InfrastructureItem, UnderservedZone } from '@/types/city.types'
+import {
+  FREMON_EXISTING_INFRASTRUCTURE,
+  FREMON_EXISTING_INFRASTRUCTURE_EXTENDED,
+  type ExistingCategory,
+  type ExistingInfrastructure,
+} from '@/data/fremonExistingInfrastructure'
+// Side-effect import: runs anti-clutter guardrails in dev.
+import '@/data/validateExistingInfrastructure'
 
 // Service coverage radii in metres per zone token
 const SERVICE_RADII: Record<string, number> = {
@@ -195,10 +203,12 @@ function DotLayer({ dots, onHover, onClick, highlightedToken }: DotLayerProps) {
 }
 
 const LAYER_GROUPS = [
-  { title: 'Existing real world infrastructure', items: ['Existing hospitals', 'Existing schools', 'Existing parks', 'Existing transit', 'Existing police stations', 'Existing fire stations'] },
-  { title: 'Proposed future scenario infrastructure', items: ['Proposed infrastructure'] },
-  { title: 'AI recommended infrastructure', items: ['AI Recommendations'] },
-  { title: 'Scenario overlays', items: ['Underserved zones', 'Growth Pressure', 'Coverage Rings'] },
+  // Engine context dots (Fremon) — small, muted, on-by-default
+  { title: 'Existing infrastructure', items: ['Existing Clinics', 'Existing Schools', 'Existing Parks', 'Existing Transit', 'Existing Emergency'] },
+  { title: 'AI layers', items: ['AI Recommendations', 'Proposed infrastructure', 'Coverage Rings', 'Underserved zones'] },
+  { title: 'Advanced', items: ['Show all existing infrastructure', 'Growth Pressure'] },
+  // Legacy real-world layers — still toggleable, just deprioritized in the panel.
+  { title: 'Real-world overlays (other cities)', items: ['Existing hospitals', 'Existing schools', 'Existing parks', 'Existing transit', 'Existing police stations', 'Existing fire stations'] },
 ]
 
 const CATEGORY_LAYER: Partial<Record<InfrastructureCategory, string>> = {
@@ -373,6 +383,49 @@ const pillStyle = (color: string): React.CSSProperties => ({
   border: `1px solid ${color}55`,
   whiteSpace: 'nowrap',
 })
+
+// ── Existing-infrastructure context-dot helpers ───────────────────────────
+const EXISTING_DOT_FILL: Record<ExistingCategory, string> = {
+  clinic: '#94a3b8',
+  school: '#94a3b8',
+  park: '#86efac',
+  transit: '#94a3b8',
+  emergency: '#94a3b8',
+}
+
+const EXISTING_DOT_LAYER_NAME: Record<ExistingCategory, string> = {
+  clinic: 'Existing Clinics',
+  school: 'Existing Schools',
+  park: 'Existing Parks',
+  transit: 'Existing Transit',
+  emergency: 'Existing Emergency',
+}
+
+function existingDotLayerActive(category: ExistingCategory, activeLayers: Set<string>): boolean {
+  return activeLayers.has(EXISTING_DOT_LAYER_NAME[category])
+}
+
+const EXISTING_DOT_CATEGORY_LABEL: Record<ExistingCategory, string> = {
+  clinic: 'Clinic',
+  school: 'School',
+  park: 'Park',
+  transit: 'Transit',
+  emergency: 'Emergency',
+}
+
+function ExistingDotPopup({ dot }: { dot: ExistingInfrastructure }) {
+  return (
+    <div style={{ minWidth: 220, fontFamily: 'Inter,system-ui' }}>
+      <div style={{ fontWeight: 700, fontSize: 13, color: '#1f2937', marginBottom: 6 }}>{dot.name}</div>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginBottom: 6 }}>
+        <span style={pillStyle('#94a3b8')}>Existing</span>
+        <span style={pillStyle(EXISTING_DOT_FILL[dot.category])}>{EXISTING_DOT_CATEGORY_LABEL[dot.category]}</span>
+        <span style={{ ...pillStyle('#475569'), background: 'transparent' }}>{dot.district}</span>
+      </div>
+      <div style={{ fontSize: 11, color: '#374151', lineHeight: 1.4 }}>{dot.relevance}</div>
+    </div>
+  )
+}
 
 function infraIcon(item: InfrastructureItem, dropDelayMs = 0, focused = false) {
   const isProposed = item.status === 'proposed'
@@ -1165,6 +1218,36 @@ export function MapContainer() {
                 />
               )
             })}
+            {/* ── Existing infrastructure dots — quiet supporting cast ── */}
+            {showPlanning && city?.id === 'fremon' && (() => {
+              const showAll = activeLayers.has('Show all existing infrastructure')
+              const dotSet = showAll
+                ? [...FREMON_EXISTING_INFRASTRUCTURE, ...FREMON_EXISTING_INFRASTRUCTURE_EXTENDED]
+                : FREMON_EXISTING_INFRASTRUCTURE
+              const visible = dotSet.filter((d) => existingDotLayerActive(d.category, activeLayers))
+              return visible.map((dot) => (
+                <CircleMarker
+                  key={`existing-${dot.id}`}
+                  center={[dot.coordinates.lat, dot.coordinates.lng]}
+                  radius={5}
+                  pathOptions={{
+                    color: EXISTING_DOT_FILL[dot.category],
+                    fillColor: EXISTING_DOT_FILL[dot.category],
+                    fillOpacity: 0.55,
+                    opacity: 0.7,
+                    weight: 1,
+                  }}
+                  eventHandlers={{
+                    mouseover: (e) => (e.target as L.CircleMarker).setStyle({ radius: 7, fillOpacity: 0.85 }),
+                    mouseout: (e) => (e.target as L.CircleMarker).setStyle({ radius: 5, fillOpacity: 0.55 }),
+                  }}
+                >
+                  <Popup>
+                    <ExistingDotPopup dot={dot} />
+                  </Popup>
+                </CircleMarker>
+              ))
+            })()}
             {visibleInfrastructure.map((item, idx) => {
               const [lat, lng] = getDisplayPosition(item)
               const isNew = item.status === 'proposed' || item.status === 'ai_recommended'

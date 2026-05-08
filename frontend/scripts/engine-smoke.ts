@@ -16,6 +16,8 @@ import { FREMON_ENGINE_DISTRICTS, FREMON_TOTAL_POPULATION } from '../src/data/fr
 import { FREMON_TERRAIN } from '../src/data/fremonTerrain'
 import { buildValidationContext, validateRecommendation } from '../src/validation/validator'
 import { generateAlerts, generateRecommendations, pickTopRecommendation } from '../src/copilot/copilot'
+import { validateExistingInfrastructure } from '../src/data/validateExistingInfrastructure'
+import { FREMON_EXISTING_INFRASTRUCTURE } from '../src/data/fremonExistingInfrastructure'
 
 let failures = 0
 function assert(cond: unknown, label: string) {
@@ -124,6 +126,20 @@ const passed = recs.filter((r) => r.validationStatus === 'passed')
 assert(passed.length >= 1, 'at least one recommendation passes validation')
 const top = pickTopRecommendation(recs)
 assert(top !== null && top.validationStatus === 'passed', 'top recommendation is validation-passed')
+
+// Existing-infrastructure dot guardrails
+console.log(`  existing dots: ${FREMON_EXISTING_INFRASTRUCTURE.length}`)
+const dotViolations = validateExistingInfrastructure()
+if (dotViolations.length > 0) {
+  for (const v of dotViolations) console.log(`  FAIL- dot ${v.dotId}: ${v.rule} — ${v.detail}`)
+}
+assert(dotViolations.length === 0, `existing-infrastructure dots pass all guardrails (50m, bounds, terrain, cap)`)
+assert(FREMON_EXISTING_INFRASTRUCTURE.length <= 30, 'default dot count <= 30')
+const byCategory = FREMON_EXISTING_INFRASTRUCTURE.reduce<Record<string, number>>((acc, d) => {
+  acc[d.category] = (acc[d.category] || 0) + 1
+  return acc
+}, {})
+console.log('  by category:', byCategory)
 
 console.log(failures === 0 ? '\nALL OK' : `\n${failures} failure(s)`)
 process.exit(failures === 0 ? 0 : 1)
