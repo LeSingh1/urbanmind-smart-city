@@ -40,11 +40,6 @@ export function TopBar({ onHome }: { onHome: () => void }) {
         >
           <Logo />
         </button>
-        <div className="hidden sm:block min-w-0">
-          <div className="font-display text-sm font-semibold" style={{ color: 'var(--color-text-primary)' }}>
-            UrbanMind
-          </div>
-        </div>
       </div>
 
       <div className="h-8 w-px" style={{ background: 'var(--color-border-subtle)' }} />

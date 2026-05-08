@@ -50,16 +50,18 @@ function infra(
   return { id, type, location: { lat, lng }, capacity, coverageRadiusMeters: radius }
 }
 
-// All centroids stay east of -122.02 (the bay edge) so districts and their
-// recommendations land on Fremon-like inland terrain rather than open water.
-const NORTH_CENTER = { lat: FREMON_CENTER.lat + 0.045, lng: FREMON_CENTER.lng + 0.005 }
-const SOUTH_CENTER = { lat: FREMON_CENTER.lat - 0.045, lng: FREMON_CENTER.lng + 0.005 }
-const EAST_CENTER = { lat: FREMON_CENTER.lat + 0.005, lng: FREMON_CENTER.lng + 0.05 }
-const WEST_CENTER = { lat: FREMON_CENTER.lat + 0.01, lng: FREMON_CENTER.lng - 0.025 }
-const CENTRAL_CENTER = { lat: FREMON_CENTER.lat + 0.005, lng: FREMON_CENTER.lng + 0.012 }
-const NORTHEAST_CENTER = { lat: FREMON_CENTER.lat + 0.035, lng: FREMON_CENTER.lng + 0.04 }
-const SOUTHWEST_CENTER = { lat: FREMON_CENTER.lat - 0.03, lng: FREMON_CENTER.lng - 0.018 }
-const DOWNTOWN_CENTER = { lat: FREMON_CENTER.lat - 0.005, lng: FREMON_CENTER.lng + 0.015 }
+// All centroids land squarely inside the visible Fremon urban grid, well east of
+// the bay marsh (~-122.00), west of the foothill base (~-121.94), and south of
+// the hill line (~37.595). This keeps engine-placed recommendations on built-up
+// streets rather than fields, hills, or open space.
+const NORTH_CENTER = { lat: FREMON_CENTER.lat + 0.030, lng: FREMON_CENTER.lng - 0.005 }
+const SOUTH_CENTER = { lat: FREMON_CENTER.lat - 0.045, lng: FREMON_CENTER.lng + 0.000 }
+const EAST_CENTER = { lat: FREMON_CENTER.lat - 0.005, lng: FREMON_CENTER.lng + 0.040 }
+const WEST_CENTER = { lat: FREMON_CENTER.lat - 0.005, lng: FREMON_CENTER.lng - 0.018 }
+const CENTRAL_CENTER = { lat: FREMON_CENTER.lat + 0.012, lng: FREMON_CENTER.lng + 0.005 }
+const NORTHEAST_CENTER = { lat: FREMON_CENTER.lat + 0.022, lng: FREMON_CENTER.lng + 0.028 }
+const SOUTHWEST_CENTER = { lat: FREMON_CENTER.lat - 0.025, lng: FREMON_CENTER.lng - 0.020 }
+const DOWNTOWN_CENTER = { lat: FREMON_CENTER.lat - 0.018, lng: FREMON_CENTER.lng + 0.015 }
 
 export const FREMON_ENGINE_DISTRICTS: District[] = [
   {

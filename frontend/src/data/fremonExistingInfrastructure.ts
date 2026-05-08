@@ -83,98 +83,102 @@ const dot = (
 })
 
 // ──────────────────────────────────────────────────────────────────────────
-// Default visible set (cap: 30; current count: 26)
+// Default visible set — disabled (renders as zero dots; engine still uses
+// the per-district `existingInfrastructure` arrays in fremonDistricts.ts).
 // ──────────────────────────────────────────────────────────────────────────
 
-export const FREMON_EXISTING_INFRASTRUCTURE: ExistingInfrastructure[] = [
+const _DISABLED_EXISTING_INFRASTRUCTURE: ExistingInfrastructure[] = [
   // ── Clinics (5) ──────────────────────────────────────────────────────
   dot('northside-clinic', 'Northside Clinic', 'clinic', 'North Transit Gap',
-      37.5965, -121.9776,
+      37.5780, -121.9800,
       'Existing clinic network is too far to fully cover the projected northern growth corridor.', 1500),
   dot('central-care-clinic', 'Central Care Clinic', 'clinic', 'Central Green Space Gap',
-      37.5570, -121.9700,
+      37.5560, -121.9700,
       'Serves current Central residents; new transit-corridor housing will outpace clinic capacity.', 1500),
   dot('west-urgent-care', 'West Urgent Care', 'clinic', 'West Congestion Zone',
-      37.5635, -122.0050,
+      37.5640, -121.9970,
       'Single-clinic coverage on the western edge — emergency response is delayed by congestion.', 1500),
   dot('innovation-district-clinic', 'Innovation District Clinic', 'clinic', 'Innovation District',
-      37.5810, -121.9410,
+      37.5680, -121.9640,
       'Healthy baseline coverage today; demand grows as the innovation campus expands.', 1500),
   dot('fremon-edge-health-post', 'Fremon Edge Health Post', 'clinic', 'New Housing Expansion Zone',
-      37.5215, -121.9990,
+      37.5230, -121.9920,
       'Lone health post for the housing expansion corridor — clearly under-resourced.', 1500),
 
   // ── Schools (6) ──────────────────────────────────────────────────────
   dot('east-district-school', 'East District School', 'school', 'East Education District',
-      37.5575, -121.9320,
+      37.5570, -121.9560,
       'Capacity is sufficient today but does not extend to the projected eastern expansion zone.', 1200),
   dot('central-stem-academy', 'Central STEM Academy', 'school', 'Central Green Space Gap',
-      37.5485, -121.9870,
+      37.5500, -121.9750,
       'Anchor STEM school; commute pressure rises sharply with central housing growth.', 1200),
   dot('northside-middle-school', 'Northside Middle School', 'school', 'North Transit Gap',
-      37.5895, -121.9890,
+      37.5820, -121.9870,
       'Middle-school catchment is strong, but transit gaps make access uneven.', 1200),
   dot('west-valley-school', 'West Valley School', 'school', 'West Congestion Zone',
-      37.5575, -121.9990,
+      37.5570, -121.9970,
       'Western catchment school; congestion lengthens commutes for the southern blocks.', 1200),
   dot('innovation-prep', 'Innovation Prep', 'school', 'Innovation District',
-      37.5870, -121.9550,
+      37.5760, -121.9640,
       'Innovation-aligned school; high demand projected as the district densifies.', 1200),
   dot('southview-elementary', 'Southview Elementary', 'school', 'South Emergency Gap',
-      37.5095, -121.9926,
+      37.5100, -121.9810,
       'Only elementary in the southern emergency gap; emergency response routes do not reach the school.', 1200),
 
   // ── Parks (5) ────────────────────────────────────────────────────────
   dot('central-neighborhood-park', 'Central Neighborhood Park', 'park', 'Central Green Space Gap',
-      37.5570, -121.9620,
+      37.5610, -121.9650,
       'Serves current residents; central residential growth will exceed walking-distance coverage.', 800),
   dot('east-green-pocket', 'East Green Pocket', 'park', 'East Education District',
-      37.5500, -121.9450,
+      37.5500, -121.9560,
       'Single pocket park — insufficient for the projected eastern student population.', 800),
   dot('west-ridge-park', 'West Ridge Park', 'park', 'West Congestion Zone',
-      37.5525, -122.0150,
-      'Western open space along the ridge; gaps remain along the congested corridor.', 800),
+      37.5520, -121.9970,
+      'Western open space; gaps remain along the congested corridor.', 800),
   dot('north-commons', 'North Commons', 'park', 'North Transit Gap',
-      37.5995, -121.9900,
+      37.5760, -121.9760,
       'Northern commons; new growth pushes residents beyond the 800m park-walk radius.', 800),
   dot('innovation-plaza', 'Innovation Plaza', 'park', 'Innovation District',
-      37.5780, -121.9460,
+      37.5630, -121.9640,
       'Plaza-style green space supports the campus; broader district lacks coverage.', 800),
 
   // ── Transit (6) ──────────────────────────────────────────────────────
   dot('north-transit-stop', 'North Transit Stop', 'transit', 'North Transit Gap',
-      37.5915, -121.9760,
+      37.5720, -121.9860,
       'Sparse transit coverage; gaps grow as the corridor densifies.', 500),
   dot('central-bus-exchange', 'Central Bus Exchange', 'transit', 'Central Green Space Gap',
-      37.5500, -121.9750,
+      37.5470, -121.9700,
       'Strong central interchange; eastern blocks still depend on car commute.', 500),
   dot('west-connector-stop', 'West Connector Stop', 'transit', 'West Congestion Zone',
-      37.5685, -122.0050,
+      37.5640, -121.9890,
       'Single connector stop — adds to congestion rather than relieving it.', 500),
   dot('east-local-stop', 'East Local Stop', 'transit', 'East Education District',
-      37.5635, -121.9280,
+      37.5630, -121.9560,
       'Local stop near the school; rail-grade transit still missing.', 500),
   dot('innovation-rail-stop', 'Innovation Rail Stop', 'transit', 'Innovation District',
-      37.5895, -121.9415,
+      37.5710, -121.9580,
       'Rail-grade access already in place; the surrounding district still needs feeder coverage.', 500),
   dot('south-connector-stop', 'South Connector Stop', 'transit', 'South Emergency Gap',
-      37.4985, -121.9756,
+      37.5000, -121.9770,
       'Lone southern connector; transit deserts persist around the housing edge.', 500),
 
   // ── Emergency Services (4) ───────────────────────────────────────────
   dot('west-fire-station', 'West Fire Station', 'emergency', 'West Congestion Zone',
-      37.5495, -121.9990,
+      37.5500, -121.9980,
       'Western fire station; congested grid impacts response times to the south.', 2400),
   dot('central-police-post', 'Central Police Post', 'emergency', 'Central Green Space Gap',
-      37.5610, -121.9810,
+      37.5610, -121.9780,
       'Central police post; rapid-response coverage thins out toward the edges.', 2400),
   dot('north-fire-response-unit', 'North Fire Response Unit', 'emergency', 'North Transit Gap',
-      37.5995, -121.9760,
+      37.5860, -121.9810,
       'Northern fire response unit; coverage drops sharply north of the corridor.', 2400),
   dot('south-emergency-depot', 'South Emergency Depot', 'emergency', 'South Emergency Gap',
-      37.5085, -121.9740,
+      37.5130, -121.9760,
       'Sole southern depot; clinic absence amplifies pressure on this single asset.', 2400),
 ]
 
-/** Optional extended set hook — empty for now; gated by the `Show all existing infrastructure` toggle. */
+void _DISABLED_EXISTING_INFRASTRUCTURE
+
+export const FREMON_EXISTING_INFRASTRUCTURE: ExistingInfrastructure[] = []
+/** Optional extended set hook — empty. */
 export const FREMON_EXISTING_INFRASTRUCTURE_EXTENDED: ExistingInfrastructure[] = []

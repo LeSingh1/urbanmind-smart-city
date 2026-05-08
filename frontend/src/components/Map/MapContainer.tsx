@@ -66,6 +66,102 @@ function MapClickHandler({
   return null
 }
 
+// ─── Animated underserved-zone circle ───────────────────────────────────────
+// Phase 6: smooth transitions. Leaflet runs on canvas (preferCanvas), so CSS
+// transitions don't apply to circle geometry. We grab the underlying L.Circle
+// via ref and interpolate radius / fillOpacity / opacity / weight with rAF.
+// Each animation cancels any in-flight rAF for the same circle, so rapid
+// timeline scrubs don't strand circles mid-tween.
+type LeafletCircleRef = L.Circle | null
+interface AnimatedZoneCircleProps {
+  center: [number, number]
+  targetRadius: number
+  targetFillOpacity: number
+  targetOpacity: number
+  targetWeight: number
+  pathColor: string
+  fillColor: string
+  dashArray?: string
+  duration?: number
+  children?: React.ReactNode
+}
+function AnimatedZoneCircle({
+  center,
+  targetRadius,
+  targetFillOpacity,
+  targetOpacity,
+  targetWeight,
+  pathColor,
+  fillColor,
+  dashArray,
+  duration = 320,
+  children,
+}: AnimatedZoneCircleProps) {
+  const circleRef = useRef<LeafletCircleRef>(null)
+  const rafRef = useRef<number | null>(null)
+  const previous = useRef({ radius: targetRadius, fillOpacity: targetFillOpacity, opacity: targetOpacity, weight: targetWeight })
+  useEffect(() => {
+    const circle = circleRef.current
+    if (!circle) return
+    if (rafRef.current !== null) cancelAnimationFrame(rafRef.current)
+    const reduceMotion = typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
+    const fromR = previous.current.radius
+    const fromFill = previous.current.fillOpacity
+    const fromOp = previous.current.opacity
+    const fromW = previous.current.weight
+    const toR = targetRadius
+    const toFill = targetFillOpacity
+    const toOp = targetOpacity
+    const toW = targetWeight
+    const dur = reduceMotion ? 0 : duration
+    if (dur === 0) {
+      circle.setRadius(toR)
+      circle.setStyle({ fillOpacity: toFill, opacity: toOp, weight: toW })
+      previous.current = { radius: toR, fillOpacity: toFill, opacity: toOp, weight: toW }
+      return
+    }
+    const start = performance.now()
+    const tick = (now: number) => {
+      const t = Math.min(1, (now - start) / dur)
+      const eased = 1 - Math.pow(1 - t, 3)
+      const r = fromR + (toR - fromR) * eased
+      const fill = fromFill + (toFill - fromFill) * eased
+      const op = fromOp + (toOp - fromOp) * eased
+      const weight = fromW + (toW - fromW) * eased
+      circle.setRadius(r)
+      circle.setStyle({ fillOpacity: fill, opacity: op, weight })
+      if (t < 1) {
+        rafRef.current = requestAnimationFrame(tick)
+      } else {
+        rafRef.current = null
+        previous.current = { radius: toR, fillOpacity: toFill, opacity: toOp, weight: toW }
+      }
+    }
+    rafRef.current = requestAnimationFrame(tick)
+    return () => {
+      if (rafRef.current !== null) cancelAnimationFrame(rafRef.current)
+      rafRef.current = null
+    }
+  }, [targetRadius, targetFillOpacity, targetOpacity, targetWeight, duration])
+  return (
+    <Circle
+      ref={(layer) => { circleRef.current = layer as L.Circle | null }}
+      center={center}
+      radius={previous.current.radius}
+      pathOptions={{
+        color: pathColor,
+        fillColor,
+        fillOpacity: previous.current.fillOpacity,
+        opacity: previous.current.opacity,
+        weight: previous.current.weight,
+        dashArray,
+      }}
+    >
+      {children}
+    </Circle>
+  )
+}
+
 // ─── Fly-to controller (must live inside <LeafletMap>) ───────────────────────
 function CityFlyController({ city }: { city: any }) {
   const map = useMap()
@@ -244,7 +340,7 @@ const CATEGORY_COLOR: Record<InfrastructureCategory, string> = {
 }
 
 // Inline lucide-style SVGs (stroke icons, monochrome — not emoji).
-const SVG_BASE = `viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"`
+const SVG_BASE = `viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"`
 const ICON_HOSPITAL = `<svg ${SVG_BASE}><path d="M12 6v12M6 12h12"/></svg>`
 const ICON_SCHOOL = `<svg ${SVG_BASE}><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c3 3 9 3 12 0v-5"/></svg>`
 const ICON_PARK = `<svg ${SVG_BASE}><path d="M12 22V8M6 13l6-6 6 6M8 19l4-4 4 4"/></svg>`
@@ -443,18 +539,18 @@ function infraIcon(item: InfrastructureItem, dropDelayMs = 0, focused = false) {
   const popStyle = isNew ? `animation-delay:${dropDelayMs}ms;color:${color};` : ''
   return L.divIcon({
     className: 'urbanmind-infra-icon',
-    html: `<div class="${classes}" style="${popStyle}width:32px;height:32px;border-radius:10px;background:#f4f7fb;border:${border};box-shadow:${shadow};display:grid;place-items:center;color:${color};font:800 15px Inter,system-ui;">${isAi ? ICON_AI : CATEGORY_ICON[item.category]}</div>`,
-    iconSize: [30, 30],
-    iconAnchor: [15, 15],
+    html: `<div class="${classes}" style="${popStyle}width:24px;height:24px;border-radius:8px;background:#f4f7fb;border:${border};box-shadow:${shadow};display:grid;place-items:center;color:${color};font:800 12px Inter,system-ui;">${isAi ? ICON_AI : CATEGORY_ICON[item.category]}</div>`,
+    iconSize: [24, 24],
+    iconAnchor: [12, 12],
   })
 }
 
 function suggestionIcon(rank: number) {
   return L.divIcon({
     className: 'urbanmind-suggestion-icon',
-    html: `<div style="width:34px;height:34px;border-radius:50%;background:#e0e5ec;border:2px solid #ff4757;box-shadow:4px 4px 8px #babecc,-4px -4px 8px #ffffff;display:grid;place-items:center;color:#ff4757;font:800 13px Inter,system-ui;">${rank}</div>`,
-    iconSize: [34, 34],
-    iconAnchor: [17, 17],
+    html: `<div style="width:24px;height:24px;border-radius:50%;background:#e0e5ec;border:2px solid #ff4757;box-shadow:3px 3px 6px #babecc,-3px -3px 6px #ffffff;display:grid;place-items:center;color:#ff4757;font:800 11px Inter,system-ui;">${rank}</div>`,
+    iconSize: [24, 24],
+    iconAnchor: [12, 12],
   })
 }
 
@@ -710,6 +806,8 @@ export function MapContainer() {
   const [mapLoading, setMapLoading] = useState(false)
   const [mapError, setMapError] = useState(false)
   const [layersPanelOpen, setLayersPanelOpen] = useState(false)
+  const [dotsRevealed, setDotsRevealed] = useState(0)
+  const iconCacheRef = useRef<Map<string, L.DivIcon>>(new Map())
 
   const city = useCityStore((s) => s.selectedCity)
   const frame = useSimulationStore((s) => s.currentFrame)
@@ -728,6 +826,26 @@ export function MapContainer() {
   const userZones = useSimulationStore((s) => s.userZones)
   const addUserZone = useSimulationStore((s) => s.addUserZone)
   const planning = useSimulationStore((s) => s.planning)
+
+  // Reveal context dots progressively after the user runs a scan.
+  useEffect(() => {
+    if (!planning.hasAnalyzed) {
+      setDotsRevealed(0)
+      return
+    }
+    const total = FREMON_EXISTING_INFRASTRUCTURE.length
+    let cancelled = false
+    let i = 0
+    const tick = () => {
+      if (cancelled) return
+      i += 1
+      setDotsRevealed(i)
+      if (i < total) setTimeout(tick, 70)
+    }
+    setTimeout(tick, 120)
+    return () => { cancelled = true }
+  }, [planning.hasAnalyzed])
+
   const addInfrastructure = useSimulationStore((s) => s.addInfrastructure)
   const selectInfrastructure = useSimulationStore((s) => s.selectInfrastructure)
   const applyRecommendedPlan = useSimulationStore((s) => s.applyRecommendedPlan)
@@ -1006,7 +1124,11 @@ export function MapContainer() {
 
   const coverageInfrastructure = useMemo(
     () => activeLayers.has('Coverage Rings')
-      ? visibleInfrastructure.filter((item) => item.geometryType === 'Point' && coverageRadiusForCategory(item.category))
+      ? visibleInfrastructure.filter((item) =>
+          item.geometryType === 'Point'
+          && (item.status === 'proposed' || item.status === 'ai_recommended')
+          && coverageRadiusForCategory(item.category)
+        )
       : [],
     [activeLayers, visibleInfrastructure]
   )
@@ -1131,18 +1253,16 @@ export function MapContainer() {
               const strokeBoost = zone.isImproved ? 0 : yearStress * 0.15
               const isFocused = zone.id === planning.focusedRecommendationZoneId
               return (
-              <Circle
+              <AnimatedZoneCircle
                 key={zone.id}
                 center={zone.center}
-                radius={zone.radiusMeters * radiusMult}
-                pathOptions={{
-                  color: zone.isImproved ? 'var(--color-accent-green)' : '#FF5A3D',
-                  fillColor: zone.isImproved ? 'var(--color-accent-green)' : '#FF5A3D',
-                  fillOpacity: Math.min(0.55, fillBase + fillBoost),
-                  weight: isFocused ? 3 : (zone.isImproved ? 1 : 2 + yearStress),
-                  opacity: Math.min(1, strokeBase + strokeBoost + (isFocused ? 0.2 : 0)),
-                  dashArray: zone.isImproved ? '5 5' : undefined,
-                }}
+                targetRadius={zone.radiusMeters * radiusMult}
+                targetFillOpacity={Math.min(0.55, fillBase + fillBoost)}
+                targetOpacity={Math.min(1, strokeBase + strokeBoost + (isFocused ? 0.2 : 0))}
+                targetWeight={isFocused ? 3 : (zone.isImproved ? 1 : 2 + yearStress)}
+                pathColor={zone.isImproved ? 'var(--color-accent-green)' : '#FF5A3D'}
+                fillColor={zone.isImproved ? 'var(--color-accent-green)' : '#FF5A3D'}
+                dashArray={zone.isImproved ? '5 5' : undefined}
               >
                 <Popup>
                   <strong>{zone.name}</strong><br />
@@ -1152,7 +1272,7 @@ export function MapContainer() {
                   {zone.isImproved || zone.improved ? `After score: ${zone.afterScore ?? zone.beforeScore}` : zone.reason}<br />
                   {zone.isImproved || zone.improved ? 'Improved by proposed infrastructure in the AI plan.' : null}
                 </Popup>
-              </Circle>
+              </AnimatedZoneCircle>
               )
             })}
             {showPlanning && planning.equityLens && planning.districtProfiles.map((district) => (
@@ -1218,49 +1338,25 @@ export function MapContainer() {
                 />
               )
             })}
-            {/* ── Existing infrastructure dots — quiet supporting cast ── */}
-            {showPlanning && city?.id === 'fremon' && (() => {
-              const showAll = activeLayers.has('Show all existing infrastructure')
-              const dotSet = showAll
-                ? [...FREMON_EXISTING_INFRASTRUCTURE, ...FREMON_EXISTING_INFRASTRUCTURE_EXTENDED]
-                : FREMON_EXISTING_INFRASTRUCTURE
-              const visible = dotSet.filter((d) => existingDotLayerActive(d.category, activeLayers))
-              return visible.map((dot) => (
-                <CircleMarker
-                  key={`existing-${dot.id}`}
-                  center={[dot.coordinates.lat, dot.coordinates.lng]}
-                  radius={5}
-                  pathOptions={{
-                    color: EXISTING_DOT_FILL[dot.category],
-                    fillColor: EXISTING_DOT_FILL[dot.category],
-                    fillOpacity: 0.55,
-                    opacity: 0.7,
-                    weight: 1,
-                  }}
-                  eventHandlers={{
-                    mouseover: (e) => (e.target as L.CircleMarker).setStyle({ radius: 7, fillOpacity: 0.85 }),
-                    mouseout: (e) => (e.target as L.CircleMarker).setStyle({ radius: 5, fillOpacity: 0.55 }),
-                  }}
-                >
-                  <Popup>
-                    <ExistingDotPopup dot={dot} />
-                  </Popup>
-                </CircleMarker>
-              ))
-            })()}
             {visibleInfrastructure.map((item, idx) => {
               const [lat, lng] = getDisplayPosition(item)
               const isNew = item.status === 'proposed' || item.status === 'ai_recommended'
               const newOrderIdx = isNew
                 ? visibleInfrastructure.slice(0, idx).filter((it) => it.status === 'proposed' || it.status === 'ai_recommended').length
                 : 0
-              const delay = isNew ? newOrderIdx * 110 : 0
               const focused = item.id === planning.focusedRecommendationId
+              const iconKey = `${item.id}|${item.status}|${focused ? 'f' : 'n'}`
+              let cachedIcon = iconCacheRef.current.get(iconKey)
+              if (!cachedIcon) {
+                const delay = isNew ? newOrderIdx * 110 : 0
+                cachedIcon = infraIcon(item, delay, focused)
+                iconCacheRef.current.set(iconKey, cachedIcon)
+              }
               return (
                 <Marker
                   key={`${item.id}-${item.status}-${focused ? 'f' : 'n'}`}
                   position={[lat, lng]}
-                  icon={infraIcon(item, delay, focused)}
+                  icon={cachedIcon}
                   eventHandlers={{ click: () => selectInfrastructure(item.id) }}
                 >
                   <Popup>

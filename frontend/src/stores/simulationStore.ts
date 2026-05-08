@@ -692,7 +692,10 @@ export const useSimulationStore = create<SimulationStore>((set, get) => ({
       radiusMeters: improvedIds.has(zone.id) ? Math.round(zone.radiusMeters * 0.55) : Math.round(zone.radiusMeters * pressureScale),
       severity: improvedIds.has(zone.id) ? zone.severity : Math.min(0.98, zone.severity * pressureScale),
     }))
-    const metrics = state.planning.hasAppliedAIPlan ? state.planning.afterScores ?? timeline.metrics : timeline.metrics
+    const yearTilt = Math.max(0, Math.min(1, (year - 2026) / 75))
+    const metrics = state.planning.hasAppliedAIPlan && state.planning.afterScores
+      ? blendAppliedMetrics(state.planning.afterScores, timeline.metrics, yearTilt)
+      : timeline.metrics
     const frame = scoresToFrame(metrics, year, state.planning.infrastructure, underservedZones, state.planning.cityId)
     return {
       currentYear: year,
@@ -1589,6 +1592,28 @@ function dotCoverageScores(items: InfrastructureItem[], zones: UnderservedZone[]
 
 function clampScore(value: number) {
   return Math.max(25, Math.min(96, Math.round(value)))
+}
+
+// Blend applied-plan metrics with the underlying year-decayed timeline so that
+// scrubbing the year still moves the headline numbers after the plan is applied.
+// `t` ramps 0→1 across the 2026–2101 window; the applied gains decay slightly
+// while pressure (commute, congestion, CO2) keeps drifting upward.
+function blendAppliedMetrics(applied: PlanningScores, timeline: PlanningScores, t: number): PlanningScores {
+  const decay = 0.55 * t
+  const drift = 0.85 * t
+  return {
+    ...applied,
+    cityHealth: clampScore(applied.cityHealth - (applied.cityHealth - timeline.cityHealth) * decay),
+    emergencyAccess: clampScore(applied.emergencyAccess - (applied.emergencyAccess - timeline.emergencyAccess) * decay),
+    transitCoverage: clampScore(applied.transitCoverage - (applied.transitCoverage - timeline.transitCoverage) * decay),
+    greenSpace: clampScore(applied.greenSpace - (applied.greenSpace - timeline.greenSpace) * decay),
+    housingAccess: clampScore(applied.housingAccess - (applied.housingAccess - timeline.housingAccess) * decay),
+    averageCommute: Math.round((applied.averageCommute + (timeline.averageCommute - applied.averageCommute) * drift) * 10) / 10,
+    congestion: clampScore(applied.congestion + (timeline.congestion - applied.congestion) * drift),
+    congestionRisk: clampScore(applied.congestionRisk + (timeline.congestionRisk - applied.congestionRisk) * drift),
+    co2Estimate: Math.round(applied.co2Estimate + (timeline.co2Estimate - applied.co2Estimate) * drift),
+    serviceGapCount: timeline.serviceGapCount,
+  }
 }
 
 function titleCase(value: string) {

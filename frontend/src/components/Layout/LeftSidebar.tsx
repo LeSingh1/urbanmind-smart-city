@@ -33,7 +33,6 @@ import type { ScenarioId } from '@/types/city.types'
 const TABS = [
   { id: 'scenario', icon: Map, label: 'Scenario' },
   { id: 'layers', icon: Layers, label: 'Layers' },
-  { id: 'tools', icon: Wrench, label: 'Tools' },
   { id: 'metrics', icon: BarChart3, label: 'Metrics' },
   { id: 'copilot', icon: Bot, label: 'Copilot' },
 ] as const
@@ -112,12 +111,13 @@ export function LeftSidebar() {
                   transition={{ duration: 0.16, ease: 'easeOut' }}
                   className="absolute rounded-full"
                   style={{
-                    right: 5,
-                    top: 8,
-                    bottom: 8,
+                    left: -2,
+                    top: 6,
+                    bottom: 6,
                     width: 4,
                     transformOrigin: 'center',
                     background: 'var(--color-accent-cyan)',
+                    boxShadow: '0 0 8px rgba(255,71,87,0.55)',
                   }}
                 />
               )}
@@ -169,9 +169,7 @@ export function LeftSidebar() {
             <div className="flex-1 overflow-y-auto">
               {activePanel === 'scenario' && <ScenarioPanel />}
               {activePanel === 'layers' && <LayersPanel />}
-              {activePanel === 'tools' && <ToolsPanel />}
               {activePanel === 'metrics' && <MetricsPanel />}
-              {activePanel === 'timeline' && <TimelinePanel />}
               {activePanel === 'copilot' && <CopilotPanel />}
             </div>
           </motion.div>
