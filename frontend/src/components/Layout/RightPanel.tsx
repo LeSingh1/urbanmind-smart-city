@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { FileText, Search, Sparkles, TriangleAlert } from 'lucide-react'
+import { Bell, FileText, Search, Sparkles, TriangleAlert } from 'lucide-react'
 import { useCityStore } from '@/stores/cityStore'
 import { useScenarioStore } from '@/stores/scenarioStore'
 import { useSimulationStore } from '@/stores/simulationStore'
@@ -62,7 +62,7 @@ const SCENARIO_LENS: Record<ScenarioId, { label: string; focus: string; priority
 export function RightPanel() {
   const selectedCity = useCityStore((state) => state.selectedCity)
   const activeScenario = useScenarioStore((state) => state.activeScenario)
-  const { planning, analyzeDemo, applyAIPlan, openReport, focusRecommendation } = useSimulationStore()
+  const { planning, analyzeDemo, applyAIPlan, openReport, focusRecommendation, acknowledgeDynamicAdvisory } = useSimulationStore()
   const topRecommendation = planning.topRecommendation
   const topItem = planning.aiRecommendations.find((item) => topRecommendation.itemIds?.includes(item.id)) ?? planning.aiRecommendations[0]
   const before = planning.beforeScores
@@ -124,6 +124,9 @@ export function RightPanel() {
     if (stage === 'standby') {
       return `Standing by under the ${scenarioLens.label} lens — I will scan ${cityName} for ${scenarioLens.focus} when you press analyze.`
     }
+    if (planning.dynamicAdvisory) {
+      return planning.dynamicAdvisory.message
+    }
     if (stage === 'applied') {
       const residents = reportData.residentsServed.toLocaleString()
       const cityHealthAfter = Math.round(reportData.afterMetrics?.cityHealth ?? 0)
@@ -137,7 +140,7 @@ export function RightPanel() {
     const reason = topRecommendation.reason || `${topRecommendation.zoneName} shows the largest unmet demand.`
     const target = topItem?.name ?? topRecommendation.title.replace(/^Add\s+/i, '')
     return `Analysis complete for ${cityName} under the ${scenarioLens.label} lens. ${scenarioLens.priority} ${reason} I recommend adding ${target}.`
-  }, [isThinking, thinkingStep, stage, cityName, scenarioLens, topRecommendation, topItem, reportData])
+  }, [isThinking, thinkingStep, stage, cityName, scenarioLens, topRecommendation, topItem, reportData, planning.dynamicAdvisory])
   const { output: copilotText, done: copilotDone } = useTypewriter(narration, { speedMs: 16, startDelayMs: 60 })
 
   return (
@@ -184,6 +187,41 @@ export function RightPanel() {
               </p>
             </div>
           </div>
+        ) : null}
+
+        {planning.dynamicAdvisory ? (
+          <motion.button
+            type="button"
+            initial={{ opacity: 0, y: -6 }}
+            animate={{ opacity: 1, y: 0 }}
+            onClick={() => {
+              acknowledgeDynamicAdvisory()
+              focusRecommendation(planning.dynamicAdvisory?.recommendationId ?? null)
+            }}
+            className="flex w-full items-start gap-2 rounded-lg p-2.5 text-left"
+            style={{
+              background: 'rgba(245,158,11,0.10)',
+              border: '1px solid rgba(245,158,11,0.45)',
+              boxShadow: planning.dynamicAdvisory.unread ? '0 0 0 2px rgba(245,158,11,0.12)' : 'none',
+            }}
+          >
+            <Bell size={14} style={{ color: 'var(--color-accent-warning)', flexShrink: 0, marginTop: 1 }} />
+            <div className="min-w-0">
+              <div className="flex items-center gap-2">
+                <div className="font-mono text-[9px] uppercase tracking-widest" style={{ color: 'var(--color-accent-warning)' }}>
+                  {planning.dynamicAdvisory.title}
+                </div>
+                {planning.dynamicAdvisory.unread && (
+                  <span className="rounded-full px-1.5 py-0.5 font-mono text-[8px] uppercase tracking-widest" style={{ color: '#111827', background: 'var(--color-accent-warning)' }}>
+                    New
+                  </span>
+                )}
+              </div>
+              <p className="text-[11px] leading-relaxed mt-0.5" style={{ color: 'var(--color-text-secondary)' }}>
+                {planning.dynamicAdvisory.message}
+              </p>
+            </div>
+          </motion.button>
         ) : null}
 
         {!planning.hasAnalyzed ? (

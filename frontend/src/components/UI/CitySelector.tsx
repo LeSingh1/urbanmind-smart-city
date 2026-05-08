@@ -60,6 +60,11 @@ export function CitySelector({ onCitySelected }: CitySelectorProps) {
             <div className="relative z-10">
               <div className="city-card-top">
                 <div className="city-code">{city.thumbnail}</div>
+                {city.id === 'san_jose' && (
+                  <span className="rounded-full px-2 py-0.5 text-[10px] font-semibold" style={{ border: '1px solid rgba(245,158,11,0.45)', color: 'var(--color-accent-warning)', background: 'rgba(245,158,11,0.10)' }}>
+                    Beta
+                  </span>
+                )}
                 <ArrowRight size={16} className="city-arrow" />
               </div>
               <h3>{city.name}</h3>

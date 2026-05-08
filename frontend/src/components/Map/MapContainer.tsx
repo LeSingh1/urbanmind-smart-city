@@ -183,6 +183,19 @@ function DistrictFlyController({ center }: { center: [number, number] | null }) 
   return null
 }
 
+function FocusFlyController({ center, zoom = 13 }: { center: [number, number] | null; zoom?: number }) {
+  const map = useMap()
+  const last = useRef<string | null>(null)
+  useEffect(() => {
+    if (!center) return
+    const key = `${center[0].toFixed(5)},${center[1].toFixed(5)},${zoom}`
+    if (last.current === key) return
+    last.current = key
+    map.flyTo(center, zoom, { duration: 1 })
+  }, [center, map, zoom])
+  return null
+}
+
 function CleanPlanningGridLayer() {
   const map = useMap()
   useEffect(() => {
@@ -441,7 +454,7 @@ function PlanningLegend() {
     ['utility', <Zap size={10} />, 'Utility'],
   ]
   return (
-    <div style={{ position: 'absolute', bottom: 16, right: 16, zIndex: 12, background: 'var(--color-bg-sidebar)', border: '1px solid var(--color-border-subtle)', borderRadius: 8, padding: 10, width: 180 }}>
+    <div style={{ position: 'absolute', bottom: 106, left: 16, zIndex: 12, background: 'var(--color-bg-sidebar)', border: '1px solid var(--color-border-subtle)', borderRadius: 8, padding: 10, width: 180 }}>
       <div style={{ fontFamily: 'var(--font-mono)', fontSize: 9, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--color-text-muted)', marginBottom: 7 }}>Infrastructure Legend</div>
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 5 }}>
         {items.map(([category, icon, label]) => (
@@ -1103,6 +1116,18 @@ export function MapContainer() {
     return district?.center ?? null
   }, [planning.districtProfiles, planning.selectedDistrictId])
 
+  const focusedMapCenter = useMemo<[number, number] | null>(() => {
+    const focusedZone = planning.underservedZones.find((zone) => zone.id === planning.focusedRecommendationZoneId)
+    if (focusedZone) return focusedZone.center
+    const focusedItem = planning.infrastructure.find((item) => item.id === planning.focusedRecommendationId)
+      ?? planning.aiRecommendations.find((item) => item.id === planning.focusedRecommendationId)
+    if (focusedItem?.geometryType === 'Point') {
+      const [lng, lat] = focusedItem.coordinates as GeoJSON.Position
+      return [lat, lng]
+    }
+    return null
+  }, [planning.aiRecommendations, planning.focusedRecommendationId, planning.focusedRecommendationZoneId, planning.infrastructure, planning.underservedZones])
+
   const activeSuggestionCategory = selectedOverrideZone ? TOOL_ZONE_TO_CATEGORY[selectedOverrideZone] : null
   const visibleSuggestions = useMemo(() => {
     if (!isOverrideModeActive || !activeSuggestionCategory || !planning.hasAnalyzed) return []
@@ -1231,6 +1256,7 @@ export function MapContainer() {
             <CleanPlanningGridLayer />
             {city && <CityFlyController city={city} />}
             <DistrictFlyController center={selectedDistrictCenter} />
+            <FocusFlyController center={focusedMapCenter} zoom={14} />
             <MapClickHandler
               active={isOverrideModeActive}
               zoneTypeId={selectedOverrideZone}
@@ -1258,9 +1284,9 @@ export function MapContainer() {
                 center={zone.center}
                 targetRadius={zone.radiusMeters * radiusMult}
                 targetFillOpacity={Math.min(0.55, fillBase + fillBoost)}
-                targetOpacity={Math.min(1, strokeBase + strokeBoost + (isFocused ? 0.2 : 0))}
-                targetWeight={isFocused ? 3 : (zone.isImproved ? 1 : 2 + yearStress)}
-                pathColor={zone.isImproved ? 'var(--color-accent-green)' : '#FF5A3D'}
+                targetOpacity={Math.min(1, strokeBase + strokeBoost + (isFocused ? 0.25 : 0))}
+                targetWeight={isFocused ? 4 : (zone.isImproved ? 1 : 2 + yearStress)}
+                pathColor={isFocused ? '#FFFFFF' : zone.isImproved ? 'var(--color-accent-green)' : '#FF5A3D'}
                 fillColor={zone.isImproved ? 'var(--color-accent-green)' : '#FF5A3D'}
                 dashArray={zone.isImproved ? '5 5' : undefined}
               >
@@ -1352,6 +1378,7 @@ export function MapContainer() {
                 cachedIcon = infraIcon(item, delay, focused)
                 iconCacheRef.current.set(iconKey, cachedIcon)
               }
+              const populationServed = Number(item.expectedImpact?.populationServed ?? 0)
               return (
                 <Marker
                   key={`${item.id}-${item.status}-${focused ? 'f' : 'n'}`}
@@ -1367,7 +1394,7 @@ export function MapContainer() {
                       </div>
                       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginBottom: 6 }}>
                         <span style={pillStyle('#10b981')}>{`Impact ${item.impactScore}`}</span>
-                        <span style={pillStyle('#7c3aed')}>{`${(item.expectedImpact?.populationServed ?? 0).toLocaleString()} served`}</span>
+                        <span style={pillStyle('#7c3aed')}>{`${populationServed.toLocaleString()} served`}</span>
                         {item.costEstimate ? <span style={pillStyle('#f59e0b')}>{`$${(item.costEstimate / 1_000_000).toFixed(0)}M`}</span> : null}
                         <span style={pillStyle('#06b6d4')}>{`${Math.round(item.confidence * 100)}% conf`}</span>
                       </div>

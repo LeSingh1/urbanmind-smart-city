@@ -194,7 +194,7 @@ function PlanningReport({ onClose }: { onClose: () => void }) {
               <div className="font-mono text-[9px] uppercase tracking-widest mb-1" style={{ color: 'var(--color-accent-green)' }}>
                 Pitch Summary
               </div>
-              <p className="text-sm leading-relaxed" style={{ color: 'var(--color-text-secondary)' }}>
+              <p className="text-sm font-semibold leading-relaxed" style={{ color: 'var(--color-text-primary)' }}>
                 {data.pitchSummary}
               </p>
             </div>

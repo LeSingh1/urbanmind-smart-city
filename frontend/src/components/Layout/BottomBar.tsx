@@ -75,7 +75,8 @@ export function BottomBar() {
     hasApplied: planning.hasAppliedAIPlan,
     cityHealth: planning.afterScores?.cityHealth ?? planning.beforeScores?.cityHealth,
     cityName: selectedCity?.name,
-  }), [displayYear, displayPopulation, planning.timelinePhase, planning.hasAnalyzed, planning.hasAppliedAIPlan, planning.afterScores?.cityHealth, planning.beforeScores?.cityHealth, selectedCity?.name])
+    dynamicAdvisory: planning.dynamicAdvisory?.message,
+  }), [displayYear, displayPopulation, planning.timelinePhase, planning.hasAnalyzed, planning.hasAppliedAIPlan, planning.afterScores?.cityHealth, planning.beforeScores?.cityHealth, planning.dynamicAdvisory?.message, selectedCity?.name])
   const { output: copilotText, done: copilotDone } = useTypewriter(copilotLine, { speedMs: 14 })
 
   return (
@@ -240,12 +241,14 @@ interface CopilotLineInput {
   hasApplied: boolean
   cityHealth?: number
   cityName?: string
+  dynamicAdvisory?: string
 }
 
-function buildCopilotLine({ year, population, phase, hasAnalyzed, hasApplied, cityHealth, cityName }: CopilotLineInput): string {
+function buildCopilotLine({ year, population, phase, hasAnalyzed, hasApplied, cityHealth, cityName, dynamicAdvisory }: CopilotLineInput): string {
   if (!hasAnalyzed) {
     return `Pick a scenario and let me scan ${cityName ?? 'this city'} for service-coverage gaps.`
   }
+  if (dynamicAdvisory) return dynamicAdvisory
   const popLabel = Intl.NumberFormat('en', { notation: 'compact', maximumFractionDigits: 1 }).format(population)
   const phaseLabel = phase?.trim()
   if (hasApplied && cityHealth != null) {

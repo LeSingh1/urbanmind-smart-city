@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import {
   BarChart3,
+  Bell,
   Building2,
   Bot,
   ChevronLeft,
@@ -65,6 +66,8 @@ const LAYER_ITEMS = [
 export function LeftSidebar() {
   const [activePanel, setActivePanel] = useState<TabId | null>('scenario')
   const [collapsed, setCollapsed] = useState(false)
+  const dynamicAdvisory = useSimulationStore((state) => state.planning.dynamicAdvisory)
+  const acknowledgeDynamicAdvisory = useSimulationStore((state) => state.acknowledgeDynamicAdvisory)
 
   return (
     <div
@@ -89,6 +92,7 @@ export function LeftSidebar() {
               onClick={() => {
                 if (collapsed) setCollapsed(false)
                 setActivePanel(activePanel === id && !collapsed ? null : id)
+                if (id === 'copilot') acknowledgeDynamicAdvisory()
               }}
               whileHover={{ scale: 1.06, y: -1 }}
               whileTap={{ scale: 0.94 }}
@@ -103,6 +107,21 @@ export function LeftSidebar() {
               aria-label={label}
             >
               <Icon size={16} />
+              {id === 'copilot' && dynamicAdvisory?.unread && (
+                <motion.span
+                  initial={{ scale: 0.4, opacity: 0 }}
+                  animate={{ scale: 1, opacity: 1 }}
+                  className="absolute -right-0.5 -top-0.5 grid h-4 min-w-4 place-items-center rounded-full px-1 font-mono text-[9px] font-bold"
+                  style={{
+                    background: 'var(--color-accent-warning)',
+                    color: '#111827',
+                    border: '1px solid var(--color-bg-sidebar)',
+                    boxShadow: '0 0 12px rgba(245,158,11,0.75)',
+                  }}
+                >
+                  1
+                </motion.span>
+              )}
               {active && (
                 <motion.div
                   initial={{ opacity: 0, scaleY: 0.65 }}
@@ -355,10 +374,48 @@ function TimelinePanel() {
 function CopilotPanel() {
   const selectedCity = useCityStore((state) => state.selectedCity)
   const activeScenario = useScenarioStore((state) => state.activeScenario)
-  const { planning, analyzeDemo, applyAIPlan, openReport } = useSimulationStore()
+  const { planning, analyzeDemo, applyAIPlan, openReport, focusRecommendation, acknowledgeDynamicAdvisory } = useSimulationStore()
   const topItem = planning.aiRecommendations.find((item) => planning.topRecommendation.itemIds?.includes(item.id)) ?? planning.aiRecommendations[0]
+  const advisory = planning.dynamicAdvisory
   return (
     <div className="p-3 space-y-4">
+      {advisory && (
+        <PanelSection title="Live Advisory">
+          <motion.button
+            type="button"
+            initial={{ opacity: 0, y: -8 }}
+            animate={{ opacity: 1, y: 0 }}
+            onClick={() => {
+              acknowledgeDynamicAdvisory()
+              focusRecommendation(advisory.recommendationId)
+            }}
+            className="w-full rounded-xl p-3 text-left"
+            style={{
+              background: 'rgba(245,158,11,0.10)',
+              border: '1px solid rgba(245,158,11,0.45)',
+              boxShadow: advisory.unread ? '0 0 0 2px rgba(245,158,11,0.12), var(--shadow-sm)' : 'var(--shadow-sm)',
+            }}
+          >
+            <div className="flex items-center justify-between gap-2">
+              <span className="inline-flex items-center gap-2 font-mono text-[10px] uppercase tracking-widest" style={{ color: 'var(--color-accent-warning)' }}>
+                <Bell size={13} />
+                {advisory.title}
+              </span>
+              {advisory.unread && (
+                <span className="rounded-full px-2 py-0.5 font-mono text-[9px] uppercase tracking-widest" style={{ color: '#111827', background: 'var(--color-accent-warning)' }}>
+                  New
+                </span>
+              )}
+            </div>
+            <p className="mt-2 text-[11px] leading-relaxed" style={{ color: 'var(--color-text-secondary)' }}>
+              {advisory.message}
+            </p>
+            <div className="mt-2 font-mono text-[10px]" style={{ color: 'var(--color-accent-cyan)' }}>
+              {advisory.actionLabel}
+            </div>
+          </motion.button>
+        </PanelSection>
+      )}
       <PanelSection title="Copilot">
         <div className="rounded-xl p-3" style={{ background: 'var(--color-bg-hover)', border: '1px solid rgba(255,71,87,0.28)' }}>
           <div className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-widest" style={{ color: 'var(--color-accent-cyan)' }}>
