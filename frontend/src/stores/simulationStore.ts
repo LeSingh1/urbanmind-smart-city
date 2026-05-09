@@ -233,6 +233,7 @@ export const useSimulationStore = create<SimulationStore>((set, get) => ({
       const existingState = get()
       const cityId = cityIdArg || existingState.planning.cityId || 'fremon'
       const scenario = normalizeScenario(scenarioId)
+      const analysisYear = currentPlanningYear(existingState.currentYear, existingState.planning.timelineYear)
       const userPieces =
         existingState.planning.cityId === cityId
           ? existingState.planning.infrastructure.filter((item) => item.source === 'user_added')
@@ -281,6 +282,7 @@ export const useSimulationStore = create<SimulationStore>((set, get) => ({
               impactSummary: null,
             },
           }))
+          if (analysisYear !== 2026) get().setTimelineYear(analysisYear)
           notify('Analysis complete.')
           return
         }
@@ -364,6 +366,7 @@ export const useSimulationStore = create<SimulationStore>((set, get) => ({
             impactSummary: null,
           },
         }))
+        if (analysisYear !== 2026) get().setTimelineYear(analysisYear)
         notify('Infrastructure gap analysis complete.')
         return
       }
@@ -418,6 +421,7 @@ export const useSimulationStore = create<SimulationStore>((set, get) => ({
           impactSummary: null,
         },
       }))
+      if (analysisYear !== 2026) get().setTimelineYear(analysisYear)
       notify('Infrastructure gap analysis complete.')
     } catch (err) {
       console.error(err)
@@ -940,6 +944,11 @@ function createInitialPlanningState(): PlanningState {
     impactSummary: null,
     cityMode: 'generated',
   }
+}
+
+function currentPlanningYear(currentYear: number, timelineYear: number) {
+  const candidate = currentYear >= 2026 ? currentYear : timelineYear
+  return Math.max(2026, Math.min(2101, Math.round(candidate || 2026)))
 }
 
 const FREMONT_CENTER = { lat: 37.5485, lng: -121.9886 }

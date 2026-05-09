@@ -454,7 +454,7 @@ function PlanningLegend() {
     ['utility', <Zap size={10} />, 'Utility'],
   ]
   return (
-    <div style={{ position: 'absolute', bottom: 106, left: 16, zIndex: 12, background: 'var(--color-bg-sidebar)', border: '1px solid var(--color-border-subtle)', borderRadius: 8, padding: 10, width: 180 }}>
+    <div style={{ position: 'absolute', bottom: 16, left: 16, zIndex: 12, background: 'var(--color-bg-sidebar)', border: '1px solid var(--color-border-subtle)', borderRadius: 8, padding: 10, width: 180 }}>
       <div style={{ fontFamily: 'var(--font-mono)', fontSize: 9, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--color-text-muted)', marginBottom: 7 }}>Infrastructure Legend</div>
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 5 }}>
         {items.map(([category, icon, label]) => (

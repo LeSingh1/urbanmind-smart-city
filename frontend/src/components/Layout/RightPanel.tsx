@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Bell, FileText, Search, Sparkles, TriangleAlert } from 'lucide-react'
 import { useCityStore } from '@/stores/cityStore'
@@ -356,7 +356,7 @@ export function RightPanel() {
                 {reportData.statusLabel}
               </span>
             </div>
-            <ImpactSummary data={reportData} />
+            <ImpactSummary data={reportData} animate={justApplied} />
           </section>
         )}
 
@@ -416,16 +416,16 @@ export function RightPanel() {
   )
 }
 
-function ImpactSummary({ data }: { data: ReturnType<typeof buildReportData> }) {
+function ImpactSummary({ data, animate }: { data: ReturnType<typeof buildReportData>; animate: boolean }) {
   return (
     <div className="mt-3 grid grid-cols-2 gap-2">
-      <Impact label="Residents Served" value={data.residentsServed.toLocaleString()} />
-      <Impact label="Gaps Improved" value={String(data.serviceGapsImproved)} />
-      <Impact label="City Health" value={formatDelta(data.cityHealthDelta)} />
-      <Impact label="Emergency" value={formatDelta(data.emergencyDelta)} />
-      <Impact label="Equity Score" value={formatDelta(data.equityDelta)} />
-      <Impact label="15 Min City" value={formatDelta(data.fifteenMinuteDelta)} />
-      <Impact label="Total Cost" value={formatMoney(data.totalCost)} />
+      <Impact label="Residents Served" value={<RollingValue value={data.residentsServed} format={(v) => Math.round(v).toLocaleString()} active={animate} />} glow={animate} />
+      <Impact label="Gaps Improved" value={<RollingValue value={data.serviceGapsImproved} active={animate} />} glow={animate} />
+      <Impact label="City Health" value={<RollingValue value={data.cityHealthDelta} format={formatDelta} active={animate} />} glow={animate} />
+      <Impact label="Emergency" value={<RollingValue value={data.emergencyDelta} format={formatDelta} active={animate} />} glow={animate} />
+      <Impact label="Equity Score" value={<RollingValue value={data.equityDelta} format={formatDelta} active={animate} />} glow={animate} />
+      <Impact label="15 Min City" value={<RollingValue value={data.fifteenMinuteDelta} format={formatDelta} active={animate} />} glow={animate} />
+      <Impact label="Total Cost" value={<RollingValue value={data.totalCost} format={formatMoney} active={animate} />} glow={animate} />
     </div>
   )
 }
@@ -459,13 +459,45 @@ function CopilotHeader({ stage }: { stage: CopilotStage }) {
   )
 }
 
-function Impact({ label, value }: { label: string; value: string }) {
+function Impact({ label, value, glow = false }: { label: string; value: ReactNode; glow?: boolean }) {
   return (
-    <div className="rounded-lg p-2" style={{ background: 'rgba(255,255,255,0.32)', border: '1px solid var(--color-border-subtle)' }}>
+    <div className={`rounded-lg p-2 ${glow ? 'metric-glow' : ''}`} style={{ background: 'rgba(255,255,255,0.32)', border: '1px solid var(--color-border-subtle)' }}>
       <div className="font-mono text-[9px] uppercase tracking-wide" style={{ color: 'var(--color-text-muted)' }}>{label}</div>
       <div className="mt-1 font-mono text-sm font-bold" style={{ color: 'var(--color-text-primary)' }}>{value}</div>
     </div>
   )
+}
+
+function RollingValue({
+  value,
+  active,
+  format = (v: number) => String(Math.round(v)),
+}: {
+  value: number
+  active: boolean
+  format?: (value: number) => string
+}) {
+  const [display, setDisplay] = useState(active ? 0 : value)
+
+  useEffect(() => {
+    if (!active) {
+      setDisplay(value)
+      return
+    }
+    let raf = 0
+    const start = performance.now()
+    const duration = 950
+    const tick = (now: number) => {
+      const t = Math.min(1, (now - start) / duration)
+      const eased = 1 - Math.pow(1 - t, 3)
+      setDisplay(value * eased)
+      if (t < 1) raf = requestAnimationFrame(tick)
+    }
+    raf = requestAnimationFrame(tick)
+    return () => cancelAnimationFrame(raf)
+  }, [active, value])
+
+  return <span className="tabular-nums">{format(display)}</span>
 }
 
 function Metric({ label, before, after, inverse = false }: { label: string; before: number; after?: number; inverse?: boolean }) {
@@ -512,7 +544,8 @@ function delta(after?: number, before?: number) {
 }
 
 function formatDelta(value: number) {
-  return `${value > 0 ? '+' : ''}${value}`
+  const rounded = Math.round(value)
+  return `${rounded > 0 ? '+' : ''}${rounded}`
 }
 
 function formatMoney(value?: number) {
