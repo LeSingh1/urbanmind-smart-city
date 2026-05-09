@@ -2,7 +2,11 @@
 
 > AI-powered smart city expansion planner for the AI Autonomous Smart City Hackathon 2026.
 
-[Demo Video Link] | [Live Demo] | [Documentation]
+Replace the bracketed links below with your real URLs when you publish the repo:
+
+- Demo video: (add link)
+- Live demo: (add link)
+- Extra docs: (add link)
 
 ## What It Does
 
@@ -12,38 +16,85 @@ The app lets a user select one of nine global cities, choose a planning scenario
 
 The impact is a faster way to compare urban futures. Planners can test growth-first, equity-first, climate-resilient, historic, and balanced strategies, then export a professional report that explains tradeoffs in population, mobility, emissions, green space, infrastructure load, and public-service coverage.
 
-## Quick Start
+## Quick Start (Docker — full stack)
+
+Requires Docker and Docker Compose. **Copy the example env file first** — Compose loads `.env` for the API and worker (`.env` is gitignored; never commit real API keys).
 
 ```bash
-git clone https://github.com/yourusername/urbanmind-ai
+git clone <your-repo-url> urbanmind-ai
 cd urbanmind-ai
 cp .env.example .env
-# Add ANTHROPIC_API_KEY and MAPBOX_TOKEN to .env
-docker-compose up
-# Open http://localhost
+# Edit .env: set ANTHROPIC_API_KEY (optional), MAPBOX_TOKEN (needed for maps), SECRET_KEY
+docker compose up --build
+# Unified entry: http://localhost (nginx → frontend + /api + /ws)
+# Without nginx: frontend container serves static assets on port 3000; API on 8000
 ```
+
+### Local frontend-only (Vite dev server)
+
+Use this when you are iterating on UI without Postgres/Redis:
+
+```bash
+cd frontend
+cp ../.env.example .env.local   # optional: VITE_MAPBOX_TOKEN
+npm install
+# Terminal 1: from repo root, run the API if you want live simulation + PDF export
+# Terminal 2:
+npm run dev
+# Opens http://localhost:3000 — Vite proxies /api and /ws to localhost:8000 (see vite.config.ts)
+```
+
+If the API is not running, the app still runs in **offline** mode (demo analysis on the map). **PDF export** requires a real backend session UUID (see Features).
 
 ## Tech Stack
 
-React, TypeScript, Vite, Mapbox GL, D3, Zustand, Framer Motion, Python, FastAPI, PostgreSQL/PostGIS, Redis, RQ, MinIO, Docker Compose, OSMnx, GeoPandas, PyTorch, Stable Baselines3, Anthropic Claude.
+**Shipped in production simulation:** React, TypeScript, Vite, Mapbox GL, D3, Zustand, Python, FastAPI, PostgreSQL/PostGIS, Redis, RQ, Docker Compose, Anthropic Claude (optional narrative + planning rationale API).
 
-## AI Architecture
+**Tooling / data pipeline / experimental RL:** OSMnx, GeoPandas, PyTorch, Stable Baselines3 in [`ai_engine/`](ai_engine/) — see **Simulation backend** below.
 
-UrbanMind AI is structured around a reinforcement-learning simulation loop. The agent observes a geospatial grid, existing roads, terrain suitability, city metrics, and scenario weights, then chooses the next zone or infrastructure placement. Phase 2 provides the AI-engine foundation for PPO-style optimization, constraint validation, road generation, demand forecasting, and population modeling.
+## Architecture
 
-The backend streams each simulation frame through Redis and WebSockets. The frontend renders those frames as Mapbox layers and D3 analytics. Claude powers the narrative layer: hover explanations, annual summaries, decision history, report summaries, and recommendations.
+UrbanMind uses a **deterministic infrastructure gap engine** plus an **AI copilot**, with a **validation layer** between them. The mental model is a bounded planning decision system: the engine computes truth from data, the copilot explains and ranks, the validator gates every output before it touches map state. The AI does not place infrastructure — the engine does. The AI explains why.
+
+### Layer 1 — Gap Engine (deterministic)
+
+The engine in `frontend/src/engine/gapEngine.ts` analyzes each district for clinic, school, park, transit, and emergency access. It uses pure scoring functions — no LLM calls, no side effects — so the same inputs always produce the same gap reports. Coverage is approximated with haversine distance and a 1.4× detour factor (documented in code) since the demo has no routing engine. Output is `DistrictGapReport[]` ranked by severity and population affected.
+
+### Layer 2 — AI Copilot (explanation)
+
+The copilot in `frontend/src/copilot/copilot.ts` converts engine output into prioritized planning alerts and validated recommendations. It does not invent placements, costs, or population numbers — those all come from the engine and a hardcoded cost table.
+
+**Planning rationale:** For the Fremon engine pipeline, short natural-language rationales can be produced by **`POST /ai/planning-rationale`** on the backend (uses `ANTHROPIC_API_KEY` when configured, with a timeout and fallback to the deterministic template). The browser never holds your Anthropic key. If the API is unreachable, template rationales are used.
+
+### Layer 3 — Validator
+
+Every copilot recommendation is gated by 12 rules in `frontend/src/validation/validator.ts`:
+must reference a real district gap; type must address an actual access deficit; type must match the engine's choice or a sensible substitute; placement must lie inside district bounds; must avoid invalid terrain (river, reservoir, protected mask in `frontend/src/data/fremonTerrain.ts`); must improve at least one metric; impact deltas must be plausible; cost must be in the expected band; population served must be positive; must not duplicate an existing facility within 250m; coverage radius must be defined for the type; confidence must be in [0, 100]. Confidence decays by 30 with 1–2 failures, drops to 0 with 3 or more.
+
+Failed recommendations never reach map state — they fall back to the engine's deterministic recommendation and are logged via `console.warn`. Append `?debug=1` to the URL to surface a panel listing every recommendation, its validation status, and the per-rule failure reasons.
+
+This three-layer structure means UrbanMind is a bounded planning decision system, not an AI chatbot with a map. The engine ensures correctness, the copilot accelerates explanation, validation enforces trust.
+
+### Simulation backend (WebSocket worker vs experimental RL)
+
+- **`backend/worker/simulation_job.py`** — this is what runs **today** when you start a simulation with Docker: a **deterministic grid / priority-queue style** placement loop over city land polygons, streaming frames over Redis/WebSockets. It matches the “bounded planning” story above.
+- **`ai_engine/`** (PyTorch, optional **Stable Baselines3** PPO code) — **experimental / research**. It is **not** wired into the default worker path. Use it for offline training or future integration; see that package’s README and `ppo_agent.py` if you extend the worker.
+
+### What the simulation does
+
+The user picks a city, runs Analyze, scrubs a year-by-year timeline (decade chips for 2026/2030/2040/.../2080), and watches underserved zones grow more stressed as population rises. Apply Plan drops engine-validated infrastructure with cyan coverage rings, deltas animate up, and the report modal opens after a brief generation step. The Copilot panel narrates each stage with character-by-character typed text.
 
 ## Features
 
 - Real-city planning for New York, Los Angeles, Tokyo, Lagos, London, Sao Paulo, Singapore, Dubai, and Mumbai
-- Year-by-year WebSocket simulation playback
+- Year-by-year WebSocket simulation playback (when API is up); offline demo analysis when it is not
 - Mapbox zones, roads, heatmaps, and 3D building extrusions
 - Scenario selector for balanced, max growth, climate resilient, equity focused, and historic plans
 - Six live D3 dashboard charts
 - AI decision tooltips and explanation drawer
 - Split-screen scenario comparison
 - Procedural sandbox city generator
-- ReportLab PDF export
+- ReportLab PDF export (**requires** a persisted simulation session from the backend — not available in `sessionId: offline` mode; the UI disables export and explains)
 - Keyboard navigation, ARIA labels, and color-blind-friendly secondary cues
 
 ## Screenshots

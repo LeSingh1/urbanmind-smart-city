@@ -33,6 +33,7 @@ import {
   markFremonImprovedZones,
 } from '@/data/fremonDemo'
 import type { AIRecommendation, BudgetLevel, BudgetSummary, CityMode, CityProfile, DistrictProfile, GrowthPressureZone, InfrastructureItem, MetricsSnapshot, PlacementFeedback, PlacementSuggestion, PlanBattlePlan, PlanningScores, SavedPlanningScenario, ScenarioId, TimelineYear, UnderservedZone } from '@/types/city.types'
+import { runFremonEnginePipelineAsync, type FremonEngineBundle } from '@/copilot/pipeline'
 import type { AgentAction, SimulationFrame } from '@/types/simulation.types'
 
 type Speed = 1 | 5 | 10 | 50
@@ -60,6 +61,12 @@ interface PlanningState {
   hasAnalyzed: boolean
   hasAppliedAIPlan: boolean
   isReportOpen: boolean
+  focusedRecommendationId: string | null
+  focusedRecommendationZoneId: string | null
+  /** True when the Fremon flow was produced by the deterministic engine + validator. */
+  useEngine: boolean
+  /** Last engine pipeline bundle (kept for debug panel + validation badges). */
+  engineBundle: FremonEngineBundle | null
   selectedInfrastructureId: string | null
   undoStack: InfrastructureItem[][]
   savedScenarios: SavedPlanningScenario[]
@@ -85,6 +92,7 @@ interface PlanningState {
   selectedDistrictId: string | null
   placementSuggestions: PlacementSuggestion[]
   placementFeedback: PlacementFeedback | null
+  dynamicAdvisory: DynamicAdvisory | null
   impactSummary: {
     residentsServed: number
     gapsFixed: number
@@ -96,6 +104,21 @@ interface PlanningState {
     greenAccessDelta: number
     budgetUsed: number
   } | null
+}
+
+interface DynamicAdvisory {
+  id: string
+  year: number
+  title: string
+  message: string
+  actionLabel: string
+  recommendationName: string
+  recommendationReason: string
+  scenarioId: ScenarioId
+  recommendationId: string
+  zoneId: string
+  recommendation: InfrastructureItem
+  unread: boolean
 }
 
 interface SimulationStore {
@@ -120,11 +143,12 @@ interface SimulationStore {
   scrubToYear: (year: number) => void
   addUserZone: (zone: UserPlacedZone) => void
   removeUserZone: (id: string) => void
-  analyzeDemo: (cityId: string, scenarioId: string) => void
+  analyzeDemo: (cityId: string, scenarioId: string) => Promise<void>
   hydratePlanningForCity: (cityId: string) => void
   resetPlanningAnalysis: () => void
   resetProposedPlan: () => void
   applyAIPlan: (scenarioId?: string) => void
+  applyDynamicAdvisoryPlan: (scenarioId?: string) => void
   comparePlans: () => void
   applyRecommendedPlan: () => void
   setCityMode: (mode: CityMode) => void
@@ -147,6 +171,8 @@ interface SimulationStore {
   setPlanningConstraint: (key: 'budget' | 'serviceRadius' | 'climatePriority' | 'equityPriority', value: number) => void
   openReport: () => void
   closeReport: () => void
+  focusRecommendation: (id: string | null) => void
+  acknowledgeDynamicAdvisory: () => void
   reset: () => void
 }
 
@@ -207,11 +233,12 @@ export const useSimulationStore = create<SimulationStore>((set, get) => ({
   addUserZone: (zone) => set((state) => ({ userZones: [...state.userZones, zone] })),
   removeUserZone: (id) => set((state) => ({ userZones: state.userZones.filter((z) => z.id !== id) })),
 
-  analyzeDemo: (cityIdArg, scenarioId) => {
+  analyzeDemo: async (cityIdArg, scenarioId) => {
     try {
       const existingState = get()
       const cityId = cityIdArg || existingState.planning.cityId || 'fremon'
       const scenario = normalizeScenario(scenarioId)
+      const analysisYear = currentPlanningYear(existingState.currentYear, existingState.planning.timelineYear)
       const userPieces =
         existingState.planning.cityId === cityId
           ? existingState.planning.infrastructure.filter((item) => item.source === 'user_added')
@@ -237,6 +264,7 @@ export const useSimulationStore = create<SimulationStore>((set, get) => ({
               cityId,
               growthPercent: dotAware.growthPercent,
               horizonYears: 50,
+              priority: scenario,
               infrastructure,
               underservedZones: dotAware.underservedZones,
               growthPressureZones: dotAware.growthPressureZones,
@@ -256,9 +284,11 @@ export const useSimulationStore = create<SimulationStore>((set, get) => ({
               districtProfiles: dotAware.districtProfiles,
               placementSuggestions: dotAware.placementSuggestions,
               placementFeedback: null,
+              dynamicAdvisory: null,
               impactSummary: null,
             },
           }))
+          if (analysisYear !== 2026) get().setTimelineYear(analysisYear)
           notify('Analysis complete.')
           return
         }
@@ -269,7 +299,27 @@ export const useSimulationStore = create<SimulationStore>((set, get) => ({
 
       if (cityId === 'fremon') {
         const beforeScores = { ...FREMON_BASE_METRICS }
-        const underservedZones = bundle.underserved.map((zone) => ({ ...zone, improved: false, isImproved: false }))
+        // Layer 1+2+3: run the deterministic engine, copilot, and validator. Failed
+        // recommendations never enter map state — only validated ones reach UI.
+        let engineBundle: FremonEngineBundle | null = null
+        let underservedZones = bundle.underserved.map((zone) => ({ ...zone, improved: false, isImproved: false }))
+        let aiRecommendations: typeof bundle.ai = bundle.ai.map((item) => ({ ...item }))
+        let topRecommendation = bundle.top
+        try {
+          engineBundle = await runFremonEnginePipelineAsync(scenario)
+          if (engineBundle.aiRecommendations.length > 0 && engineBundle.underservedZones.length > 0) {
+            underservedZones = engineBundle.underservedZones.map((zone) => ({
+              ...zone,
+              improved: Boolean(zone.improved),
+              isImproved: Boolean(zone.isImproved),
+            }))
+            aiRecommendations = engineBundle.aiRecommendations
+            if (engineBundle.topRecommendation) topRecommendation = engineBundle.topRecommendation
+          }
+        } catch (err) {
+          console.warn('[UrbanMind] engine pipeline failed; falling back to seed bundle', err)
+          engineBundle = null
+        }
         const frame = scoresToFrame(beforeScores, 2026, infrastructure, underservedZones, cityId)
         set((state) => ({
           sessionId: state.sessionId ?? 'offline',
@@ -295,15 +345,18 @@ export const useSimulationStore = create<SimulationStore>((set, get) => ({
             cityId,
             growthPercent: bundle.growthPercent,
             horizonYears: bundle.horizonYears,
+            priority: scenario,
             infrastructure,
             underservedZones,
             growthPressureZones: bundle.growth.map((zone) => ({ ...zone })),
-            aiRecommendations: bundle.ai.map((item) => ({ ...item })),
-            topRecommendation: bundle.top,
+            aiRecommendations,
+            topRecommendation,
             beforeScores,
             afterScores: null,
             hasAnalyzed: true,
             hasAppliedAIPlan: false,
+            useEngine: !!engineBundle,
+            engineBundle,
             hasComparedPlans: false,
             planBattlePlans: [],
             recommendedPlanId: 'equity_first',
@@ -316,9 +369,11 @@ export const useSimulationStore = create<SimulationStore>((set, get) => ({
             districtProfiles: FREMON_DISTRICTS,
             placementSuggestions: FREMON_PLACEMENT_SUGGESTIONS,
             placementFeedback: null,
+            dynamicAdvisory: null,
             impactSummary: null,
           },
         }))
+        if (analysisYear !== 2026) get().setTimelineYear(analysisYear)
         notify('Infrastructure gap analysis complete.')
         return
       }
@@ -351,6 +406,7 @@ export const useSimulationStore = create<SimulationStore>((set, get) => ({
           cityMode: bundle.cityMode,
           growthPercent: bundle.growthPercent,
           horizonYears: bundle.horizonYears,
+          priority: scenario,
           infrastructure,
           underservedZones,
           growthPressureZones,
@@ -369,9 +425,11 @@ export const useSimulationStore = create<SimulationStore>((set, get) => ({
           selectedInfrastructureId: null,
           undoStack: [],
           placementFeedback: null,
+          dynamicAdvisory: null,
           impactSummary: null,
         },
       }))
+      if (analysisYear !== 2026) get().setTimelineYear(analysisYear)
       notify('Infrastructure gap analysis complete.')
     } catch (err) {
       console.error(err)
@@ -427,6 +485,7 @@ export const useSimulationStore = create<SimulationStore>((set, get) => ({
           selectedInfrastructureId: null,
           undoStack: [],
           placementFeedback: null,
+          dynamicAdvisory: null,
           impactSummary: null,
         },
       })
@@ -472,6 +531,7 @@ export const useSimulationStore = create<SimulationStore>((set, get) => ({
         afterScores: null,
         hasAppliedAIPlan: false,
         impactSummary: null,
+        dynamicAdvisory: null,
       },
     })
     notify('Proposed AI plan cleared.')
@@ -499,6 +559,10 @@ export const useSimulationStore = create<SimulationStore>((set, get) => ({
     const frame = scoresToFrame(afterScores, state.planning.horizonYears, infrastructure, underservedZones, state.planning.cityId)
     const baselineFrame = state.frameHistory[0] ?? frame
     const baselineMetrics = state.metricsHistory[0] ?? baselineFrame.metrics_snapshot
+    const appliedFocus = applied[0]
+    const appliedFocusZoneId = appliedFocus
+      ? underservedZones.find((zone) => zone.improvedBy?.includes(appliedFocus.id))?.id ?? null
+      : null
     return {
       currentFrame: frame,
       frameHistory: [baselineFrame, frame],
@@ -524,6 +588,8 @@ export const useSimulationStore = create<SimulationStore>((set, get) => ({
         underservedZones,
         afterScores,
         hasAppliedAIPlan: true,
+        focusedRecommendationId: appliedFocus?.id ?? state.planning.focusedRecommendationId,
+        focusedRecommendationZoneId: appliedFocusZoneId ?? state.planning.focusedRecommendationZoneId,
         undoStack: [...state.planning.undoStack, state.planning.infrastructure],
         impactSummary: {
           residentsServed:
@@ -543,6 +609,89 @@ export const useSimulationStore = create<SimulationStore>((set, get) => ({
           fifteenMinuteDelta: Math.round((afterScores.fifteenMinuteCityScore ?? 0) - (state.planning.beforeScores?.fifteenMinuteCityScore ?? 0)),
           greenAccessDelta: Math.round(afterScores.greenSpace - (state.planning.beforeScores?.greenSpace ?? afterScores.greenSpace)),
           budgetUsed: state.planning.cityId === 'fremon' ? 137_000_000 : applied.reduce((sum, item) => sum + item.costEstimate, 0),
+        },
+      },
+    }
+  }),
+
+  applyDynamicAdvisoryPlan: (scenarioId = 'balanced') => set((state) => {
+    const advisory = state.planning.dynamicAdvisory
+    if (!advisory) return state
+    const scenario = normalizeScenario(scenarioId)
+    const item = {
+      ...advisory.recommendation,
+      status: 'proposed' as const,
+      source: 'ai_recommended' as const,
+      updatedAt: new Date().toISOString(),
+    }
+    const existing = state.planning.infrastructure.filter((infra) => infra.id !== item.id)
+    const infrastructure = withoutRoadInfrastructure([...existing, item])
+    const underservedZones = state.planning.underservedZones.map((zone) =>
+      zone.id === advisory.zoneId
+        ? {
+            ...zone,
+            isImproved: true,
+            improved: true,
+            afterScore: Math.min(100, Math.max(zone.afterScore ?? 0, zone.beforeScore + phase2ScoreUplift(scenario))),
+            radiusMeters: Math.round(zone.radiusMeters * 0.48),
+            reason: `${advisory.recommendationName} restores emergency coverage for the late-horizon ${scenario.replace(/_/g, ' ')} scenario.`,
+          }
+        : zone,
+    )
+    const baseScores = state.planning.afterScores ?? state.planning.beforeScores ?? FREMON_BASE_METRICS
+    const previousResidentsServed = state.planning.impactSummary?.residentsServed ?? baseScores.populationServed ?? 0
+    const nextResidentsServed = previousResidentsServed + phase2ResidentsServed(scenario)
+    const afterScores: PlanningScores = {
+      ...baseScores,
+      cityHealth: clampScore(baseScores.cityHealth + 6),
+      emergencyAccess: clampScore(baseScores.emergencyAccess + 14),
+      equityScore: clampScore(baseScores.equityScore + (scenario === 'equity_focused' ? 10 : 6)),
+      transitCoverage: clampScore(baseScores.transitCoverage + (scenario === 'transit_first' ? 8 : 2)),
+      greenSpace: clampScore(baseScores.greenSpace + (scenario === 'climate_resilient' ? 8 : 1)),
+      averageCommute: Math.max(12, Math.round((baseScores.averageCommute - (scenario === 'transit_first' ? 4 : 1.5)) * 10) / 10),
+      serviceGapCount: underservedZones.filter((zone) => !zone.isImproved).length,
+      populationServed: nextResidentsServed,
+      totalEstimatedCost: (baseScores.totalEstimatedCost ?? 0) + item.costEstimate,
+    }
+    const frame = scoresToFrame(afterScores, state.planning.timelineYear, infrastructure, underservedZones, state.planning.cityId)
+    return {
+      currentFrame: frame,
+      currentYear: state.planning.timelineYear,
+      frameHistory: [...state.frameHistory.filter((historyFrame) => historyFrame.year !== frame.year), frame].sort((a, b) => a.year - b.year),
+      metricsHistory: [frame.metrics_snapshot],
+      lastActions: [
+        {
+          x: 0,
+          y: 0,
+          lng: (item.coordinates as GeoJSON.Position)[0],
+          lat: (item.coordinates as GeoJSON.Position)[1],
+          zone_type_id: categoryToZoneType(item.category),
+          zone_display_name: item.name,
+          sps_score: item.confidence,
+          placement_reason: item.reason,
+        },
+        ...state.lastActions,
+      ].slice(0, 12),
+      planning: {
+        ...state.planning,
+        infrastructure,
+        underservedZones,
+        afterScores,
+        hasAppliedAIPlan: true,
+        dynamicAdvisory: null,
+        focusedRecommendationId: item.id,
+        focusedRecommendationZoneId: advisory.zoneId,
+        undoStack: [...state.planning.undoStack, state.planning.infrastructure],
+        impactSummary: {
+          residentsServed: nextResidentsServed,
+          gapsFixed: underservedZones.filter((zone) => zone.isImproved).length,
+          commuteReduction: Math.max(0, Math.round((state.planning.beforeScores?.averageCommute ?? afterScores.averageCommute) - afterScores.averageCommute)),
+          emergencyDelta: Math.round(afterScores.emergencyAccess - (state.planning.beforeScores?.emergencyAccess ?? afterScores.emergencyAccess)),
+          cityHealthDelta: Math.round(afterScores.cityHealth - (state.planning.beforeScores?.cityHealth ?? afterScores.cityHealth)),
+          equityDelta: Math.round(afterScores.equityScore - (state.planning.beforeScores?.equityScore ?? afterScores.equityScore)),
+          fifteenMinuteDelta: Math.round((afterScores.fifteenMinuteCityScore ?? 0) - (state.planning.beforeScores?.fifteenMinuteCityScore ?? 0)),
+          greenAccessDelta: Math.round(afterScores.greenSpace - (state.planning.beforeScores?.greenSpace ?? afterScores.greenSpace)),
+          budgetUsed: (state.planning.impactSummary?.budgetUsed ?? afterScores.totalEstimatedCost ?? 0) + item.costEstimate,
         },
       },
     }
@@ -581,6 +730,10 @@ export const useSimulationStore = create<SimulationStore>((set, get) => ({
       serviceGapCount: underservedZones.filter((zone) => !zone.isImproved).length,
     }
     const frame = scoresToFrame(afterScores, state.planning.timelineYear, infrastructure, underservedZones, state.planning.cityId)
+    const appliedFocus = applied[0]
+    const appliedFocusZoneId = appliedFocus
+      ? underservedZones.find((zone) => zone.improvedBy?.includes(appliedFocus.id))?.id ?? null
+      : null
     return {
       currentFrame: frame,
       currentYear: state.planning.timelineYear,
@@ -605,6 +758,8 @@ export const useSimulationStore = create<SimulationStore>((set, get) => ({
         underservedZones,
         afterScores,
         hasAppliedAIPlan: true,
+        focusedRecommendationId: appliedFocus?.id ?? state.planning.focusedRecommendationId,
+        focusedRecommendationZoneId: appliedFocusZoneId ?? state.planning.focusedRecommendationZoneId,
         hasComparedPlans: true,
         planBattlePlans: FREMON_PLAN_BATTLE,
         undoStack: [...state.planning.undoStack, state.planning.infrastructure],
@@ -659,15 +814,27 @@ export const useSimulationStore = create<SimulationStore>((set, get) => ({
     const underservedBase = state.planning.cityId === 'fremon'
       ? FREMON_UNDERSERVED_ZONES
       : state.planning.underservedZones
-    const underservedZones = underservedBase.map((zone) => ({
-      ...zone,
-      isImproved: improvedIds.has(zone.id),
-      improved: improvedIds.has(zone.id),
-      radiusMeters: improvedIds.has(zone.id) ? Math.round(zone.radiusMeters * 0.55) : Math.round(zone.radiusMeters * pressureScale),
-      severity: improvedIds.has(zone.id) ? zone.severity : Math.min(0.98, zone.severity * pressureScale),
-    }))
-    const metrics = state.planning.hasAppliedAIPlan ? state.planning.afterScores ?? timeline.metrics : timeline.metrics
+    const phase2Applied = state.planning.infrastructure.some((item) => item.id.startsWith('fremon-phase2-south-annex'))
+    const underservedZones = underservedBase.map((zone) => {
+      const phase2Reopened = state.planning.cityId === 'fremon' && year >= 2075 && zone.id === 'fremon-south-emergency-gap' && !phase2Applied
+      const isImproved = improvedIds.has(zone.id) && !phase2Reopened
+      return {
+        ...zone,
+        isImproved,
+        improved: isImproved,
+        radiusMeters: isImproved ? Math.round(zone.radiusMeters * 0.55) : Math.round(zone.radiusMeters * pressureScale),
+        severity: isImproved ? zone.severity : Math.min(0.98, zone.severity * pressureScale),
+        reason: phase2Reopened
+          ? 'Late-horizon south growth has outpaced the Phase 1 clinic radius; emergency coverage needs a Phase 2 annex.'
+          : zone.reason,
+      }
+    })
+    const yearTilt = Math.max(0, Math.min(1, (year - 2026) / 75))
+    const metrics = state.planning.hasAppliedAIPlan && state.planning.afterScores
+      ? blendAppliedMetrics(state.planning.afterScores, timeline.metrics, yearTilt)
+      : timeline.metrics
     const frame = scoresToFrame(metrics, year, state.planning.infrastructure, underservedZones, state.planning.cityId)
+    const dynamicAdvisory = buildDynamicAdvisory(year, state.planning, underservedZones)
     return {
       currentYear: year,
       currentFrame: frame,
@@ -679,6 +846,9 @@ export const useSimulationStore = create<SimulationStore>((set, get) => ({
         timelinePopulation: timeline.population,
         growthPressureZones,
         underservedZones,
+        dynamicAdvisory,
+        focusedRecommendationId: dynamicAdvisory?.recommendationId ?? state.planning.focusedRecommendationId,
+        focusedRecommendationZoneId: dynamicAdvisory?.zoneId ?? state.planning.focusedRecommendationZoneId,
         beforeScores: state.planning.hasAppliedAIPlan ? state.planning.beforeScores : timeline.metrics,
       },
     }
@@ -798,6 +968,20 @@ export const useSimulationStore = create<SimulationStore>((set, get) => ({
   setPlanningConstraint: (key, value) => set((state) => ({ planning: { ...state.planning, [key]: value } })),
   openReport: () => set((state) => ({ planning: { ...state.planning, isReportOpen: true } })),
   closeReport: () => set((state) => ({ planning: { ...state.planning, isReportOpen: false } })),
+  focusRecommendation: (id) => set((state) => {
+    if (!id) return { planning: { ...state.planning, focusedRecommendationId: null, focusedRecommendationZoneId: null } }
+    const rec = state.planning.aiRecommendations.find((item) => item.id === id)
+    const zoneId = rec ? state.planning.underservedZones.find((zone) => zone.improvedBy?.includes(rec.id))?.id ?? null : null
+    return { planning: { ...state.planning, focusedRecommendationId: id, focusedRecommendationZoneId: zoneId } }
+  }),
+  acknowledgeDynamicAdvisory: () => set((state) => ({
+    planning: {
+      ...state.planning,
+      dynamicAdvisory: state.planning.dynamicAdvisory
+        ? { ...state.planning.dynamicAdvisory, unread: false }
+        : null,
+    },
+  })),
 
   reset: () => set(initialState),
 }))
@@ -819,6 +1003,10 @@ function createInitialPlanningState(): PlanningState {
     hasAnalyzed: false,
     hasAppliedAIPlan: false,
     isReportOpen: false,
+    focusedRecommendationId: null,
+    focusedRecommendationZoneId: null,
+    useEngine: false,
+    engineBundle: null,
     selectedInfrastructureId: null,
     undoStack: [],
     savedScenarios: loadPersistedScenarios(),
@@ -844,9 +1032,15 @@ function createInitialPlanningState(): PlanningState {
     selectedDistrictId: null,
     placementSuggestions: FREMON_PLACEMENT_SUGGESTIONS,
     placementFeedback: null,
+    dynamicAdvisory: null,
     impactSummary: null,
     cityMode: 'generated',
   }
+}
+
+function currentPlanningYear(currentYear: number, timelineYear: number) {
+  const candidate = currentYear >= 2026 ? currentYear : timelineYear
+  return Math.max(2026, Math.min(2101, Math.round(candidate || 2026)))
 }
 
 const FREMONT_CENTER = { lat: 37.5485, lng: -121.9886 }
@@ -1555,6 +1749,28 @@ function clampScore(value: number) {
   return Math.max(25, Math.min(96, Math.round(value)))
 }
 
+// Blend applied-plan metrics with the underlying year-decayed timeline so that
+// scrubbing the year still moves the headline numbers after the plan is applied.
+// `t` ramps 0→1 across the 2026–2101 window; the applied gains decay slightly
+// while pressure (commute, congestion, CO2) keeps drifting upward.
+function blendAppliedMetrics(applied: PlanningScores, timeline: PlanningScores, t: number): PlanningScores {
+  const decay = 0.55 * t
+  const drift = 0.85 * t
+  return {
+    ...applied,
+    cityHealth: clampScore(applied.cityHealth - (applied.cityHealth - timeline.cityHealth) * decay),
+    emergencyAccess: clampScore(applied.emergencyAccess - (applied.emergencyAccess - timeline.emergencyAccess) * decay),
+    transitCoverage: clampScore(applied.transitCoverage - (applied.transitCoverage - timeline.transitCoverage) * decay),
+    greenSpace: clampScore(applied.greenSpace - (applied.greenSpace - timeline.greenSpace) * decay),
+    housingAccess: clampScore(applied.housingAccess - (applied.housingAccess - timeline.housingAccess) * decay),
+    averageCommute: Math.round((applied.averageCommute + (timeline.averageCommute - applied.averageCommute) * drift) * 10) / 10,
+    congestion: clampScore(applied.congestion + (timeline.congestion - applied.congestion) * drift),
+    congestionRisk: clampScore(applied.congestionRisk + (timeline.congestionRisk - applied.congestionRisk) * drift),
+    co2Estimate: Math.round(applied.co2Estimate + (timeline.co2Estimate - applied.co2Estimate) * drift),
+    serviceGapCount: timeline.serviceGapCount,
+  }
+}
+
 function titleCase(value: string) {
   return value.replace(/_/g, ' ').replace(/\b\w/g, (letter) => letter.toUpperCase())
 }
@@ -1640,6 +1856,123 @@ function timelineForYear(year: number, planning: PlanningState) {
       serviceGapCount: planning.underservedZones.filter((zone) => !zone.isImproved).length,
     },
   }
+}
+
+function buildDynamicAdvisory(
+  year: number,
+  planning: PlanningState,
+  underservedZones: UnderservedZone[],
+): DynamicAdvisory | null {
+  if (!planning.hasAnalyzed || planning.cityId !== 'fremon' || year < 2075) return null
+  if (planning.infrastructure.some((item) => item.id.startsWith('fremon-phase2-south-annex'))) return null
+  const southGap =
+    underservedZones.find((zone) => zone.id === 'fremon-south-emergency-gap')
+    ?? underservedZones.find((zone) => zone.gapType === 'emergency_access')
+  if (!southGap) return null
+  const scenario = normalizeScenario(planning.priority)
+  const recommendation = buildPhase2Recommendation(scenario, year)
+  const wasAlreadyUnread = planning.dynamicAdvisory?.id === 'future-south-emergency-annex' && planning.dynamicAdvisory.unread
+  return {
+    id: 'future-south-emergency-annex',
+    year,
+    title: 'New Gap Alert',
+    message: `Emergency coverage in the South is failing under ${Math.max(2080, Math.round(year / 5) * 5)} growth. Copilot generated a ${SCENARIO_PHASE2_COPY[scenario].label} recommendation: ${recommendation.name}.`,
+    actionLabel: `Apply ${recommendation.name}`,
+    recommendationName: recommendation.name,
+    recommendationReason: recommendation.reason,
+    scenarioId: scenario,
+    recommendationId: recommendation.id,
+    zoneId: southGap.id,
+    recommendation,
+    unread: wasAlreadyUnread || planning.dynamicAdvisory?.id !== 'future-south-emergency-annex',
+  }
+}
+
+const SCENARIO_PHASE2_COPY: Record<ScenarioId, { label: string; category: InfrastructureItem['category']; name: string; reason: string; cost: number; impact: number; confidence: number; center: [number, number] }> = {
+  balanced: {
+    label: 'balanced Phase 2 annex',
+    category: 'clinic',
+    name: 'South Emergency Annex',
+    reason: 'Balanced Growth needs a compact clinic annex south of the first plan to restore emergency coverage without overbuilding.',
+    cost: 24_000_000,
+    impact: 88,
+    confidence: 0.86,
+    center: [37.494, -121.986],
+  },
+  transit_first: {
+    label: 'transit-linked emergency annex',
+    category: 'transit_stop',
+    name: 'South Annex Rapid Response Hub',
+    reason: 'Transit First pairs emergency coverage with a response hub near the south mobility corridor so late-horizon growth gets faster access without adding car trips.',
+    cost: 31_000_000,
+    impact: 86,
+    confidence: 0.83,
+    center: [37.496, -121.992],
+  },
+  climate_resilient: {
+    label: 'climate-safe emergency annex',
+    category: 'community_center',
+    name: 'South Resilience Annex',
+    reason: 'Climate Resilient prioritizes a cooling and emergency services annex that can operate during heat and smoke events while restoring south-side coverage.',
+    cost: 29_000_000,
+    impact: 87,
+    confidence: 0.84,
+    center: [37.497, -121.982],
+  },
+  equity_focused: {
+    label: 'equity-first emergency annex',
+    category: 'clinic',
+    name: 'South Equity Emergency Annex',
+    reason: 'Equity Focused targets the highest-need households first with a dedicated emergency annex beyond the 2026 clinic radius.',
+    cost: 26_000_000,
+    impact: 92,
+    confidence: 0.9,
+    center: [37.492, -121.984],
+  },
+  emergency_ready: {
+    label: 'emergency-ready response annex',
+    category: 'fire_station',
+    name: 'South Emergency Response Annex',
+    reason: 'Emergency Ready adds a response annex with fire and triage capacity to cut late-horizon south response times.',
+    cost: 34_000_000,
+    impact: 93,
+    confidence: 0.91,
+    center: [37.493, -121.988],
+  },
+  max_growth: {
+    label: 'growth-support emergency annex',
+    category: 'community_center',
+    name: 'South Growth Services Annex',
+    reason: 'Max Growth needs a mixed civic services annex that supports new housing while restoring emergency access at the south edge.',
+    cost: 30_000_000,
+    impact: 85,
+    confidence: 0.82,
+    center: [37.491, -121.978],
+  },
+}
+
+function buildPhase2Recommendation(scenario: ScenarioId, year: number): InfrastructureItem {
+  const config = SCENARIO_PHASE2_COPY[scenario]
+  return pointInfrastructure(
+    `fremon-phase2-south-annex-${scenario}`,
+    config.name,
+    config.category,
+    config.center,
+    `${config.reason} Triggered by ${year} growth pressure in the South Emergency Gap.`,
+    config.cost,
+    config.impact,
+    config.confidence,
+    'ai_recommended',
+    'ai_recommended',
+  )
+}
+
+function phase2ResidentsServed(scenario: ScenarioId) {
+  return scenario === 'equity_focused' ? 34_000 : scenario === 'emergency_ready' ? 32_000 : scenario === 'transit_first' ? 29_000 : 30_000
+}
+
+function phase2ScoreUplift(scenario: ScenarioId) {
+  return scenario === 'emergency_ready' ? 30 : scenario === 'equity_focused' ? 28 : 24
 }
 
 function estimateTimelinePopulation(year: number) {

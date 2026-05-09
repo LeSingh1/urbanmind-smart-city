@@ -42,7 +42,7 @@ export function LandingScreen({ onEnter }: Props) {
           <motion.div
             variants={{ hidden: { opacity: 0, y: 24 }, visible: { opacity: 1, y: 0, transition: { duration: 0.6, ease: [0.16, 1, 0.3, 1] } } }}
             className="relative rounded-2xl p-8 shrink-0 w-72"
-            style={{ background: 'var(--color-bg-panel)', border: '1px solid var(--color-border-light)', boxShadow: 'var(--shadow-lg)' }}
+            style={{ background: 'var(--color-bg-panel)', border: '1px solid rgba(255,255,255,0.7)', boxShadow: 'var(--shadow-lg)' }}
           >
             <ScrewCorners />
             <div style={{ position: 'absolute', top: 14, right: 28, display: 'flex', gap: 4 }}>
@@ -137,8 +137,8 @@ function TactileButton({
         color: isPrimary ? '#ffffff' : 'var(--color-text-primary)',
         border: isPrimary ? '1px solid rgba(255,255,255,0.2)' : '1px solid var(--color-border-subtle)',
         boxShadow: isPrimary
-          ? '4px 4px 8px rgba(166,50,60,0.35), -2px -2px 6px rgba(255,100,110,0.3)'
-          : 'var(--shadow-sm)',
+          ? '0 4px 16px rgba(var(--rgb-accent), 0.35), 0 1px 2px rgba(15, 23, 42, 0.08)'
+          : 'var(--shadow-xs)',
         letterSpacing: '0.08em',
       }}
     >
@@ -155,7 +155,7 @@ function CityCard({ city, onSelect, compact = false }: { city: CityProfile; onSe
     <motion.button
       variants={{ hidden: { opacity: 0, y: 16 }, visible: { opacity: 1, y: 0, transition: { duration: 0.4, ease: [0.16, 1, 0.3, 1] } } }}
       onClick={() => onSelect(city)}
-      whileHover={{ y: -4, boxShadow: '12px 12px 24px #babecc, -12px -12px 24px #ffffff' }}
+      whileHover={{ y: -4, boxShadow: 'var(--shadow-lg)' }}
       whileTap={{ scale: 0.98, y: 0 }}
       className="group text-left rounded-xl overflow-hidden transition-all relative"
       style={{
@@ -193,7 +193,7 @@ function CityCard({ city, onSelect, compact = false }: { city: CityProfile; onSe
           {city.key_planning_challenge}
         </p>
         <div className="mt-3 inline-flex items-center gap-1.5 rounded-lg border px-2 py-1 text-[10px] font-bold font-mono tracking-widest uppercase" style={{ color: 'var(--color-accent-cyan)', borderColor: 'var(--color-border-subtle)' }}>
-          SIMULATE →
+          SIMULATE
         </div>
       </div>
     </motion.button>

@@ -1,101 +1,104 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
 
 :root {
-  /* ── Brand palette (semantic states) ── */
-  --color-brand-primary:   #2c3e50;
-  --color-brand-secondary: #ff4757;
-  --color-brand-accent:    #00b894;
-  --color-brand-warning:   #6c5ce7;
-  --color-brand-danger:    #e17055;
+  /* Accent — single coherent “civic tech” primary (sky) */
+  --color-accent-primary: #0ea5e9;
+  --color-accent-primary-dim: #0284c7;
+  --rgb-accent: 14, 165, 233;
+  --rgb-accent-dim: 2, 132, 199;
 
-  /* ── Chassis / surface hierarchy ── */
-  --color-bg-app:     #e0e5ec;  /* Level 0 — the plastic chassis */
-  --color-bg-sidebar: #e8edf3;  /* Level +1 — slightly lighter raised panel */
-  --color-bg-panel:   #e0e5ec;  /* Level 0 — matches chassis */
-  --color-bg-card:    #d8dee8;  /* Level -0.5 — slightly recessed */
-  --color-bg-hover:   #d1d9e6;  /* Level -1 — muted / recessed */
+  /* Legacy name used across codebase — now aligned with primary */
+  --color-accent-cyan: var(--color-accent-primary);
+  --color-accent-purple: #6366f1;
+  --color-accent-green: #059669;
+  --color-accent-warning: #d97706;
+  --color-accent-danger: #dc2626;
 
-  /* ── Borders / shadow halves ── */
-  --color-border-subtle: #babecc;  /* shadow half of neumorphic pair */
-  --color-border-light:  #ffffff;  /* highlight half */
-  --color-border-active: #ff4757;
+  --color-brand-primary: #0f172a;
+  --color-brand-secondary: var(--color-accent-primary);
+  --color-brand-accent: var(--color-accent-green);
+  --color-brand-warning: var(--color-accent-warning);
+  --color-brand-danger: var(--color-accent-danger);
 
-  /* ── Typography ── */
-  --color-text-primary:   #2d3436;
-  --color-text-secondary: #4a5568;
-  --color-text-muted:     #636e72;
-  --color-text-accent:    #ff4757;
+  /* Surfaces — crisp paper on cool mist */
+  --color-bg-app: #e8eef5;
+  --color-bg-sidebar: rgba(255, 255, 255, 0.92);
+  --color-bg-panel: #ffffff;
+  --color-bg-card: #f1f5f9;
+  --color-bg-hover: #e2e8f0;
 
-  /* ── Chart ── */
-  --chart-grid:          rgba(186, 190, 204, 0.7);
-  --chart-line-primary:  #ff4757;
-  --chart-line-baseline: #babecc;
+  --color-border-subtle: #cbd5e1;
+  --color-border-light: rgba(255, 255, 255, 0.85);
+  --color-border-active: var(--color-accent-primary);
 
-  /* ── Zone colors (semantic — unchanged, work on light bg) ── */
-  --zone-res-low:    #C97B3B;
-  --zone-res-med:    #B05E25;
-  --zone-res-high:   #8A4010;
+  --color-text-primary: #0f172a;
+  --color-text-secondary: #475569;
+  --color-text-muted: #64748b;
+  --color-text-accent: var(--color-accent-primary-dim);
+
+  --chart-grid: rgba(100, 116, 139, 0.2);
+  --chart-line-primary: var(--color-accent-primary);
+  --chart-line-baseline: #cbd5e1;
+
+  /* Zone colors */
+  --zone-res-low: #c97b3b;
+  --zone-res-med: #b05e25;
+  --zone-res-high: #8a4010;
   --zone-industrial: #546574;
-  --zone-commercial: #1A6FA3;
-  --zone-mixed-use:  #3D9970;
-  --zone-green:      #1E8449;
-  --zone-forest:     #145A32;
-  --zone-transit:    #7D3C98;
-  --zone-health:     #C0392B;
-  --zone-education:  #2E86C1;
-  --zone-utility:    #6C5CE7;
-  --zone-government: #4A3F5C;
-  --zone-culture:    #8E44AD;
-  --zone-disaster:   #E17055;
-  --zone-smart:      #0097A7;
+  --zone-commercial: #1a6fa3;
+  --zone-mixed-use: #3d9970;
+  --zone-green: #1e8449;
+  --zone-forest: #145a32;
+  --zone-transit: #7d3c98;
+  --zone-health: #c0392b;
+  --zone-education: #2e86c1;
+  --zone-utility: #6c5ce7;
+  --zone-government: #4a3f5c;
+  --zone-culture: #8e44ad;
+  --zone-disaster: #e17055;
+  --zone-smart: #0097a7;
   --zone-waterfront: #154360;
-  --zone-landmark:   #922B21;
-  --zone-office:     #1F6FAE;
-  --zone-food:       #1E8449;
+  --zone-landmark: #922b21;
+  --zone-office: #1f6fae;
+  --zone-food: #1e8449;
 
-  /* ── Typography ── */
-  --font-primary: 'Inter', system-ui, sans-serif;
-  --font-mono:    'JetBrains Mono', monospace;
+  --font-primary: 'Plus Jakarta Sans', system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, monospace;
 
-  /* ── Spacing ── */
-  --space-1:  4px;
-  --space-2:  8px;
-  --space-3:  12px;
-  --space-4:  16px;
-  --space-5:  20px;
-  --space-6:  24px;
-  --space-8:  32px;
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
   --space-12: 48px;
 
-  /* ── Border radius ── */
-  --radius-sm: 4px;
-  --radius-md: 8px;
-  --radius-lg: 12px;
-  --radius-xl: 16px;
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+  --radius-xl: 20px;
 
-  /* ── Neumorphic shadow system ── */
-  --shadow-sm:      4px 4px 8px #babecc, -4px -4px 8px #ffffff;
-  --shadow-md:      8px 8px 16px #babecc, -8px -8px 16px #ffffff;
-  --shadow-lg:      12px 12px 24px #babecc, -12px -12px 24px #ffffff;
-  --shadow-inset:   inset 4px 4px 8px #babecc, inset -4px -4px 8px #ffffff;
-  --shadow-pressed: inset 6px 6px 12px #babecc, inset -6px -6px 12px #ffffff;
-  --shadow-glow:    0 0 10px 2px rgba(255, 71, 87, 0.45);
+  --shadow-xs: 0 1px 2px rgba(15, 23, 42, 0.05);
+  --shadow-sm: 0 2px 8px rgba(15, 23, 42, 0.06), 0 1px 2px rgba(15, 23, 42, 0.04);
+  --shadow-md: 0 8px 24px rgba(15, 23, 42, 0.08), 0 2px 8px rgba(15, 23, 42, 0.04);
+  --shadow-lg: 0 20px 40px rgba(15, 23, 42, 0.1), 0 8px 16px rgba(15, 23, 42, 0.06);
+  --shadow-inset: inset 0 1px 3px rgba(15, 23, 42, 0.08);
+  --shadow-pressed: inset 0 2px 6px rgba(15, 23, 42, 0.12);
+  --shadow-glow: 0 0 0 1px rgba(var(--rgb-accent), 0.2), 0 8px 32px rgba(var(--rgb-accent), 0.18);
 
-  /* ── Transitions ── */
-  --transition-fast: 150ms ease-in-out;
-  --transition-med:  200ms ease-in-out;
-  --transition-slow: 300ms cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  --transition-fast: 150ms cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-med: 220ms cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-slow: 320ms cubic-bezier(0.16, 1, 0.3, 1);
 
-  /* ── Accent palette ── */
-  --color-accent-cyan:    #ff4757;  /* primary accent — safety red */
-  --color-accent-purple:  #d63031;  /* dark red variant */
-  --color-accent-green:   #00b894;
-  --color-accent-warning: #6c5ce7;
-  --color-accent-danger:  #e17055;
+  /* Map / overlay highlights */
+  --color-map-proposed: #38bdf8;
 }
 
 @media (prefers-reduced-motion: reduce) {
-  *, *::before, *::after {
+  *,
+  *::before,
+  *::after {
     transition-duration: 1ms !important;
     animation-duration: 1ms !important;
   }

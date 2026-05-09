@@ -2,6 +2,10 @@
 @tailwind components;
 @tailwind utilities;
 
+.um-app-shell {
+  background: inherit;
+}
+
 * {
   box-sizing: border-box;
 }
@@ -12,7 +16,9 @@ body,
   width: 100%;
   height: 100%;
   margin: 0;
-  background: var(--color-bg-app);
+  background: radial-gradient(1200px 800px at 15% -10%, rgba(var(--rgb-accent), 0.09), transparent 55%),
+    radial-gradient(900px 700px at 100% 0%, rgba(99, 102, 241, 0.06), transparent 50%),
+    var(--color-bg-app);
   color: var(--color-text-primary);
   font-family: var(--font-primary);
   overflow: hidden;
@@ -76,10 +82,11 @@ button, select, input, a, [role="button"] {
 .maplibregl-popup-tip { display: none !important; }
 .maplibregl-ctrl-logo { display: none !important; }
 .maplibregl-ctrl-attrib {
-  opacity: 0.35 !important;
+  opacity: 0.45 !important;
   font-size: 9px !important;
-  background: rgba(224, 229, 236, 0.8) !important;
+  background: rgba(255, 255, 255, 0.88) !important;
   color: var(--color-text-muted) !important;
+  border-radius: 6px !important;
 }
 
 /* ── Panel transitions ── */
@@ -97,27 +104,29 @@ button, select, input, a, [role="button"] {
   border-radius: var(--radius-md);
   background: var(--color-bg-panel);
   color: var(--color-text-secondary);
-  box-shadow: var(--shadow-sm);
+  box-shadow: var(--shadow-xs);
   transition: var(--transition-fast);
 }
 
 .icon-btn:hover {
-  border-color: var(--color-border-active);
+  border-color: rgba(var(--rgb-accent), 0.45);
   color: var(--color-text-primary);
-  box-shadow: var(--shadow-md);
+  box-shadow: var(--shadow-sm);
 }
 
 .icon-btn:active {
-  box-shadow: var(--shadow-pressed);
+  box-shadow: var(--shadow-inset);
   transform: translateY(1px);
 }
 
 /* ── Industrial panel (replaces glass-panel) ── */
 .glass-panel,
 .industrial-panel {
-  border: 1px solid var(--color-border-subtle);
-  background: var(--color-bg-panel);
+  border: 1px solid rgba(255, 255, 255, 0.65);
+  background: var(--color-bg-sidebar);
   box-shadow: var(--shadow-md);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
 }
 
 /* ── Tactile button base ── */
@@ -129,11 +138,11 @@ button, select, input, a, [role="button"] {
 .premium-input {
   width: 100%;
   border: 1px solid var(--color-border-subtle);
-  border-radius: 10px;
-  background: var(--color-bg-hover);
+  border-radius: var(--radius-md);
+  background: var(--color-bg-card);
   box-shadow: var(--shadow-inset);
   color: var(--color-text-primary);
-  padding: 9px 10px;
+  padding: 9px 12px;
   font-size: 13px;
 }
 
@@ -262,9 +271,10 @@ button, select, input, a, [role="button"] {
 
 .leaflet-control-attribution {
   font-size: 9px !important;
-  opacity: 0.5 !important;
-  background: rgba(224, 229, 236, 0.85) !important;
+  opacity: 0.55 !important;
+  background: rgba(255, 255, 255, 0.9) !important;
   color: var(--color-text-muted) !important;
+  border-radius: 6px !important;
 }
 .leaflet-control-attribution a {
   color: var(--color-border-active) !important;
@@ -285,4 +295,147 @@ button, select, input, a, [role="button"] {
 @keyframes windowGlow {
   0%, 100% { opacity: 0.2; }
   50%       { opacity: 0.6; }
+}
+
+/* ── Copilot caret ── */
+.copilot-caret {
+  display: inline-block;
+  margin-left: 1px;
+  font-weight: 600;
+  color: var(--color-accent-cyan);
+  animation: copilotCaret 900ms steps(2, end) infinite;
+}
+@keyframes copilotCaret {
+  0%, 49%   { opacity: 1; }
+  50%, 100% { opacity: 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .copilot-caret { animation: none; opacity: 1; }
+}
+
+/* ── Infrastructure marker drop-in (proposed/AI items) ── */
+@keyframes infraDrop {
+  0%   { transform: translateY(-18px) scale(0.4); opacity: 0; filter: blur(2px); }
+  60%  { transform: translateY(2px) scale(1.18);  opacity: 1; filter: blur(0);  }
+  80%  { transform: translateY(-1px) scale(0.96); }
+  100% { transform: translateY(0) scale(1);       opacity: 1; }
+}
+
+@keyframes infraPulseRing {
+  0%   { transform: scale(0.6); opacity: 0.7; }
+  100% { transform: scale(2.6); opacity: 0;   }
+}
+
+.urbanmind-infra-icon .infra-pop {
+  animation: infraDrop 620ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  transform-origin: 50% 100%;
+  position: relative;
+}
+
+.urbanmind-infra-icon .infra-pop::after {
+  content: "";
+  position: absolute;
+  inset: -6px;
+  border-radius: 999px;
+  border: 2px solid currentColor;
+  opacity: 0;
+  pointer-events: none;
+  animation: infraPulseRing 1100ms cubic-bezier(0.16, 1, 0.3, 1) 240ms both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .urbanmind-infra-icon .infra-pop,
+  .urbanmind-infra-icon .infra-pop::after { animation: none; }
+}
+
+.urbanmind-infra-icon .infra-focused {
+  animation: infraFocusPulse 1500ms ease-in-out infinite;
+}
+@keyframes infraFocusPulse {
+  0%, 100% { transform: scale(1); box-shadow: 0 0 0 4px rgba(var(--rgb-accent), 0.15), 0 0 24px rgba(var(--rgb-accent), 0.45); }
+  50%      { transform: scale(1.08); box-shadow: 0 0 0 8px rgba(var(--rgb-accent), 0.06), 0 0 36px rgba(var(--rgb-accent), 0.55); }
+}
+
+@keyframes existingDotFadeIn {
+  0%   { opacity: 0; transform: scale(0.4); transform-origin: center; }
+  60%  { opacity: 0.85; transform: scale(1.15); }
+  100% { opacity: 1; transform: scale(1); }
+}
+.urbanmind-existing-dot-path {
+  animation: existingDotFadeIn 520ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  transform-box: fill-box;
+  transform-origin: center;
+}
+.urbanmind-existing-dot-path.delay-0  { animation-delay: 0ms; }
+.urbanmind-existing-dot-path.delay-1  { animation-delay: 60ms; }
+.urbanmind-existing-dot-path.delay-2  { animation-delay: 120ms; }
+.urbanmind-existing-dot-path.delay-3  { animation-delay: 180ms; }
+.urbanmind-existing-dot-path.delay-4  { animation-delay: 240ms; }
+.urbanmind-existing-dot-path.delay-5  { animation-delay: 300ms; }
+.urbanmind-existing-dot-path.delay-6  { animation-delay: 360ms; }
+.urbanmind-existing-dot-path.delay-7  { animation-delay: 420ms; }
+.urbanmind-existing-dot-path.delay-8  { animation-delay: 480ms; }
+.urbanmind-existing-dot-path.delay-9  { animation-delay: 540ms; }
+.urbanmind-existing-dot-path.delay-10 { animation-delay: 600ms; }
+.urbanmind-existing-dot-path.delay-11 { animation-delay: 660ms; }
+.urbanmind-existing-dot-path.delay-12 { animation-delay: 720ms; }
+.urbanmind-existing-dot-path.delay-13 { animation-delay: 780ms; }
+.urbanmind-existing-dot-path.delay-14 { animation-delay: 840ms; }
+.urbanmind-existing-dot-path.delay-15 { animation-delay: 900ms; }
+.urbanmind-existing-dot-path.delay-16 { animation-delay: 960ms; }
+.urbanmind-existing-dot-path.delay-17 { animation-delay: 1020ms; }
+.urbanmind-existing-dot-path.delay-18 { animation-delay: 1080ms; }
+.urbanmind-existing-dot-path.delay-19 { animation-delay: 1140ms; }
+.urbanmind-existing-dot-path.delay-20 { animation-delay: 1200ms; }
+.urbanmind-existing-dot-path.delay-21 { animation-delay: 1260ms; }
+.urbanmind-existing-dot-path.delay-22 { animation-delay: 1320ms; }
+.urbanmind-existing-dot-path.delay-23 { animation-delay: 1380ms; }
+.urbanmind-existing-dot-path.delay-24 { animation-delay: 1440ms; }
+.urbanmind-existing-dot-path.delay-25 { animation-delay: 1500ms; }
+@media (prefers-reduced-motion: reduce) {
+  .urbanmind-existing-dot-path { animation: none; opacity: 1; transform: none; }
+}
+
+/* ── Phase 4: Metric win effects (one-shot, non-looping) ────────────────── */
+@keyframes metricGlow {
+  0%   { box-shadow: 0 0 0 0 rgba(16,185,129,0.0); }
+  35%  { box-shadow: 0 0 18px 2px rgba(16,185,129,0.55); }
+  100% { box-shadow: 0 0 0 0 rgba(16,185,129,0.0); }
+}
+.metric-glow {
+  animation: metricGlow 1500ms cubic-bezier(0.16, 1, 0.3, 1) 1;
+}
+
+@keyframes metricDeltaFloat {
+  0%   { opacity: 0; transform: translateY(4px) scale(0.92); }
+  20%  { opacity: 1; transform: translateY(0) scale(1); }
+  80%  { opacity: 1; transform: translateY(-6px) scale(1); }
+  100% { opacity: 0; transform: translateY(-12px) scale(0.96); }
+}
+.metric-delta-pill {
+  animation: metricDeltaFloat 2000ms cubic-bezier(0.16, 1, 0.3, 1) 200ms both;
+  pointer-events: none;
+}
+
+@keyframes impactSweep {
+  0%   { transform: translateX(-120%) skewX(-12deg); opacity: 0; }
+  20%  { opacity: 0.55; }
+  60%  { opacity: 0.55; }
+  100% { transform: translateX(140%) skewX(-12deg); opacity: 0; }
+}
+.impact-summary-sweep {
+  position: relative;
+  overflow: hidden;
+}
+.impact-summary-sweep::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(110deg, rgba(var(--rgb-accent), 0) 0%, rgba(var(--rgb-accent), 0.22) 50%, rgba(var(--rgb-accent), 0) 100%);
+  animation: impactSweep 900ms cubic-bezier(0.16, 1, 0.3, 1) 1;
+  pointer-events: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .metric-glow, .metric-delta-pill, .impact-summary-sweep::before { animation: none; }
 }

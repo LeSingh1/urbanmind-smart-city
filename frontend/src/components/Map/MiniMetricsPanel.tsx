@@ -1,7 +1,21 @@
-import { useEffect, useRef, useState } from 'react'
+import { forwardRef, useEffect, useRef, useState, type Ref } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useUIStore } from '@/stores/uiStore'
 import { useSimulationStore } from '@/stores/simulationStore'
+import { useScenarioStore } from '@/stores/scenarioStore'
+import type { ScenarioId } from '@/types/city.types'
+
+// Scenario tilts on the live tiles — multipliers applied to the four headline
+// metrics so the cards visibly shift when the planner changes lens, even
+// before applying the full plan.
+const SCENARIO_TILT: Record<ScenarioId, { commute: number; equity: number; co2: number }> = {
+  balanced:          { commute: 1.00, equity: 1.00, co2: 1.00 },
+  transit_first:     { commute: 0.78, equity: 1.04, co2: 0.82 },
+  climate_resilient: { commute: 0.92, equity: 1.02, co2: 0.65 },
+  equity_focused:    { commute: 0.95, equity: 1.18, co2: 0.95 },
+  emergency_ready:   { commute: 0.97, equity: 1.10, co2: 1.02 },
+  max_growth:        { commute: 1.18, equity: 0.92, co2: 1.22 },
+}
 
 // ── Animated counter ─────────────────────────────────────────────────────────
 function useAnimatedValue(target: number, duration = 600) {
@@ -41,20 +55,30 @@ interface MetricCardProps {
   color: string
   delay: number
   formatter?: (v: number) => string
+  /** Set true on the apply-plan flip so the card glows once and a delta pill floats. */
+  celebrate?: boolean
+  /** Numeric delta to show in the floating pill (positive = green up arrow). */
+  delta?: number
 }
 
-function MetricCard({ label, value, unit, color, delay, formatter }: MetricCardProps) {
+const MetricCard = forwardRef(function MetricCard(
+  { label, value, unit, color, delay, formatter, celebrate, delta }: MetricCardProps,
+  ref: Ref<HTMLDivElement>,
+) {
   const animated = useAnimatedValue(value)
   const display = formatter ? formatter(animated) : String(animated)
+  const showDelta = celebrate && typeof delta === 'number' && Math.abs(delta) >= 1
 
   return (
     <motion.div
+      ref={ref}
       initial={{ opacity: 0, y: 12, scale: 0.92 }}
       animate={{ opacity: 1, y: 0, scale: 1 }}
       exit={{ opacity: 0, y: 6, scale: 0.95 }}
       transition={{ duration: 0.35, delay, ease: [0.16, 1, 0.3, 1] }}
+      className={celebrate ? 'metric-glow' : undefined}
       style={{
-        width: 86,
+        width: 104,
         height: 68,
         borderRadius: 10,
         padding: '8px 10px',
@@ -63,9 +87,30 @@ function MetricCard({ label, value, unit, color, delay, formatter }: MetricCardP
         boxShadow: 'var(--shadow-sm)',
         textAlign: 'left',
         position: 'relative',
-        overflow: 'hidden',
+        overflow: 'visible',
       }}
     >
+      {showDelta && (
+        <span
+          className="metric-delta-pill"
+          style={{
+            position: 'absolute',
+            top: 4,
+            right: 6,
+            fontFamily: 'var(--font-mono)',
+            fontSize: 10,
+            fontWeight: 700,
+            color: delta! > 0 ? '#10b981' : '#ef4444',
+            background: delta! > 0 ? 'rgba(16,185,129,0.15)' : 'rgba(239,68,68,0.15)',
+            border: `1px solid ${delta! > 0 ? 'rgba(16,185,129,0.40)' : 'rgba(239,68,68,0.40)'}`,
+            borderRadius: 999,
+            padding: '1px 6px',
+            zIndex: 2,
+          }}
+        >
+          {delta! > 0 ? '+' : ''}{Math.round(delta!)}
+        </span>
+      )}
       <div
         style={{
           position: 'absolute',
@@ -94,18 +139,19 @@ function MetricCard({ label, value, unit, color, delay, formatter }: MetricCardP
         {label}
       </div>
 
-      <div style={{ display: 'flex', alignItems: 'baseline', gap: 2, paddingLeft: 6 }}>
+      <div style={{ display: 'flex', alignItems: 'baseline', gap: 3, paddingLeft: 6, whiteSpace: 'nowrap' }}>
         <motion.span
           key={display}
           initial={{ opacity: 0.5 }}
           animate={{ opacity: 1 }}
           style={{
-            fontSize: 20,
+            fontSize: 18,
             fontFamily: 'var(--font-mono)',
             fontWeight: 700,
             color,
             letterSpacing: '-0.02em',
             lineHeight: 1,
+            fontVariantNumeric: 'tabular-nums',
           }}
         >
           {display}
@@ -118,7 +164,7 @@ function MetricCard({ label, value, unit, color, delay, formatter }: MetricCardP
       </div>
     </motion.div>
   )
-}
+})
 
 function compact(value: number) {
   return Intl.NumberFormat('en', { notation: 'compact', maximumFractionDigits: 1 }).format(value)
@@ -126,8 +172,35 @@ function compact(value: number) {
 
 export function MiniMetricsPanel() {
   const metrics = useSimulationStore((state) => state.currentFrame?.metrics_snapshot)
+  const planning = useSimulationStore((state) => state.planning)
   const openDashboard = useUIStore((state) => state.openDashboard)
+  const activeScenario = useScenarioStore((state) => state.activeScenario)
   const hasData = !!metrics
+  const tilt = SCENARIO_TILT[activeScenario] ?? SCENARIO_TILT.balanced
+
+  // Celebrate window: 2 seconds after the apply-plan flip. Triggers per-card
+  // glow + delta pill float once. Reset on un-apply or scenario change.
+  const [celebrateUntil, setCelebrateUntil] = useState(0)
+  const wasApplied = useRef(planning.hasAppliedAIPlan)
+  useEffect(() => {
+    if (planning.hasAppliedAIPlan && !wasApplied.current) {
+      setCelebrateUntil(Date.now() + 2000)
+    }
+    wasApplied.current = planning.hasAppliedAIPlan
+  }, [planning.hasAppliedAIPlan])
+  const [, force] = useState(0)
+  useEffect(() => {
+    if (celebrateUntil <= Date.now()) return
+    const t = setTimeout(() => force((n) => n + 1), celebrateUntil - Date.now())
+    return () => clearTimeout(t)
+  }, [celebrateUntil])
+  const celebrating = Date.now() < celebrateUntil
+
+  const before = planning.beforeScores
+  const after = planning.afterScores ?? before
+  const commuteDelta = before && after ? Math.round((before.averageCommute - after.averageCommute) * tilt.commute) : 0
+  const equityDelta = before && after ? Math.round((after.equityScore - before.equityScore) * tilt.equity) : 0
+  const co2Delta = before && after ? Math.round((before.co2Estimate - after.co2Estimate) * (1 / tilt.co2 - 0)) : 0
 
   const cards: MetricCardProps[] = [
     {
@@ -140,24 +213,30 @@ export function MiniMetricsPanel() {
     },
     {
       label: 'Commute',
-      value: Math.round(metrics?.mobility_commute ?? 0),
+      value: Math.round((metrics?.mobility_commute ?? 0) * tilt.commute),
       unit: 'min',
       color: '#6c5ce7',
       delay: 0.05,
+      celebrate: celebrating && commuteDelta !== 0,
+      delta: commuteDelta,
     },
     {
       label: 'Equity',
-      value: Math.round(100 - (metrics?.equity_infra_gini ?? 0)),
+      value: Math.min(100, Math.round((100 - (metrics?.equity_infra_gini ?? 0)) * tilt.equity)),
       unit: '',
       color: '#00b894',
       delay: 0.1,
+      celebrate: celebrating && equityDelta !== 0,
+      delta: equityDelta,
     },
     {
-      label: 'CO₂',
-      value: Math.round(metrics?.env_co2_est ?? 0),
+      label: 'CO2',
+      value: Math.round((metrics?.env_co2_est ?? 0) * tilt.co2),
       unit: 'kt',
       color: '#e17055',
       delay: 0.15,
+      celebrate: celebrating && co2Delta !== 0,
+      delta: co2Delta,
     },
   ]
 

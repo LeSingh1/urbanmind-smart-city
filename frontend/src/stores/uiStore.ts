@@ -33,6 +33,13 @@ interface UIStore {
 
 export const useUIStore = create<UIStore>((set) => ({
   activeLayers: new Set([
+    // Engine context dots — visible by default at app load
+    'Existing Clinics',
+    'Existing Schools',
+    'Existing Parks',
+    'Existing Transit',
+    'Existing Emergency',
+    // Legacy categories (kept on for backwards compatibility with non-Fremon flows)
     'Existing hospitals',
     'Existing schools',
     'Existing parks',
