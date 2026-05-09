@@ -74,7 +74,7 @@ export function AIPanel() {
             type="button"
             onClick={() => selectedCity && analyzeDemo(selectedCity.id, activeScenario)}
             className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-lg px-3 py-2.5 text-sm font-semibold"
-            style={{ background: 'var(--color-bg-hover)', color: 'var(--color-accent-cyan)', border: '1px solid rgba(255,71,87,0.35)' }}
+            style={{ background: 'var(--color-bg-hover)', color: 'var(--color-accent-cyan)', border: '1px solid rgba(var(--rgb-accent), 0.35)' }}
           >
             <Search size={15} />
             Analyze Infrastructure Gaps
@@ -104,7 +104,7 @@ export function AIPanel() {
                 type="button"
                 onClick={() => applyAIPlan(activeScenario)}
                 className="rounded-lg px-3 py-2.5 text-sm font-semibold"
-                style={{ background: 'var(--color-bg-panel)', color: 'var(--color-accent-cyan)', border: '1px solid rgba(255,71,87,0.35)' }}
+                style={{ background: 'var(--color-bg-panel)', color: 'var(--color-accent-cyan)', border: '1px solid rgba(var(--rgb-accent), 0.35)' }}
               >
                 Apply Full AI Plan
               </button>

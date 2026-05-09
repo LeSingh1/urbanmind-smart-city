@@ -84,21 +84,24 @@ export function BottomBar() {
       className="pointer-events-none fixed bottom-4 left-4 right-4 z-[70] flex justify-center"
     >
       <div
-        className="pointer-events-auto grid w-full max-w-[1240px] grid-cols-[110px_auto_minmax(0,1fr)_120px] items-center gap-4 px-4 py-3"
+        className="pointer-events-auto grid w-full max-w-[1240px] grid-cols-[110px_auto_minmax(0,1fr)_120px] items-center gap-4 px-5 py-3.5"
         style={{
-          background: 'var(--color-bg-sidebar)',
-          border: '1px solid var(--color-border-subtle)',
+          background: 'linear-gradient(180deg, rgba(255,255,255,0.92) 0%, rgba(248,250,252,0.88) 100%)',
+          border: '1px solid rgba(255,255,255,0.7)',
           borderRadius: 'var(--radius-xl)',
-          boxShadow: 'var(--shadow-md)',
+          boxShadow: 'var(--shadow-lg), 0 0 0 1px rgba(15,23,42,0.04)',
+          backdropFilter: 'blur(16px)',
+          WebkitBackdropFilter: 'blur(16px)',
         }}
       >
         <div className="flex items-center gap-3">
           <div
             className="grid h-9 w-9 place-items-center"
             style={{
-              background: 'var(--color-bg-sidebar)',
+              background: 'var(--color-bg-panel)',
               borderRadius: 'var(--radius-md)',
-              boxShadow: 'var(--shadow-sm)',
+              boxShadow: 'var(--shadow-xs)',
+              border: '1px solid var(--color-border-subtle)',
             }}
           >
             <Sparkles size={14} style={{ color: 'var(--color-accent-cyan)' }} />
@@ -125,10 +128,10 @@ export function BottomBar() {
             aria-label={playing ? 'Pause' : 'Play'}
             className="grid h-9 w-9 place-items-center transition-transform hover:scale-105 active:scale-95"
             style={{
-              background: 'var(--color-bg-sidebar)',
+              background: 'var(--color-bg-panel)',
               borderRadius: 'var(--radius-md)',
-              border: `1px solid ${playing ? 'rgba(255,71,87,0.45)' : 'var(--color-border-subtle)'}`,
-              boxShadow: playing ? 'var(--shadow-pressed)' : 'var(--shadow-sm)',
+              border: `1px solid ${playing ? 'rgba(var(--rgb-accent), 0.5)' : 'var(--color-border-subtle)'}`,
+              boxShadow: playing ? 'var(--shadow-pressed)' : 'var(--shadow-xs)',
               color: playing ? 'var(--color-accent-cyan)' : 'var(--color-text-secondary)',
             }}
           >
@@ -140,10 +143,10 @@ export function BottomBar() {
             aria-label="Reset"
             className="grid h-9 w-9 place-items-center transition-transform hover:scale-105 active:scale-95"
             style={{
-              background: 'var(--color-bg-sidebar)',
+              background: 'var(--color-bg-panel)',
               borderRadius: 'var(--radius-md)',
               border: '1px solid var(--color-border-subtle)',
-              boxShadow: 'var(--shadow-sm)',
+              boxShadow: 'var(--shadow-xs)',
               color: 'var(--color-text-secondary)',
             }}
           >
@@ -180,9 +183,9 @@ export function BottomBar() {
               animate={{ left: `${progress}%` }}
               transition={{ type: 'spring', stiffness: 100, damping: 18, mass: 0.45 }}
               style={{
-                background: 'var(--color-bg-sidebar)',
+                background: 'var(--color-bg-panel)',
                 border: '2px solid var(--color-accent-cyan)',
-                boxShadow: 'var(--shadow-sm)',
+                boxShadow: 'var(--shadow-xs)',
               }}
             />
             <input
@@ -209,7 +212,7 @@ export function BottomBar() {
                   style={{
                     background: active ? 'var(--color-bg-hover)' : 'var(--color-bg-sidebar)',
                     color: active ? 'var(--color-accent-cyan)' : 'var(--color-text-muted)',
-                    border: `1px solid ${active ? 'rgba(255,71,87,0.40)' : 'var(--color-border-subtle)'}`,
+                    border: `1px solid ${active ? 'rgba(var(--rgb-accent), 0.42)' : 'var(--color-border-subtle)'}`,
                     boxShadow: active ? 'var(--shadow-inset)' : 'none',
                   }}
                 >

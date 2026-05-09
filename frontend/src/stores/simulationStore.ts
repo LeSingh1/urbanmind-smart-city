@@ -33,7 +33,7 @@ import {
   markFremonImprovedZones,
 } from '@/data/fremonDemo'
 import type { AIRecommendation, BudgetLevel, BudgetSummary, CityMode, CityProfile, DistrictProfile, GrowthPressureZone, InfrastructureItem, MetricsSnapshot, PlacementFeedback, PlacementSuggestion, PlanBattlePlan, PlanningScores, SavedPlanningScenario, ScenarioId, TimelineYear, UnderservedZone } from '@/types/city.types'
-import { runFremonEnginePipeline, type FremonEngineBundle } from '@/copilot/pipeline'
+import { runFremonEnginePipelineAsync, type FremonEngineBundle } from '@/copilot/pipeline'
 import type { AgentAction, SimulationFrame } from '@/types/simulation.types'
 
 type Speed = 1 | 5 | 10 | 50
@@ -143,7 +143,7 @@ interface SimulationStore {
   scrubToYear: (year: number) => void
   addUserZone: (zone: UserPlacedZone) => void
   removeUserZone: (id: string) => void
-  analyzeDemo: (cityId: string, scenarioId: string) => void
+  analyzeDemo: (cityId: string, scenarioId: string) => Promise<void>
   hydratePlanningForCity: (cityId: string) => void
   resetPlanningAnalysis: () => void
   resetProposedPlan: () => void
@@ -233,7 +233,7 @@ export const useSimulationStore = create<SimulationStore>((set, get) => ({
   addUserZone: (zone) => set((state) => ({ userZones: [...state.userZones, zone] })),
   removeUserZone: (id) => set((state) => ({ userZones: state.userZones.filter((z) => z.id !== id) })),
 
-  analyzeDemo: (cityIdArg, scenarioId) => {
+  analyzeDemo: async (cityIdArg, scenarioId) => {
     try {
       const existingState = get()
       const cityId = cityIdArg || existingState.planning.cityId || 'fremon'
@@ -306,7 +306,7 @@ export const useSimulationStore = create<SimulationStore>((set, get) => ({
         let aiRecommendations: typeof bundle.ai = bundle.ai.map((item) => ({ ...item }))
         let topRecommendation = bundle.top
         try {
-          engineBundle = runFremonEnginePipeline()
+          engineBundle = await runFremonEnginePipelineAsync(scenario)
           if (engineBundle.aiRecommendations.length > 0 && engineBundle.underservedZones.length > 0) {
             underservedZones = engineBundle.underservedZones.map((zone) => ({
               ...zone,

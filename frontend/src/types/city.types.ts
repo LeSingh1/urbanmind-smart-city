@@ -48,6 +48,7 @@ export interface InfrastructureItem {
   costEstimate: number
   impactScore: number
   confidence: number
+  expectedImpact?: { populationServed?: number }
   createdAt: string
   updatedAt?: string
 }

@@ -26,6 +26,9 @@ import {
 // Side-effect import: runs anti-clutter guardrails in dev.
 import '@/data/validateExistingInfrastructure'
 
+/** Bright sky for proposed / AI map accents (matches UI tokens) */
+const MAP_PROPOSED_HEX = '#38bdf8'
+
 // Service coverage radii in metres per zone token
 const SERVICE_RADII: Record<string, number> = {
   '--zone-health':      2000,
@@ -467,8 +470,8 @@ function PlanningLegend() {
       <div style={{ borderTop: '1px solid var(--color-border-subtle)', marginTop: 8, paddingTop: 7, display: 'grid', gap: 4 }}>
         {[
           ['Existing', '#636e72'],
-          ['Proposed', '#00D4FF'],
-          ['AI Recommended', '#00D4FF'],
+          ['Proposed', MAP_PROPOSED_HEX],
+          ['AI Recommended', MAP_PROPOSED_HEX],
           ['Underserved Zone', '#FF5A3D'],
         ].map(([label, color]) => (
           <div key={label} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 9, color: 'var(--color-text-muted)' }}>
@@ -540,13 +543,13 @@ function infraIcon(item: InfrastructureItem, dropDelayMs = 0, focused = false) {
   const isProposed = item.status === 'proposed'
   const isAi = item.status === 'ai_recommended'
   const isNew = isProposed || isAi
-  const color = isAi ? '#00D4FF' : CATEGORY_COLOR[item.category]
+  const color = isAi ? MAP_PROPOSED_HEX : CATEGORY_COLOR[item.category]
   const border = focused
-    ? `3px solid #00D4FF`
+    ? `3px solid ${MAP_PROPOSED_HEX}`
     : isProposed ? `2px solid ${color}` : `1px solid ${color}`
-  const focusShadow = focused ? '0 0 0 5px rgba(0,212,255,0.20),0 0 28px rgba(0,212,255,0.65)' : null
+  const focusShadow = focused ? '0 0 0 5px rgba(56, 189, 248, 0.22), 0 0 28px rgba(56, 189, 248, 0.52)' : null
   const shadow = focusShadow ?? (isAi
-    ? '0 0 0 4px rgba(0,212,255,0.16),0 0 22px rgba(0,212,255,0.52)'
+    ? '0 0 0 4px rgba(56, 189, 248, 0.14), 0 0 22px rgba(56, 189, 248, 0.42)'
     : '4px 4px 8px #babecc,-4px -4px 8px #ffffff')
   const classes = `${isNew ? 'infra-pop' : ''} ${focused ? 'infra-focused' : ''}`.trim()
   const popStyle = isNew ? `animation-delay:${dropDelayMs}ms;color:${color};` : ''

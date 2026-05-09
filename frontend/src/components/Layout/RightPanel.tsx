@@ -94,19 +94,20 @@ export function RightPanel() {
     if (!selectedCity) return
     clearThinkingTimers()
     const fullSequence = !planning.hasAnalyzed || lastAnalyzedScenario.current !== activeScenario
-    // Kick off the deterministic engine immediately — paced UX runs in parallel.
-    analyzeDemo(selectedCity.id, activeScenario)
     lastAnalyzedScenario.current = activeScenario
     if (fullSequence) {
       setThinkingStep(0)
       thinkingTimers.current.push(setTimeout(() => setThinkingStep(1), 250))
       thinkingTimers.current.push(setTimeout(() => setThinkingStep(2), 500))
       thinkingTimers.current.push(setTimeout(() => setThinkingStep(3), 750))
-      thinkingTimers.current.push(setTimeout(() => setThinkingStep(null), 1000))
     } else {
       setThinkingStep(THINKING_STEPS.length - 1)
       thinkingTimers.current.push(setTimeout(() => setThinkingStep(null), 400))
     }
+    void analyzeDemo(selectedCity.id, activeScenario).finally(() => {
+      clearThinkingTimers()
+      setThinkingStep(null)
+    })
   }, [activeScenario, analyzeDemo, clearThinkingTimers, planning.hasAnalyzed, selectedCity])
   const isThinking = thinkingStep !== null
   const stage: CopilotStage = isThinking
@@ -234,7 +235,7 @@ export function RightPanel() {
                   focusRecommendation(planning.dynamicAdvisory?.recommendationId ?? null)
                 }}
                 className="rounded-md px-2 py-1.5 text-[11px] font-semibold"
-                style={{ color: 'var(--color-accent-cyan)', background: 'var(--color-bg-panel)', border: '1px solid rgba(0,212,255,0.32)' }}
+                style={{ color: 'var(--color-accent-cyan)', background: 'var(--color-bg-panel)', border: '1px solid rgba(var(--rgb-accent), 0.32)' }}
               >
                 Review
               </button>
@@ -256,14 +257,14 @@ export function RightPanel() {
               type="button"
               onClick={handleAnalyze}
               className="inline-flex w-full items-center justify-center gap-2 rounded-lg px-3 py-3 text-sm font-semibold"
-              style={{ background: 'var(--color-bg-panel)', color: 'var(--color-accent-cyan)', border: '1px solid rgba(255,71,87,0.35)', boxShadow: 'var(--shadow-sm)' }}
+              style={{ background: 'var(--color-bg-panel)', color: 'var(--color-accent-cyan)', border: '1px solid rgba(var(--rgb-accent), 0.35)', boxShadow: 'var(--shadow-sm)' }}
             >
               <Search size={16} />
               Analyze Infrastructure Gaps
             </button>
           </section>
         ) : (
-          <section className="rounded-lg p-4" style={{ background: 'var(--color-bg-hover)', border: '1px solid rgba(255,71,87,0.3)', boxShadow: 'var(--shadow-sm)' }}>
+          <section className="rounded-lg p-4" style={{ background: 'var(--color-bg-hover)', border: '1px solid rgba(var(--rgb-accent), 0.22)', boxShadow: 'var(--shadow-sm)' }}>
             <div className="flex items-center justify-between gap-2 font-mono text-[10px] uppercase tracking-widest" style={{ color: 'var(--color-accent-cyan)' }}>
               <span className="inline-flex items-center gap-2"><Sparkles size={14} />Top Recommendation</span>
               {planning.useEngine && (
@@ -310,9 +311,9 @@ export function RightPanel() {
                             onClick={() => focusRecommendation(rec.id)}
                             className="rounded-md px-2 py-1.5 text-left text-xs transition-colors"
                             style={{
-                              background: focused ? 'rgba(0,212,255,0.10)' : 'var(--color-bg-card)',
-                              border: `1px solid ${focused ? 'rgba(0,212,255,0.45)' : 'var(--color-border-subtle)'}`,
-                              boxShadow: focused ? '0 0 0 2px rgba(0,212,255,0.15)' : 'none',
+                              background: focused ? 'rgba(var(--rgb-accent), 0.10)' : 'var(--color-bg-card)',
+                              border: `1px solid ${focused ? 'rgba(var(--rgb-accent), 0.45)' : 'var(--color-border-subtle)'}`,
+                              boxShadow: focused ? '0 0 0 2px rgba(var(--rgb-accent), 0.15)' : 'none',
                               color: 'var(--color-text-secondary)',
                             }}
                           >
@@ -339,7 +340,7 @@ export function RightPanel() {
                     type="button"
                     onClick={() => applyAIPlan(activeScenario)}
                     className="rounded-lg px-3 py-3 text-sm font-semibold"
-                    style={{ background: 'var(--color-bg-panel)', color: 'var(--color-accent-cyan)', border: '1px solid rgba(255,71,87,0.35)' }}
+                    style={{ background: 'var(--color-bg-panel)', color: 'var(--color-accent-cyan)', border: '1px solid rgba(var(--rgb-accent), 0.35)' }}
                   >
                     Apply Full AI Plan
                   </button>

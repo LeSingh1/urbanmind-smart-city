@@ -202,7 +202,7 @@ function simulateImpact(
   const uplift = METRIC_UPLIFT[type] ?? {}
   const out: CopilotRecommendation['expectedImpact'] = []
   for (const [metric, gain] of Object.entries(uplift)) {
-    const before = (report.scores as Record<string, number>)[metric] ?? 0
+    const before = (report.scores as unknown as Record<string, number>)[metric] ?? 0
     const after = Math.min(100, before + (gain ?? 0))
     if (after !== before) out.push({ metric, before, after })
   }
@@ -239,6 +239,15 @@ function templateRationale(
     `with ${popLabel} projected residents outside coverage. Adding ${typeLabel} closes that gap and ` +
     `raises the 15-minute city score from ${fifteen}.`
   )
+}
+
+/** Exported for Phase 2.5 API fallback parity and tests. */
+export function buildTemplatePlanningRationale(
+  report: DistrictGapReport,
+  type: InfrastructureType,
+  populationServed: number,
+): string {
+  return templateRationale(report, type, populationServed)
 }
 
 // ──────────────────────────────────────────────────────────────────────────

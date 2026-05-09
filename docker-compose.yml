@@ -5,11 +5,14 @@ services:
     build:
       context: ./frontend
       dockerfile: Dockerfile
+      args:
+        VITE_MAPBOX_TOKEN: ${MAPBOX_TOKEN:-}
     image: urbanmind-frontend
     ports:
       - "3000:3000"
+    # Vite bakes API URL at docker build time (defaults to /api in vite.config).
+    # Browser calls same-origin /api via nginx when you open http://localhost
     environment:
-      VITE_API_URL: http://localhost:8000
       VITE_MAPBOX_TOKEN: ${MAPBOX_TOKEN:-}
     depends_on:
       - api
@@ -25,7 +28,7 @@ services:
     ports:
       - "8000:8000"
     env_file:
-      - .env.example
+      - .env
     depends_on:
       postgres:
         condition: service_healthy
@@ -45,7 +48,7 @@ services:
       dockerfile: Dockerfile
     command: python -m worker.worker
     env_file:
-      - .env.example
+      - .env
     depends_on:
       postgres:
         condition: service_healthy

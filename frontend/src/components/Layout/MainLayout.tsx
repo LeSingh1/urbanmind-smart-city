@@ -24,8 +24,8 @@ export function MainLayout({ onHome }: { onHome: () => void }) {
 
   return (
     <div
-      className="flex flex-col w-full overflow-hidden"
-      style={{ height: '100vh', paddingBottom: 120, background: 'var(--color-bg-app)' }}
+      className="flex flex-col w-full overflow-hidden um-app-shell"
+      style={{ height: '100vh', paddingBottom: 120 }}
     >
       <TopBar onHome={onHome} />
       <div className="flex flex-1 overflow-hidden">

@@ -2,7 +2,10 @@ import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Copy, Download, X } from 'lucide-react'
 import { useCityStore } from '@/stores/cityStore'
+import { useSimulationStore } from '@/stores/simulationStore'
 import { useUIStore } from '@/stores/uiStore'
+import { useNotification } from '@/hooks/useNotification'
+import { exportSimulationPdfUrl, isExportableSessionId } from '@/utils/sessionExport'
 import { PopulationTimeline } from '@/components/Charts/PopulationTimeline'
 import { ZoneStackedArea } from '@/components/Charts/ZoneStackedArea'
 import { GrowthRadar } from '@/components/Charts/GrowthRadar'
@@ -15,6 +18,8 @@ export function PopulationDashboard() {
   const isOpen = useUIStore((state) => state.isDashboardOpen)
   const close = useUIStore((state) => state.closeDashboard)
   const city = useCityStore((state) => state.selectedCity)
+  const sessionId = useSimulationStore((state) => state.sessionId)
+  const notify = useNotification((s) => s.notify)
   const isSplit = useUIStore((state) => state.isSplitScreen)
   const [tab, setTab] = useState('Population')
 
@@ -35,7 +40,29 @@ export function PopulationDashboard() {
             <h2 id="analytics-title" style={{ margin: 0, fontSize: 18, fontWeight: 600 }}>City Analytics Dashboard - {city?.name}</h2>
             <div style={{ display: 'flex', gap: 8 }}>
               <button className="icon-btn" aria-label="Detach dashboard"><Copy size={16} /></button>
-              <button className="icon-btn" aria-label="Export dashboard PDF"><Download size={16} /></button>
+              <button
+                type="button"
+                className="icon-btn"
+                title={
+                  !isExportableSessionId(sessionId)
+                    ? 'PDF requires a backend simulation session'
+                    : 'Download PDF report'
+                }
+                aria-label="Export dashboard PDF"
+                onClick={() => {
+                  if (!isExportableSessionId(sessionId)) {
+                    notify(
+                      'warning',
+                      'PDF export needs a backend simulation session. Run the full Docker stack or connect the API, then start Play from the control bar.',
+                      5000,
+                    )
+                    return
+                  }
+                  window.open(exportSimulationPdfUrl(sessionId), '_blank')
+                }}
+              >
+                <Download size={16} />
+              </button>
               <button className="icon-btn" onClick={close} aria-label="Close dashboard"><X size={16} /></button>
             </div>
           </header>

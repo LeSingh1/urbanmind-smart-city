@@ -82,7 +82,7 @@ export function SettingsModal({ open, onClose }: Props) {
                         flex: 1,
                         padding: '6px 0',
                         borderRadius: 6,
-                        border: speed === s ? '1px solid rgba(255,71,87,0.4)' : '1px solid var(--color-border-subtle)',
+                        border: speed === s ? '1px solid rgba(var(--rgb-accent), 0.4)' : '1px solid var(--color-border-subtle)',
                         background: speed === s ? 'var(--color-bg-hover)' : 'var(--color-bg-panel)',
                         color: speed === s ? 'var(--color-accent-cyan)' : 'var(--color-text-muted)',
                         boxShadow: speed === s ? 'var(--shadow-pressed)' : 'var(--shadow-sm)',
@@ -174,12 +174,12 @@ function Toggle({ label, checked, onChange }: { label: string; checked: boolean;
           borderRadius: 99,
           border: '1px solid var(--color-border-subtle)',
           background: checked ? 'var(--color-bg-hover)' : 'var(--color-bg-panel)',
-          borderColor: checked ? 'rgba(255,71,87,0.4)' : 'var(--color-border-subtle)',
+          borderColor: checked ? 'rgba(var(--rgb-accent), 0.4)' : 'var(--color-border-subtle)',
           boxShadow: checked ? 'var(--shadow-inset)' : 'var(--shadow-sm)',
           position: 'relative',
           flexShrink: 0,
         }}
-        animate={{ borderColor: checked ? 'rgba(255,71,87,0.4)' : 'var(--color-border-subtle)' }}
+        animate={{ borderColor: checked ? 'rgba(var(--rgb-accent), 0.4)' : 'var(--color-border-subtle)' }}
       >
         <motion.div
           style={{

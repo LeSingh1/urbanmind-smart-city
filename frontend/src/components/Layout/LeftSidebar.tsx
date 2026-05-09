@@ -57,8 +57,8 @@ const LAYER_ITEMS = [
   { id: 'Existing police stations', icon: Shield, label: 'Existing Police', color: '#5D4E75', group: 'Existing Infrastructure' },
   { id: 'Existing fire stations', icon: Flame, label: 'Existing Fire', color: '#E74C3C', group: 'Existing Infrastructure' },
   { id: 'Growth Pressure', icon: Users, label: 'Housing Growth', color: '#E67E22', group: 'Analysis Overlays' },
-  { id: 'Proposed infrastructure', icon: Crosshair, label: 'Proposed Infrastructure', color: '#00D4FF', group: 'Future Scenario' },
-  { id: 'AI Recommendations', icon: Sparkles, label: 'AI Recommendations', color: '#00D4FF', group: 'Future Scenario' },
+  { id: 'Proposed infrastructure', icon: Crosshair, label: 'Proposed Infrastructure', color: '#38bdf8', group: 'Future Scenario' },
+  { id: 'AI Recommendations', icon: Sparkles, label: 'AI Recommendations', color: '#38bdf8', group: 'Future Scenario' },
   { id: 'Underserved zones', icon: CloudSun, label: 'Underserved Zones', color: '#FF5A3D', group: 'Analysis Overlays' },
   { id: 'Coverage Rings', icon: Crosshair, label: 'Coverage Rings', color: '#00B894', group: 'Analysis Overlays' },
 ] as const
@@ -80,8 +80,8 @@ export function LeftSidebar() {
       <div
         className="flex w-12 shrink-0 flex-col items-center gap-1.5 px-1 py-3"
         style={{
-          background: 'var(--color-bg-sidebar)',
-          borderRight: '1px solid var(--color-border-subtle)',
+          background: 'linear-gradient(180deg, rgba(255,255,255,0.55) 0%, rgba(241,245,249,0.75) 100%)',
+          borderRight: '1px solid rgba(203, 213, 225, 0.65)',
         }}
       >
         {TABS.map(({ id, icon: Icon, label }) => {
@@ -100,7 +100,7 @@ export function LeftSidebar() {
               style={{
                 background: active ? 'var(--color-bg-hover)' : 'transparent',
                 color: active ? 'var(--color-accent-cyan)' : 'var(--color-text-muted)',
-                border: active ? '1px solid rgba(255,71,87,0.32)' : '1px solid transparent',
+                border: active ? '1px solid rgba(var(--rgb-accent), 0.35)' : '1px solid transparent',
                 boxShadow: active ? 'var(--shadow-pressed)' : 'none',
               }}
               title={label}
@@ -136,7 +136,7 @@ export function LeftSidebar() {
                     width: 4,
                     transformOrigin: 'center',
                     background: 'var(--color-accent-cyan)',
-                    boxShadow: '0 0 8px rgba(255,71,87,0.55)',
+                    boxShadow: '0 0 10px rgba(var(--rgb-accent), 0.35)',
                   }}
                 />
               )}
@@ -167,10 +167,10 @@ export function LeftSidebar() {
             exit={{ opacity: 0, x: -12, transition: { duration: 0.2 } }}
             className="flex-1 flex flex-col overflow-hidden"
             style={{
-              background: 'var(--color-bg-sidebar)',
-              borderRight: '1px solid var(--color-border-subtle)',
-              boxShadow: '12px 0 34px rgba(0,0,0,0.18)',
-              backdropFilter: 'blur(18px)',
+              background: 'linear-gradient(180deg, rgba(255,255,255,0.78) 0%, rgba(248,250,252,0.92) 100%)',
+              borderRight: '1px solid rgba(203, 213, 225, 0.6)',
+              boxShadow: '8px 0 32px rgba(15, 23, 42, 0.06)',
+              backdropFilter: 'blur(14px)',
             }}
           >
             <div
@@ -352,7 +352,7 @@ function TimelinePanel() {
               onClick={() => setTimelineYear(year)}
               className="rounded-lg py-2 font-mono text-[9px]"
               style={{
-                border: year === planning.timelineYear ? '1px solid rgba(255,71,87,0.4)' : '1px solid var(--color-border-subtle)',
+                border: year === planning.timelineYear ? '1px solid rgba(var(--rgb-accent), 0.42)' : '1px solid var(--color-border-subtle)',
                 color: year === planning.timelineYear ? 'var(--color-accent-cyan)' : 'var(--color-text-muted)',
                 background: year === planning.timelineYear ? 'var(--color-bg-hover)' : 'var(--color-bg-card)',
               }}
@@ -421,7 +421,7 @@ function CopilotPanel() {
                   focusRecommendation(advisory.recommendationId)
                 }}
                 className="rounded-md px-2 py-1.5 text-[11px] font-semibold"
-                style={{ color: 'var(--color-accent-cyan)', background: 'var(--color-bg-panel)', border: '1px solid rgba(0,212,255,0.32)' }}
+                style={{ color: 'var(--color-accent-cyan)', background: 'var(--color-bg-panel)', border: '1px solid rgba(var(--rgb-accent), 0.32)' }}
               >
                 Review
               </button>
@@ -438,7 +438,7 @@ function CopilotPanel() {
         </PanelSection>
       )}
       <PanelSection title="Copilot">
-        <div className="rounded-xl p-3" style={{ background: 'var(--color-bg-hover)', border: '1px solid rgba(255,71,87,0.28)' }}>
+        <div className="rounded-xl p-3" style={{ background: 'var(--color-bg-hover)', border: '1px solid rgba(var(--rgb-accent), 0.22)' }}>
           <div className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-widest" style={{ color: 'var(--color-accent-cyan)' }}>
             <Sparkles size={13} />
             {planning.hasAnalyzed ? 'Top Recommendation' : 'Ready'}
@@ -453,7 +453,7 @@ function CopilotPanel() {
           </p>
           <div className="mt-3 grid gap-2">
             {!planning.hasAnalyzed ? (
-              <button onClick={() => selectedCity && analyzeDemo(selectedCity.id, activeScenario)} className="rounded-lg px-3 py-2 text-xs font-semibold" style={{ background: 'var(--color-bg-panel)', color: 'var(--color-accent-cyan)', border: '1px solid rgba(255,71,87,0.35)' }}>
+              <button onClick={() => selectedCity && analyzeDemo(selectedCity.id, activeScenario)} className="rounded-lg px-3 py-2 text-xs font-semibold" style={{ background: 'var(--color-bg-panel)', color: 'var(--color-accent-cyan)', border: '1px solid rgba(var(--rgb-accent), 0.35)' }}>
                 Analyze Infrastructure Gaps
               </button>
             ) : (
