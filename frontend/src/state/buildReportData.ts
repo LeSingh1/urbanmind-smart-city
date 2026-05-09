@@ -6,10 +6,11 @@
  * year-specific literals — all values are computed from the live `PlanningState`
  * plus the active `ScenarioId`.
  *
- * Status, narrative, and warning copy are driven by `computeTimelineStress`
- * which combines years-elapsed and projected population growth. This is what
- * makes the demo "live" across time: the same plan looks Future Proofed at
- * 2026 and Needs Phase 2 at 2100, all from one builder.
+ * Report status for an applied plan follows Copilot semantics: the active plan
+ * holds through the simulation until Copilot flags a follow-on need (dynamic
+ * advisory) or underserved gaps stay open after apply. Raw timeline stress is
+ * still computed for diagnostics (`stressLevel`) but no longer downgrades
+ * status on year/population alone.
  */
 
 import type { AIRecommendation, PlanningScores, ScenarioId } from '@/types/city.types'
@@ -22,11 +23,6 @@ export type ReportStatus = 'no_plan' | 'future_proofed' | 'holds_through_2050s' 
 export function timelineDecadeLabel(year: number): string {
   const decadeStart = Math.floor(year / 10) * 10
   return `${decadeStart}s`
-}
-
-/** Planning-horizon re-analysis hint; scales with the active timeline year. */
-export function suggestedRevisitYear(selectedYear: number): number {
-  return Math.min(2101, Math.max(2035, selectedYear + 15))
 }
 
 export interface PlanningRecommendationLite {
@@ -135,11 +131,12 @@ export function computeTimelineStress(cityId: string, selectedYear: number, proj
 
 function determineStatus(opts: {
   hasAppliedAIPlan: boolean
-  stress: TimelineStressLevel
   cityHealthDelta: number
   improvedCount: number
   totalGaps: number
   selectedYear: number
+  copilotFollowUp: boolean
+  copilotFollowUpFromAdvisory: boolean
 }): { status: ReportStatus; label: string; blurb: string } {
   if (!opts.hasAppliedAIPlan) {
     return {
@@ -148,32 +145,26 @@ function determineStatus(opts: {
       blurb: 'Apply the AI plan to see how it shifts City Health, equity, and 15-minute access.',
     }
   }
-  if (opts.stress === 'critical') {
+  if (opts.copilotFollowUp) {
     return {
       status: 'needs_phase_2',
-      label: 'Needs Long-Term Phase 2',
-      blurb: 'The current plan resolves near-term gaps, but late-horizon population growth has outpaced its coverage.',
-    }
-  }
-  if (opts.stress === 'high') {
-    const revisit = suggestedRevisitYear(opts.selectedYear)
-    return {
-      status: 'holds_through_2050s',
-      label: `Holds Through ${timelineDecadeLabel(opts.selectedYear)}`,
-      blurb: `The plan still covers most service gaps; expect to revisit before ${revisit} as growth pressure compounds.`,
+      label: opts.copilotFollowUpFromAdvisory ? 'Copilot: Follow-On Plan' : 'Needs Additional Coverage',
+      blurb: opts.copilotFollowUpFromAdvisory
+        ? 'Copilot flagged a new gap on the timeline; review the follow-on recommendation.'
+        : 'Open service gaps remain after the applied plan; expand coverage or re-run analysis.',
     }
   }
   if (opts.cityHealthDelta >= 12 && opts.improvedCount >= Math.max(1, opts.totalGaps - 1)) {
     return {
       status: 'future_proofed',
       label: 'Future Proofed',
-      blurb: 'Major service gaps improved under the selected growth scenario.',
+      blurb: 'Major service gaps improved; this plan stays active until Copilot identifies a new coverage need on the timeline.',
     }
   }
   return {
     status: 'holds_through_2050s',
     label: `Holds Through ${timelineDecadeLabel(opts.selectedYear)}`,
-    blurb: 'Plan resolves several gaps; some pressure points remain to monitor on the timeline.',
+    blurb: 'Applied plan remains valid for the rest of this simulation unless Copilot surfaces a new gap or you rescope the scenario.',
   }
 }
 
@@ -183,22 +174,23 @@ function buildWarningMessage(opts: {
   selectedYear: number
   projectedPopulation: number
   scenarioName: string
+  copilotFollowUp: boolean
+  copilotFollowUpFromAdvisory: boolean
 }): string | null {
-  if (opts.stress === 'critical' && opts.hasAppliedAIPlan) {
-    return `Capacity Warning: by ${opts.selectedYear}, projected population (${opts.projectedPopulation.toLocaleString()}) has expanded underserved zones beyond the 2026 plan's coverage. A Phase 2 infrastructure investment is needed.`
+  if (!opts.hasAppliedAIPlan) {
+    if (opts.stress === 'critical') {
+      return `Critical: ${opts.selectedYear} projected population has outgrown current infrastructure. Run analysis to generate a future-proofed plan.`
+    }
+    if (opts.stress === 'high') {
+      return `High growth pressure at ${opts.selectedYear}: run infrastructure gap analysis before applying a plan.`
+    }
+    return null
   }
-  if (opts.stress === 'critical' && !opts.hasAppliedAIPlan) {
-    return `Critical: ${opts.selectedYear} projected population has outgrown current infrastructure. Run analysis to generate a future-proofed plan.`
-  }
-  if (opts.stress === 'high' && opts.hasAppliedAIPlan) {
-    const around = Math.min(2101, Math.max(opts.selectedYear + 8, suggestedRevisitYear(opts.selectedYear) - 7))
-    return `Growth pressure is rising in housing and emergency-access zones. The ${opts.scenarioName} plan still holds, but recommend re-analysis around ${around}.`
-  }
-  if (opts.stress === 'moderate') {
-    return 'Growth pressure is increasing in housing and emergency-access zones.'
-  }
-  if (opts.projectedPopulation > 650_000) {
-    return 'Population pressure is invalidating parts of the current plan.'
+  if (opts.copilotFollowUp) {
+    if (opts.copilotFollowUpFromAdvisory) {
+      return 'Copilot detected a timeline gap that the current plan does not cover; review the follow-on recommendation in the Copilot panel.'
+    }
+    return 'Identified service gaps are still open under the applied plan; add coverage or re-analyze before relying on late-horizon outcomes.'
   }
   return null
 }
@@ -212,6 +204,7 @@ function buildNarrative(opts: {
   cityHealthBefore: number
   cityHealthAfter: number
   totalCost: number
+  copilotFollowUpFromAdvisory: boolean
 }): string {
   const residentsLabel = opts.residentsServed.toLocaleString()
   const costLabel = `$${Math.round(opts.totalCost / 1_000_000)}M`
@@ -219,14 +212,15 @@ function buildNarrative(opts: {
     return `${opts.cityName} has visible service gaps. The ${opts.scenarioName} lens is staged — apply the plan to see ${opts.selectedYear} outcomes.`
   }
   if (opts.status === 'needs_phase_2') {
-    return `The applied ${opts.scenarioName} plan improves current service gaps, but long-term growth creates renewed pressure by ${opts.selectedYear}. A Phase 2 infrastructure investment (~${costLabel} budget basis) is recommended for residents projected through that horizon.`
+    if (opts.copilotFollowUpFromAdvisory) {
+      return `By ${opts.selectedYear}, Copilot has identified a follow-on gap the Phase 1 plan no longer covers. Implement the recommended Phase 2 placement (~${costLabel} budget basis) or rescope — the active plan stays valid for earlier years on the timeline.`
+    }
+    return `The applied ${opts.scenarioName} plan improved baseline coverage, but open gaps still need work at ${opts.selectedYear}. Close the remaining gaps or re-run analysis before treating the scenario as fully covered (~${costLabel} basis for the current recommendation set).`
   }
   if (opts.status === 'holds_through_2050s') {
-    const decade = timelineDecadeLabel(opts.selectedYear)
-    const revisit = suggestedRevisitYear(opts.selectedYear)
-    return `The applied ${opts.scenarioName} plan keeps service coverage steady through the ${decade} for ${residentsLabel} residents. Re-analysis recommended before ${revisit}.`
+    return `The applied ${opts.scenarioName} plan remains the active Copilot recommendation at ${opts.selectedYear} for ${residentsLabel} residents served. It is assumed to hold through the rest of this simulation until Copilot flags a new gap (for example a late-horizon advisory) or you change the scenario.`
   }
-  return `The applied ${opts.scenarioName} plan resolves all identified service gaps in ${opts.cityName}'s near-term planning horizon, lifting City Health from ${Math.round(opts.cityHealthBefore)} to ${Math.round(opts.cityHealthAfter)} for ${residentsLabel} projected residents.`
+  return `The applied ${opts.scenarioName} plan resolves the analyzed gaps in ${opts.cityName} for the ${opts.selectedYear} view, lifting City Health from ${Math.round(opts.cityHealthBefore)} to ${Math.round(opts.cityHealthAfter)} for ${residentsLabel} projected residents. It remains in force until Copilot identifies a new coverage need on the timeline.`
 }
 
 function buildPitchSummary(d: {
@@ -264,6 +258,8 @@ interface PlanningStateLike {
   infrastructure: { id: string; name: string; status: string; category: string; costEstimate: number; reason: string; impactScore: number; confidence: number; expectedImpact?: { populationServed?: number } }[]
   aiRecommendations: { id: string; name: string; category: string; costEstimate: number; reason: string; impactScore: number; confidence: number; expectedImpact?: { populationServed?: number } }[]
   topRecommendation: AIRecommendation
+  /** Copilot Phase-2 / late-gap alert — when set, a follow-on plan is needed. */
+  dynamicAdvisory: { id?: string; title?: string; message?: string } | null
   impactSummary: {
     residentsServed: number
     gapsFixed: number
@@ -277,6 +273,12 @@ interface PlanningStateLike {
   } | null
   timelineYear: number
   timelinePopulation: number
+}
+
+function copilotFollowUpPending(planning: PlanningStateLike, activeGapCount: number): { needed: boolean; fromAdvisory: boolean } {
+  if (planning.dynamicAdvisory) return { needed: true, fromAdvisory: true }
+  if (planning.hasAppliedAIPlan && activeGapCount > 0) return { needed: true, fromAdvisory: false }
+  return { needed: false, fromAdvisory: false }
 }
 
 export function buildReportData(planning: PlanningStateLike, scenarioId: ScenarioId): PlanningReportData {
@@ -328,13 +330,15 @@ export function buildReportData(planning: PlanningStateLike, scenarioId: Scenari
 
   const projectedPopulation = projectedPopulationFor(planning.cityId, planning.timelineYear, planning.timelinePopulation)
   const stressLevel = computeTimelineStress(planning.cityId, planning.timelineYear, projectedPopulation)
+  const followUp = copilotFollowUpPending(planning, activeGaps.length)
   const { status, label, blurb } = determineStatus({
     hasAppliedAIPlan: planning.hasAppliedAIPlan,
-    stress: stressLevel,
     cityHealthDelta,
     improvedCount: serviceGapsImproved,
     totalGaps: planning.underservedZones.length,
     selectedYear: planning.timelineYear,
+    copilotFollowUp: followUp.needed,
+    copilotFollowUpFromAdvisory: followUp.fromAdvisory,
   })
   const warningMessage = buildWarningMessage({
     stress: stressLevel,
@@ -342,6 +346,8 @@ export function buildReportData(planning: PlanningStateLike, scenarioId: Scenari
     selectedYear: planning.timelineYear,
     projectedPopulation,
     scenarioName,
+    copilotFollowUp: followUp.needed,
+    copilotFollowUpFromAdvisory: followUp.fromAdvisory,
   })
 
   const cityHealthBefore = before?.cityHealth ?? 0
@@ -355,6 +361,7 @@ export function buildReportData(planning: PlanningStateLike, scenarioId: Scenari
     cityHealthBefore,
     cityHealthAfter,
     totalCost,
+    copilotFollowUpFromAdvisory: followUp.fromAdvisory,
   })
   const pitchSummary = buildPitchSummary({
     cityName,

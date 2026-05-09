@@ -6,7 +6,7 @@ import { useCityStore } from '@/stores/cityStore'
 import { useScenarioStore } from '@/stores/scenarioStore'
 import { useSimulationStore } from '@/stores/simulationStore'
 import { useTypewriter } from '@/hooks/useTypewriter'
-import { buildReportData, suggestedRevisitYear, timelineDecadeLabel } from '@/state/buildReportData'
+import { buildReportData } from '@/state/buildReportData'
 
 type CopilotStage = 'standby' | 'diagnosed' | 'applied'
 
@@ -133,9 +133,9 @@ export function RightPanel() {
       const residents = reportData.residentsServed.toLocaleString()
       const cityHealthAfter = Math.round(reportData.afterMetrics?.cityHealth ?? 0)
       const horizonNote = reportData.status === 'needs_phase_2'
-        ? ` But by ${reportData.selectedYear} the plan no longer covers projected demand — Phase 2 is needed.`
+        ? ` Copilot indicates a follow-on plan is needed at this point on the timeline.`
         : reportData.status === 'holds_through_2050s'
-          ? ` Plan holds through the ${timelineDecadeLabel(reportData.selectedYear)}; recommend re-analysis before ${suggestedRevisitYear(reportData.selectedYear)}.`
+          ? ` This plan stays active for the rest of the simulation until Copilot flags a new gap.`
           : ''
       return `${scenarioLens.label} plan applied. ${residents} residents now reached, City Health at ${cityHealthAfter}.${horizonNote} ${scenarioLens.appliedNote}`
     }
