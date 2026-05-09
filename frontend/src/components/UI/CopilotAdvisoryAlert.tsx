@@ -8,6 +8,8 @@ type Props = {
   onApply: () => void
   /** comfortable adds slightly more padding (default compact). */
   density?: 'compact' | 'comfortable'
+  onRecommendationHoverEnter?: () => void
+  onRecommendationHoverLeave?: () => void
 }
 
 /** Phase-2 gap alert — use in Copilot rail and right Copilot column for parity. */
@@ -16,6 +18,8 @@ export function CopilotAdvisoryAlert({
   onReview,
   onApply,
   density = 'compact',
+  onRecommendationHoverEnter,
+  onRecommendationHoverLeave,
 }: Props) {
   const compact = density === 'compact'
   const pad = compact ? 'p-2' : 'p-3'
@@ -24,6 +28,9 @@ export function CopilotAdvisoryAlert({
   const boxPad = compact ? 'px-2 py-1.5 mt-1.5' : 'px-2.5 py-2 mt-2'
   const btnPad = compact ? 'py-1.5' : 'py-2'
   const btnRow = compact ? 'mt-2 gap-1.5' : 'mt-2.5 gap-2 sm:gap-2.5'
+
+  const showPlacement = (advisory.actionablePlacement ?? true) && Boolean(advisory.recommendation)
+  const catalog = advisory.catalogItems?.length ? advisory.catalogItems : null
 
   return (
     <motion.div
@@ -57,20 +64,36 @@ export function CopilotAdvisoryAlert({
           <p className={`mt-0.5 ${bodyCls}`} style={{ color: 'var(--color-text-secondary)' }}>
             {advisory.message}
           </p>
-          <div
-            className={`rounded-md ${boxPad}`}
-            style={{ background: 'rgba(255,255,255,0.4)', border: '1px solid rgba(245,158,11,0.28)' }}
-          >
-            <div className={`font-semibold ${compact ? 'text-[11px]' : 'text-xs'}`} style={{ color: 'var(--color-text-primary)' }}>
-              {advisory.recommendationName}
+          {catalog ? (
+            <ul
+              className={`mt-1.5 list-disc pl-4 ${compact ? 'text-[10px] leading-snug' : 'text-[11px] leading-relaxed'}`}
+              style={{ color: 'var(--color-text-secondary)' }}
+            >
+              {catalog.map((line) => (
+                <li key={line}>{line}</li>
+              ))}
+            </ul>
+          ) : null}
+          {showPlacement ? (
+            <div
+              className={`rounded-md ${boxPad}`}
+              style={{ background: 'rgba(255,255,255,0.4)', border: '1px solid rgba(245,158,11,0.28)' }}
+              onMouseEnter={onRecommendationHoverEnter}
+              onMouseLeave={onRecommendationHoverLeave}
+              role="group"
+              aria-label="Follow-on recommendation"
+            >
+              <div className={`font-semibold ${compact ? 'text-[11px]' : 'text-xs'}`} style={{ color: 'var(--color-text-primary)' }}>
+                {advisory.recommendationName}
+              </div>
+              <p className={`mt-0.5 ${compact ? 'text-[9px] leading-snug' : 'text-[10px] leading-relaxed'}`} style={{ color: 'var(--color-text-muted)' }}>
+                {advisory.recommendationReason}
+              </p>
             </div>
-            <p className={`mt-0.5 ${compact ? 'text-[9px] leading-snug' : 'text-[10px] leading-relaxed'}`} style={{ color: 'var(--color-text-muted)' }}>
-              {advisory.recommendationReason}
-            </p>
-          </div>
+          ) : null}
         </div>
       </div>
-      <div className={`grid grid-cols-2 ${btnRow}`}>
+      <div className={`${showPlacement ? 'grid grid-cols-2' : 'grid grid-cols-1'} ${btnRow}`}>
         <button
           type="button"
           onClick={onReview}
@@ -83,18 +106,20 @@ export function CopilotAdvisoryAlert({
         >
           Review
         </button>
-        <button
-          type="button"
-          onClick={onApply}
-          className={`rounded-md px-2 ${btnPad} text-[10px] font-semibold transition-opacity hover:opacity-95`}
-          style={{
-            color: 'var(--color-accent-green)',
-            background: 'rgba(0,184,148,0.10)',
-            border: '1px solid rgba(0,184,148,0.38)',
-          }}
-        >
-          Apply
-        </button>
+        {showPlacement ? (
+          <button
+            type="button"
+            onClick={onApply}
+            className={`rounded-md px-2 ${btnPad} text-[10px] font-semibold transition-opacity hover:opacity-95`}
+            style={{
+              color: 'var(--color-accent-green)',
+              background: 'rgba(0,184,148,0.10)',
+              border: '1px solid rgba(0,184,148,0.38)',
+            }}
+          >
+            Apply
+          </button>
+        ) : null}
       </div>
     </motion.div>
   )

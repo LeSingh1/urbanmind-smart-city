@@ -36,6 +36,7 @@ import type { AIRecommendation, BudgetLevel, BudgetSummary, CityMode, CityProfil
 import { runFremonEnginePipelineAsync, type FremonEngineBundle } from '@/copilot/pipeline'
 import type { AgentAction, SimulationFrame } from '@/types/simulation.types'
 import type { ReportArchiveEntry } from '@/state/buildReportData'
+import { resolveActiveRecommendationZoneId } from '@/utils/copilotRecommendationZones'
 
 type Speed = 1 | 5 | 10 | 50
 
@@ -62,8 +63,8 @@ interface PlanningState {
   hasAnalyzed: boolean
   hasAppliedAIPlan: boolean
   isReportOpen: boolean
-  focusedRecommendationId: string | null
-  focusedRecommendationZoneId: string | null
+  activeRecommendationId: string | null
+  activeRecommendationZoneId: string | null
   /** True when the Fremon flow was produced by the deterministic engine + validator. */
   useEngine: boolean
   /** Last engine pipeline bundle (kept for debug panel + validation badges). */
@@ -114,13 +115,20 @@ export interface DynamicAdvisory {
   year: number
   title: string
   message: string
+  /** Phase 2+ future-advisory catalog (display-only layer; Phase 1 plan stays on the map). */
+  catalogItems?: string[]
+  /**
+   * When false, show catalog/message only — no optional Phase 2 annex placement.
+   * Omitted means true (legacy / actionable annex).
+   */
+  actionablePlacement?: boolean
   actionLabel: string
   recommendationName: string
   recommendationReason: string
   scenarioId: ScenarioId
   recommendationId: string
   zoneId: string
-  recommendation: InfrastructureItem
+  recommendation?: InfrastructureItem
   unread: boolean
 }
 
@@ -678,8 +686,8 @@ export const useSimulationStore = create<SimulationStore>((set, get) => ({
         underservedZones,
         afterScores,
         hasAppliedAIPlan: true,
-        focusedRecommendationId: appliedFocus?.id ?? state.planning.focusedRecommendationId,
-        focusedRecommendationZoneId: appliedFocusZoneId ?? state.planning.focusedRecommendationZoneId,
+        activeRecommendationId: appliedFocus?.id ?? state.planning.activeRecommendationId,
+        activeRecommendationZoneId: appliedFocusZoneId ?? state.planning.activeRecommendationZoneId,
         undoStack: [...state.planning.undoStack, state.planning.infrastructure],
         impactSummary: {
           residentsServed:
@@ -706,7 +714,7 @@ export const useSimulationStore = create<SimulationStore>((set, get) => ({
 
   applyDynamicAdvisoryPlan: (scenarioId = 'balanced') => set((state) => {
     const advisory = state.planning.dynamicAdvisory
-    if (!advisory) return state
+    if (!advisory?.recommendation || advisory.actionablePlacement === false) return state
     const scenario = normalizeScenario(scenarioId)
     const item = {
       ...advisory.recommendation,
@@ -744,6 +752,19 @@ export const useSimulationStore = create<SimulationStore>((set, get) => ({
       totalEstimatedCost: (baseScores.totalEstimatedCost ?? 0) + item.costEstimate,
     }
     const frame = scoresToFrame(afterScores, state.planning.timelineYear, infrastructure, underservedZones, state.planning.cityId)
+    const planningSnapshotForAdvisory: PlanningState = {
+      ...state.planning,
+      infrastructure,
+      underservedZones,
+      afterScores,
+      hasAppliedAIPlan: true,
+      dynamicAdvisory: state.planning.dynamicAdvisory,
+    }
+    const nextDynamicAdvisory = buildDynamicAdvisory(
+      state.planning.timelineYear,
+      planningSnapshotForAdvisory,
+      underservedZones,
+    )
     return {
       currentFrame: frame,
       currentYear: state.planning.timelineYear,
@@ -768,9 +789,9 @@ export const useSimulationStore = create<SimulationStore>((set, get) => ({
         underservedZones,
         afterScores,
         hasAppliedAIPlan: true,
-        dynamicAdvisory: null,
-        focusedRecommendationId: item.id,
-        focusedRecommendationZoneId: advisory.zoneId,
+        dynamicAdvisory: nextDynamicAdvisory,
+        activeRecommendationId: item.id,
+        activeRecommendationZoneId: advisory.zoneId,
         undoStack: [...state.planning.undoStack, state.planning.infrastructure],
         impactSummary: {
           residentsServed: nextResidentsServed,
@@ -848,8 +869,8 @@ export const useSimulationStore = create<SimulationStore>((set, get) => ({
         underservedZones,
         afterScores,
         hasAppliedAIPlan: true,
-        focusedRecommendationId: appliedFocus?.id ?? state.planning.focusedRecommendationId,
-        focusedRecommendationZoneId: appliedFocusZoneId ?? state.planning.focusedRecommendationZoneId,
+        activeRecommendationId: appliedFocus?.id ?? state.planning.activeRecommendationId,
+        activeRecommendationZoneId: appliedFocusZoneId ?? state.planning.activeRecommendationZoneId,
         hasComparedPlans: true,
         planBattlePlans: FREMON_PLAN_BATTLE,
         undoStack: [...state.planning.undoStack, state.planning.infrastructure],
@@ -1023,10 +1044,14 @@ export const useSimulationStore = create<SimulationStore>((set, get) => ({
   openReport: () => set((state) => ({ planning: { ...state.planning, isReportOpen: true } })),
   closeReport: () => set((state) => ({ planning: { ...state.planning, isReportOpen: false } })),
   focusRecommendation: (id) => set((state) => {
-    if (!id) return { planning: { ...state.planning, focusedRecommendationId: null, focusedRecommendationZoneId: null } }
+    if (!id) {
+      return {
+        planning: { ...state.planning, activeRecommendationId: null, activeRecommendationZoneId: null },
+      }
+    }
     const rec = state.planning.aiRecommendations.find((item) => item.id === id)
-    const zoneId = rec ? state.planning.underservedZones.find((zone) => zone.improvedBy?.includes(rec.id))?.id ?? null : null
-    return { planning: { ...state.planning, focusedRecommendationId: id, focusedRecommendationZoneId: zoneId } }
+    const zoneId = rec ? resolveActiveRecommendationZoneId(rec, state.planning.underservedZones) : null
+    return { planning: { ...state.planning, activeRecommendationId: id, activeRecommendationZoneId: zoneId } }
   }),
   acknowledgeDynamicAdvisory: () => set((state) => ({
     planning: {
@@ -1057,8 +1082,8 @@ function createInitialPlanningState(): PlanningState {
     hasAnalyzed: false,
     hasAppliedAIPlan: false,
     isReportOpen: false,
-    focusedRecommendationId: null,
-    focusedRecommendationZoneId: null,
+    activeRecommendationId: null,
+    activeRecommendationZoneId: null,
     useEngine: false,
     engineBundle: null,
     selectedInfrastructureId: null,
@@ -1106,8 +1131,8 @@ type PlanningTimelinePatch = Pick<
   | 'growthPressureZones'
   | 'underservedZones'
   | 'dynamicAdvisory'
-  | 'focusedRecommendationId'
-  | 'focusedRecommendationZoneId'
+  | 'activeRecommendationId'
+  | 'activeRecommendationZoneId'
   | 'beforeScores'
 >
 
@@ -1140,6 +1165,10 @@ function computePlanningTimelineFields(state: { planning: PlanningState }, year:
     }
   })
   const dynamicAdvisory = buildDynamicAdvisory(year, planning, underservedZones)
+  const advisoryFocus =
+    dynamicAdvisory?.actionablePlacement !== false &&
+    dynamicAdvisory?.recommendationId &&
+    dynamicAdvisory?.recommendation
   return {
     timelineYear: year,
     timelinePhase: timeline.phase,
@@ -1147,8 +1176,8 @@ function computePlanningTimelineFields(state: { planning: PlanningState }, year:
     growthPressureZones,
     underservedZones,
     dynamicAdvisory,
-    focusedRecommendationId: dynamicAdvisory?.recommendationId ?? planning.focusedRecommendationId,
-    focusedRecommendationZoneId: dynamicAdvisory?.zoneId ?? planning.focusedRecommendationZoneId,
+    activeRecommendationId: advisoryFocus ? dynamicAdvisory.recommendationId : planning.activeRecommendationId,
+    activeRecommendationZoneId: advisoryFocus ? dynamicAdvisory.zoneId : planning.activeRecommendationZoneId,
     beforeScores: planning.hasAppliedAIPlan ? planning.beforeScores : timeline.metrics,
   }
 }
@@ -1968,20 +1997,96 @@ function timelineForYear(year: number, planning: PlanningState) {
   }
 }
 
+const PHASE2_ADVISORY_CATALOG = [
+  'South Emergency Annex',
+  'North Transit Capacity Expansion',
+  'Central Green Space Extension',
+  'East Education Satellite Campus',
+] as const
+
+const FUTURE_CAPACITY_THRESHOLD_MESSAGE =
+  'Population Threshold Reached. Previous infrastructure is now above capacity. New gaps detected in North Transit and South Emergency coverage.'
+
+function nextAdvisoryUnread(planning: PlanningState, nextId: string): boolean {
+  const prev = planning.dynamicAdvisory
+  if (!prev) return true
+  if (prev.id === nextId) return prev.unread
+  return true
+}
+
 function buildDynamicAdvisory(
   year: number,
   planning: PlanningState,
   underservedZones: UnderservedZone[],
 ): DynamicAdvisory | null {
-  if (!planning.hasAnalyzed || planning.cityId !== 'fremon' || year < 2075) return null
-  if (planning.infrastructure.some((item) => item.id.startsWith('fremon-phase2-south-annex'))) return null
+  if (!planning.hasAnalyzed || planning.cityId !== 'fremon' || !planning.hasAppliedAIPlan) return null
+
+  const { population } = timelineForYear(year, planning)
+  const phase2SouthAnnexApplied = planning.infrastructure.some((item) => item.id.startsWith('fremon-phase2-south-annex'))
+
+  const crossCapacityThreshold = year >= 2060 || population >= 650_000
+  const annexWindow = year >= 2075 && !phase2SouthAnnexApplied
   const southGap =
     underservedZones.find((zone) => zone.id === 'fremon-south-emergency-gap')
     ?? underservedZones.find((zone) => zone.gapType === 'emergency_access')
-  if (!southGap) return null
+
   const scenario = normalizeScenario(planning.priority)
+
+  /** Phase 2 future catalog — timeline advisory layer after 2080; Phase 1 placement stays unchanged. */
+  if (year >= 2080) {
+    const recommendation = annexWindow && southGap ? buildPhase2Recommendation(scenario, year) : undefined
+    const actionablePlacement = Boolean(recommendation)
+
+    let message =
+      'The applied Phase 1 plan stays on the map. The following Phase 2 projects are an advisory layer only — they do not replace Phase 1 placements.'
+    if (actionablePlacement && recommendation) {
+      message += ` You may optionally add ${recommendation.name} as one implementation step aligned with Phase 2.`
+    }
+
+    return {
+      id: 'phase-2-future-catalog',
+      year,
+      title: 'Phase 2 Required',
+      message,
+      catalogItems: [...PHASE2_ADVISORY_CATALOG],
+      actionablePlacement,
+      actionLabel: recommendation ? `Apply ${recommendation.name}` : '',
+      recommendationName: recommendation?.name ?? '',
+      recommendationReason: recommendation?.reason ?? '',
+      scenarioId: scenario,
+      recommendationId: recommendation?.id ?? '',
+      zoneId: southGap?.id ?? '',
+      recommendation,
+      unread: nextAdvisoryUnread(planning, 'phase-2-future-catalog'),
+    }
+  }
+
+  /** Capacity signal from 2060 or population ceiling — informational unless South annex placement is eligible. */
+  if (crossCapacityThreshold) {
+    const recommendation = annexWindow && southGap ? buildPhase2Recommendation(scenario, year) : undefined
+    const actionablePlacement = Boolean(recommendation)
+
+    return {
+      id: 'future-capacity-threshold',
+      year,
+      title: 'Future capacity advisory',
+      message: FUTURE_CAPACITY_THRESHOLD_MESSAGE,
+      actionablePlacement,
+      actionLabel: recommendation ? `Apply ${recommendation.name}` : '',
+      recommendationName: recommendation?.name ?? '',
+      recommendationReason: recommendation?.reason ?? '',
+      scenarioId: scenario,
+      recommendationId: recommendation?.id ?? '',
+      zoneId: southGap?.id ?? '',
+      recommendation,
+      unread: nextAdvisoryUnread(planning, 'future-capacity-threshold'),
+    }
+  }
+
+  /** Pre-2060 timeline: retain late annex offer only once the south gap reopens (2075+). */
+  if (!annexWindow || !southGap) return null
+
   const recommendation = buildPhase2Recommendation(scenario, year)
-  const wasAlreadyUnread = planning.dynamicAdvisory?.id === 'future-south-emergency-annex' && planning.dynamicAdvisory.unread
   return {
     id: 'future-south-emergency-annex',
     year,
@@ -1994,7 +2099,7 @@ function buildDynamicAdvisory(
     recommendationId: recommendation.id,
     zoneId: southGap.id,
     recommendation,
-    unread: wasAlreadyUnread || planning.dynamicAdvisory?.id !== 'future-south-emergency-annex',
+    unread: nextAdvisoryUnread(planning, 'future-south-emergency-annex'),
   }
 }
 

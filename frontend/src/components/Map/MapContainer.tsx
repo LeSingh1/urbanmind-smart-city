@@ -186,19 +186,6 @@ function DistrictFlyController({ center }: { center: [number, number] | null }) 
   return null
 }
 
-function FocusFlyController({ center, zoom = 13 }: { center: [number, number] | null; zoom?: number }) {
-  const map = useMap()
-  const last = useRef<string | null>(null)
-  useEffect(() => {
-    if (!center) return
-    const key = `${center[0].toFixed(5)},${center[1].toFixed(5)},${zoom}`
-    if (last.current === key) return
-    last.current = key
-    map.flyTo(center, zoom, { duration: 1 })
-  }, [center, map, zoom])
-  return null
-}
-
 function CleanPlanningGridLayer() {
   const map = useMap()
   useEffect(() => {
@@ -539,23 +526,26 @@ function ExistingDotPopup({ dot }: { dot: ExistingInfrastructure }) {
   )
 }
 
-function infraIcon(item: InfrastructureItem, dropDelayMs = 0, focused = false) {
+function infraIcon(item: InfrastructureItem, dropDelayMs = 0, focused = false, dimmed = false) {
   const isProposed = item.status === 'proposed'
   const isAi = item.status === 'ai_recommended'
   const isNew = isProposed || isAi
   const color = isAi ? MAP_PROPOSED_HEX : CATEGORY_COLOR[item.category]
   const border = focused
-    ? `3px solid ${MAP_PROPOSED_HEX}`
+    ? '3px solid rgba(255,255,255,0.95)'
     : isProposed ? `2px solid ${color}` : `1px solid ${color}`
-  const focusShadow = focused ? '0 0 0 5px rgba(56, 189, 248, 0.22), 0 0 28px rgba(56, 189, 248, 0.52)' : null
+  const focusShadow = focused
+    ? '0 0 0 2px rgba(255,255,255,0.45), 0 0 0 4px rgba(255,255,255,0.12), 0 0 26px rgba(255,255,255,0.35)'
+    : null
+  const dimmedStyle = dimmed ? 'opacity:0.38;filter:saturate(0.65);' : ''
   const shadow = focusShadow ?? (isAi
     ? '0 0 0 4px rgba(56, 189, 248, 0.14), 0 0 22px rgba(56, 189, 248, 0.42)'
     : '4px 4px 8px #babecc,-4px -4px 8px #ffffff')
-  const classes = `${isNew ? 'infra-pop' : ''} ${focused ? 'infra-focused' : ''}`.trim()
+  const classes = `${isNew ? 'infra-pop' : ''}`.trim()
   const popStyle = isNew ? `animation-delay:${dropDelayMs}ms;color:${color};` : ''
   return L.divIcon({
     className: 'urbanmind-infra-icon',
-    html: `<div class="${classes}" style="${popStyle}width:24px;height:24px;border-radius:8px;background:#f4f7fb;border:${border};box-shadow:${shadow};display:grid;place-items:center;color:${color};font:800 12px Inter,system-ui;">${isAi ? ICON_AI : CATEGORY_ICON[item.category]}</div>`,
+    html: `<div class="${classes}" style="${popStyle}${dimmedStyle}width:24px;height:24px;border-radius:8px;background:#f4f7fb;border:${border};box-shadow:${shadow};display:grid;place-items:center;color:${color};font:800 12px Inter,system-ui;">${isAi ? ICON_AI : CATEGORY_ICON[item.category]}</div>`,
     iconSize: [24, 24],
     iconAnchor: [12, 12],
   })
@@ -1119,18 +1109,6 @@ export function MapContainer() {
     return district?.center ?? null
   }, [planning.districtProfiles, planning.selectedDistrictId])
 
-  const focusedMapCenter = useMemo<[number, number] | null>(() => {
-    const focusedZone = planning.underservedZones.find((zone) => zone.id === planning.focusedRecommendationZoneId)
-    if (focusedZone) return focusedZone.center
-    const focusedItem = planning.infrastructure.find((item) => item.id === planning.focusedRecommendationId)
-      ?? planning.aiRecommendations.find((item) => item.id === planning.focusedRecommendationId)
-    if (focusedItem?.geometryType === 'Point') {
-      const [lng, lat] = focusedItem.coordinates as GeoJSON.Position
-      return [lat, lng]
-    }
-    return null
-  }, [planning.aiRecommendations, planning.focusedRecommendationId, planning.focusedRecommendationZoneId, planning.infrastructure, planning.underservedZones])
-
   const activeSuggestionCategory = selectedOverrideZone ? TOOL_ZONE_TO_CATEGORY[selectedOverrideZone] : null
   const visibleSuggestions = useMemo(() => {
     if (!isOverrideModeActive || !activeSuggestionCategory || !planning.hasAnalyzed) return []
@@ -1259,7 +1237,6 @@ export function MapContainer() {
             <CleanPlanningGridLayer />
             {city && <CityFlyController city={city} />}
             <DistrictFlyController center={selectedDistrictCenter} />
-            <FocusFlyController center={focusedMapCenter} zoom={14} />
             <MapClickHandler
               active={isOverrideModeActive}
               zoneTypeId={selectedOverrideZone}
@@ -1280,16 +1257,20 @@ export function MapContainer() {
               const fillBoost = zone.isImproved ? 0 : yearStress * 0.18
               const strokeBase = zone.isImproved ? 0.45 : 0.8
               const strokeBoost = zone.isImproved ? 0 : yearStress * 0.15
-              const isFocused = zone.id === planning.focusedRecommendationZoneId
+              const hasActiveRec = Boolean(planning.activeRecommendationId)
+              const isActiveZone = zone.id === planning.activeRecommendationZoneId
+              const zoneMuted = hasActiveRec && !isActiveZone && !zone.isImproved
+              const dimFill = zoneMuted ? 0.45 : 1
+              const dimStroke = zoneMuted ? 0.35 : 1
               return (
               <AnimatedZoneCircle
                 key={zone.id}
                 center={zone.center}
                 targetRadius={zone.radiusMeters * radiusMult}
-                targetFillOpacity={Math.min(0.55, fillBase + fillBoost)}
-                targetOpacity={Math.min(1, strokeBase + strokeBoost + (isFocused ? 0.25 : 0))}
-                targetWeight={isFocused ? 4 : (zone.isImproved ? 1 : 2 + yearStress)}
-                pathColor={isFocused ? '#FFFFFF' : zone.isImproved ? 'var(--color-accent-green)' : '#FF5A3D'}
+                targetFillOpacity={Math.min(0.55, fillBase + fillBoost) * dimFill}
+                targetOpacity={Math.min(1, (strokeBase + strokeBoost + (isActiveZone ? 0.35 : 0)) * dimStroke)}
+                targetWeight={isActiveZone ? 5 : (zone.isImproved ? 1 : 2 + yearStress)}
+                pathColor={isActiveZone ? '#FFFFFF' : zone.isImproved ? 'var(--color-accent-green)' : '#FF5A3D'}
                 fillColor={zone.isImproved ? 'var(--color-accent-green)' : '#FF5A3D'}
                 dashArray={zone.isImproved ? '5 5' : undefined}
               >
@@ -1373,18 +1354,20 @@ export function MapContainer() {
               const newOrderIdx = isNew
                 ? visibleInfrastructure.slice(0, idx).filter((it) => it.status === 'proposed' || it.status === 'ai_recommended').length
                 : 0
-              const focused = item.id === planning.focusedRecommendationId
-              const iconKey = `${item.id}|${item.status}|${focused ? 'f' : 'n'}`
+              const activeId = planning.activeRecommendationId
+              const isActiveMarker = Boolean(activeId && item.id === activeId)
+              const dimAiPeer = Boolean(activeId && item.status === 'ai_recommended' && item.id !== activeId)
+              const iconKey = `${item.id}|${item.status}|${isActiveMarker ? 'a' : 'n'}|${dimAiPeer ? 'd' : 'b'}`
               let cachedIcon = iconCacheRef.current.get(iconKey)
               if (!cachedIcon) {
                 const delay = isNew ? newOrderIdx * 110 : 0
-                cachedIcon = infraIcon(item, delay, focused)
+                cachedIcon = infraIcon(item, delay, isActiveMarker, dimAiPeer)
                 iconCacheRef.current.set(iconKey, cachedIcon)
               }
               const populationServed = Number(item.expectedImpact?.populationServed ?? 0)
               return (
                 <Marker
-                  key={`${item.id}-${item.status}-${focused ? 'f' : 'n'}`}
+                  key={`${item.id}-${item.status}-${isActiveMarker ? 'a' : 'n'}-${dimAiPeer ? 'd' : 'b'}`}
                   position={[lat, lng]}
                   icon={cachedIcon}
                   eventHandlers={{ click: () => selectInfrastructure(item.id) }}

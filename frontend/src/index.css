@@ -349,11 +349,8 @@ button, select, input, a, [role="button"] {
 }
 
 .urbanmind-infra-icon .infra-focused {
-  animation: infraFocusPulse 1500ms ease-in-out infinite;
-}
-@keyframes infraFocusPulse {
-  0%, 100% { transform: scale(1); box-shadow: 0 0 0 4px rgba(var(--rgb-accent), 0.15), 0 0 24px rgba(var(--rgb-accent), 0.45); }
-  50%      { transform: scale(1.08); box-shadow: 0 0 0 8px rgba(var(--rgb-accent), 0.06), 0 0 36px rgba(var(--rgb-accent), 0.55); }
+  /* Former pulse removed — active marker uses inline white glow only (no blink). */
+  animation: none;
 }
 
 @keyframes existingDotFadeIn {

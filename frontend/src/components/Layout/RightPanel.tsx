@@ -166,6 +166,11 @@ export function RightPanel() {
               focusRecommendation(planning.dynamicAdvisory?.recommendationId ?? null)
             }}
             onApply={() => applyDynamicAdvisoryPlan(activeScenario)}
+            onRecommendationHoverEnter={() =>
+              planning.dynamicAdvisory?.recommendationId
+                ? focusRecommendation(planning.dynamicAdvisory.recommendationId)
+                : undefined}
+            onRecommendationHoverLeave={() => focusRecommendation(null)}
           />
         ) : null}
         <p className="text-[13px] leading-snug min-h-[3em]" style={{ color: 'var(--color-text-secondary)' }}>
@@ -231,6 +236,20 @@ export function RightPanel() {
             </div>
             {!planning.hasAppliedAIPlan ? (
               <>
+                <div
+                  className="rounded-lg -mx-1 px-1 transition-[box-shadow,border-color] duration-150"
+                  onMouseEnter={() => topItem?.id && focusRecommendation(topItem.id)}
+                  onMouseLeave={() => focusRecommendation(null)}
+                  style={
+                    topItem && planning.activeRecommendationId === topItem.id
+                      ? {
+                          boxShadow: '0 0 0 1px rgba(255,255,255,0.5), 0 0 22px rgba(255,255,255,0.12)',
+                          border: '1px solid rgba(255,255,255,0.35)',
+                          background: 'rgba(255,255,255,0.04)',
+                        }
+                      : { border: '1px solid transparent' }
+                  }
+                >
                 <h2 className="mt-2 font-display text-lg font-semibold leading-tight" style={{ color: 'var(--color-text-primary)' }}>
                   {topRecommendation.zoneName}
                 </h2>
@@ -246,6 +265,7 @@ export function RightPanel() {
                   <Impact label="Confidence" value={`${Math.round((topItem?.confidence ?? topRecommendation.confidence ?? 0.82) * 100)}%`} />
                   <Impact label="Population Served" value={populationServed.toLocaleString()} />
                 </div>
+                </div>
                 {planning.aiRecommendations.length > 1 && (
                   <div className="mt-3">
                     <div className="font-mono text-[10px] uppercase tracking-widest mb-1.5" style={{ color: 'var(--color-text-muted)' }}>
@@ -253,7 +273,7 @@ export function RightPanel() {
                     </div>
                     <div className="grid gap-1.5">
                       {planning.aiRecommendations.slice(0, 6).map((rec) => {
-                        const focused = planning.focusedRecommendationId === rec.id
+                        const isActive = planning.activeRecommendationId === rec.id
                         return (
                           <button
                             key={rec.id}
@@ -261,11 +281,13 @@ export function RightPanel() {
                             onMouseEnter={() => focusRecommendation(rec.id)}
                             onMouseLeave={() => focusRecommendation(null)}
                             onClick={() => focusRecommendation(rec.id)}
-                            className="rounded-md px-2 py-1.5 text-left text-xs transition-colors"
+                            className="rounded-md px-2 py-1.5 text-left text-xs transition-[background,border,box-shadow] duration-150"
                             style={{
-                              background: focused ? 'rgba(var(--rgb-accent), 0.10)' : 'var(--color-bg-card)',
-                              border: `1px solid ${focused ? 'rgba(var(--rgb-accent), 0.45)' : 'var(--color-border-subtle)'}`,
-                              boxShadow: focused ? '0 0 0 2px rgba(var(--rgb-accent), 0.15)' : 'none',
+                              background: isActive ? 'rgba(255,255,255,0.08)' : 'var(--color-bg-card)',
+                              border: `1px solid ${isActive ? 'rgba(255,255,255,0.55)' : 'var(--color-border-subtle)'}`,
+                              boxShadow: isActive
+                                ? '0 0 0 1px rgba(255,255,255,0.35), 0 0 18px rgba(255,255,255,0.12)'
+                                : 'none',
                               color: 'var(--color-text-secondary)',
                             }}
                           >

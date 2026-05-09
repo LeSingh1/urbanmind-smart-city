@@ -301,6 +301,8 @@ function CopilotPanel() {
               focusRecommendation(advisory.recommendationId)
             }}
             onApply={() => applyDynamicAdvisoryPlan(activeScenario)}
+            onRecommendationHoverEnter={() => focusRecommendation(advisory.recommendationId)}
+            onRecommendationHoverLeave={() => focusRecommendation(null)}
           />
         </PanelSection>
       )}
