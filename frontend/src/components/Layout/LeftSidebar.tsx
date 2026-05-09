@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useState } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import {
   BarChart3,
@@ -7,36 +7,25 @@ import {
   Bot,
   ChevronLeft,
   ChevronRight,
-  CloudSun,
-  Crosshair,
   FileText,
   Flame,
-  GraduationCap,
   Home,
-  Layers,
   Leaf,
   Map,
   Scale,
-  SlidersHorizontal,
-  Shield,
   Sparkles,
   Train,
   Users,
-  Wrench,
 } from 'lucide-react'
 import { ZonePalette } from '@/components/UI/ZonePalette'
 import { useCityStore } from '@/stores/cityStore'
 import { useScenarioStore, scenarioColors, scenarioLabels } from '@/stores/scenarioStore'
 import { useSimulationStore } from '@/stores/simulationStore'
-import { useUIStore } from '@/stores/uiStore'
 import type { ScenarioId } from '@/types/city.types'
 
 const TABS = [
   { id: 'scenario', icon: Map, label: 'Scenario' },
-  { id: 'layers', icon: Layers, label: 'Layers' },
-  { id: 'tools', icon: Wrench, label: 'Tools' },
   { id: 'metrics', icon: BarChart3, label: 'Metrics' },
-  { id: 'timeline', icon: SlidersHorizontal, label: 'Timeline' },
   { id: 'copilot', icon: Bot, label: 'Copilot' },
 ] as const
 
@@ -50,20 +39,6 @@ const SCENARIO_DETAILS: Record<ScenarioId, { icon: React.ElementType; descriptio
   emergency_ready: { icon: Flame, description: 'Prioritizes clinics, hospitals, police, fire, and response coverage.', weights: 'Emergency + response', impact: 'Faster response' },
   max_growth: { icon: Home, description: 'Prioritizes housing capacity while tracking commute and congestion risk.', weights: 'Housing + access', impact: 'More capacity' },
 }
-
-const LAYER_ITEMS = [
-  { id: 'Existing hospitals', icon: Shield, label: 'Existing Clinics', color: '#E74C3C', group: 'Existing Infrastructure' },
-  { id: 'Existing schools', icon: GraduationCap, label: 'Existing Schools', color: '#2E86C1', group: 'Existing Infrastructure' },
-  { id: 'Existing parks', icon: Leaf, label: 'Existing Parks', color: '#27AE60', group: 'Existing Infrastructure' },
-  { id: 'Existing transit', icon: Train, label: 'Existing Transit', color: '#8E44AD', group: 'Existing Infrastructure' },
-  { id: 'Existing police stations', icon: Shield, label: 'Existing Police', color: '#5D4E75', group: 'Existing Infrastructure' },
-  { id: 'Existing fire stations', icon: Flame, label: 'Existing Fire', color: '#E74C3C', group: 'Existing Infrastructure' },
-  { id: 'Growth Pressure', icon: Users, label: 'Housing Growth', color: '#E67E22', group: 'Analysis Overlays' },
-  { id: 'Proposed infrastructure', icon: Crosshair, label: 'Proposed Infrastructure', color: '#38bdf8', group: 'Future Scenario' },
-  { id: 'AI Recommendations', icon: Sparkles, label: 'AI Recommendations', color: '#38bdf8', group: 'Future Scenario' },
-  { id: 'Underserved zones', icon: CloudSun, label: 'Underserved Zones', color: '#FF5A3D', group: 'Analysis Overlays' },
-  { id: 'Coverage Rings', icon: Crosshair, label: 'Coverage Rings', color: '#00B894', group: 'Analysis Overlays' },
-] as const
 
 export function LeftSidebar() {
   const [activePanel, setActivePanel] = useState<TabId | null>('scenario')
@@ -189,10 +164,7 @@ export function LeftSidebar() {
 
             <div className="flex-1 overflow-y-auto">
               {activePanel === 'scenario' && <ScenarioPanel />}
-              {activePanel === 'layers' && <LayersPanel />}
-              {activePanel === 'tools' && <ToolsPanel />}
               {activePanel === 'metrics' && <MetricsPanel />}
-              {activePanel === 'timeline' && <TimelinePanel />}
               {activePanel === 'copilot' && <CopilotPanel />}
             </div>
           </motion.div>
@@ -230,7 +202,7 @@ function ScenarioPanel() {
             </div>
           </div>
           <p className="mt-2 text-[11px] leading-relaxed" style={{ color: 'var(--color-text-secondary)' }}>
-            City selection stays on the home page and top-level app flow. These tabs only control analysis, layers, tools, metrics, and timeline.
+            City selection stays on the home page and top-level app flow. Use Scenario for plan setup, Metrics for scorecards, and Copilot for analysis and apply.
           </p>
         </div>
       </PanelSection>
@@ -273,41 +245,8 @@ function ScenarioPanel() {
           <p className="mt-1 text-[10px] leading-relaxed" style={{ color: 'var(--color-accent-green)' }}>{planning.budgetSummary.guidance}</p>
         </div>
       </PanelSection>
-    </div>
-  )
-}
 
-function LayersPanel() {
-  const { activeLayers, toggleLayer } = useUIStore()
-  return (
-    <div className="p-3 space-y-4">
-      <PanelSection title="Layers">
-        <div className="grid gap-3">
-          {['Existing Infrastructure', 'Future Scenario', 'Analysis Overlays'].map((group) => (
-            <div key={group}>
-              <div className="mb-1.5 font-mono text-[9px] tracking-widest uppercase" style={{ color: 'var(--color-text-muted)' }}>{group}</div>
-              <div className="grid gap-1.5">
-                {LAYER_ITEMS.filter((item) => item.group === group).map((item) => (
-                  <LayerSwitch
-                    key={item.id}
-                    item={item}
-                    checked={activeLayers.has(item.id)}
-                    onToggle={() => toggleLayer(item.id)}
-                  />
-                ))}
-              </div>
-            </div>
-          ))}
-        </div>
-      </PanelSection>
-    </div>
-  )
-}
-
-function ToolsPanel() {
-  return (
-    <div className="p-3 space-y-4">
-      <PanelSection title="Tools">
+      <PanelSection title="Zone palette">
         <ZonePalette compact />
       </PanelSection>
       <TrustCard />
@@ -338,37 +277,6 @@ function MetricsPanel() {
           <ScoreLine label="Education Access" before={planning.beforeScores?.educationAccess} after={planning.afterScores?.educationAccess} />
           <ScoreLine label="Green Space" before={planning.beforeScores?.greenSpace} after={planning.afterScores?.greenSpace} />
           <ScoreLine label="Housing Access" before={planning.beforeScores?.housingAccess} after={planning.afterScores?.housingAccess} />
-        </div>
-      </PanelSection>
-    </div>
-  )
-}
-
-function TimelinePanel() {
-  const { planning, setTimelineYear } = useSimulationStore()
-  return (
-    <div className="p-3 space-y-4">
-      <PanelSection title="2026 to 2036 Growth Timeline">
-        <div className="grid grid-cols-5 gap-1">
-          {([2026, 2028, 2030, 2032, 2036] as const).map((year) => (
-            <button
-              key={year}
-              onClick={() => setTimelineYear(year)}
-              className="rounded-lg py-2 font-mono text-[9px]"
-              style={{
-                border: year === planning.timelineYear ? '1px solid rgba(var(--rgb-accent), 0.42)' : '1px solid var(--color-border-subtle)',
-                color: year === planning.timelineYear ? 'var(--color-accent-cyan)' : 'var(--color-text-muted)',
-                background: year === planning.timelineYear ? 'var(--color-bg-hover)' : 'var(--color-bg-card)',
-              }}
-            >
-              {year}
-            </button>
-          ))}
-        </div>
-        <div className="mt-3 rounded-xl p-3" style={{ background: 'var(--color-bg-hover)', border: '1px solid var(--color-border-subtle)' }}>
-          <div className="font-display text-sm font-semibold" style={{ color: 'var(--color-text-primary)' }}>{planning.timelineYear}</div>
-          <div className="mt-1 font-mono text-[11px]" style={{ color: 'var(--color-accent-cyan)' }}>{planning.timelinePopulation.toLocaleString()} residents</div>
-          <p className="mt-2 text-[11px] leading-relaxed" style={{ color: 'var(--color-text-secondary)' }}>{planning.timelinePhase}</p>
         </div>
       </PanelSection>
     </div>
@@ -531,28 +439,6 @@ function ScenarioCard({ id, active, onSelect }: { id: ScenarioId; active: boolea
         <Chip color="var(--color-accent-green)">{details.impact}</Chip>
       </div>
     </motion.button>
-  )
-}
-
-function LayerSwitch({ item, checked, onToggle }: { item: typeof LAYER_ITEMS[number]; checked: boolean; onToggle: () => void }) {
-  const Icon = item.icon
-  return (
-    <button
-      onClick={onToggle}
-      className="w-full flex items-center justify-between gap-2 rounded-lg px-2.5 py-2"
-      style={{ background: checked ? 'var(--color-bg-hover)' : 'var(--color-bg-card)', border: checked ? `1px solid ${item.color}55` : '1px solid var(--color-border-subtle)' }}
-      aria-pressed={checked}
-    >
-      <span className="flex items-center gap-2 min-w-0">
-        <span className="w-5 h-5 rounded-md grid place-items-center shrink-0" style={{ color: item.color, border: `1px solid ${item.color}55`, background: `${item.color}12` }}>
-          <Icon size={11} />
-        </span>
-        <span className="text-[11px] truncate" style={{ color: 'var(--color-text-secondary)' }}>{item.label}</span>
-      </span>
-      <span style={{ width: 28, height: 16, borderRadius: 999, padding: 2, background: checked ? item.color : 'rgba(255,255,255,0.12)', display: 'flex', justifyContent: checked ? 'flex-end' : 'flex-start' }}>
-        <span style={{ width: 12, height: 12, borderRadius: '50%', background: '#fff' }} />
-      </span>
-    </button>
   )
 }
 
