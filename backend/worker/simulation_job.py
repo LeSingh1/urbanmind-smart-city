@@ -136,7 +136,7 @@ def _city_boundary_feature(city: City) -> dict:
 def _precompute_bfs(city: City) -> list[list[tuple[int, int]]]:
     """
     BFS expansion seeded from the city's sim_center.
-    Returns a list of 51 elements (years 0-50). Each element is the list of
+    Returns a list of 76 elements (years 0-75). Each element is the list of
     (col, row) cells that are newly placed IN THAT YEAR. Year 0 = seed cells.
 
     The heap key is (manhattan_distance_from_seed, col * ROWS + row) to ensure
@@ -186,7 +186,7 @@ def _precompute_bfs(city: City) -> list[list[tuple[int, int]]]:
     # Year 0: place seed cells
     years.append(list(seeds))
 
-    for _year in range(1, 51):
+    for _year in range(1, 76):
         added: list[tuple[int, int]] = []
         while heap and len(added) < NEW_PER_YEAR:
             dist, _, col, row = heapq.heappop(heap)
@@ -353,12 +353,12 @@ async def _run_simulation(session_id: str, city_id: str, scenario_id: str) -> No
             },
         )
 
-        # Pre-compute all 51 years of BFS zone expansion once, upfront
+        # Pre-compute full horizon (0-75 → calendar 2026-2101) BFS zone expansion once, upfront
         bfs_years = _precompute_bfs(city)
         clat, clng = _city_sim_center(city)
 
         placed_cells: set[tuple[int, int]] = set()
-        for year in range(0, 51):
+        for year in range(0, 76):
             new_this_year = bfs_years[year] if year < len(bfs_years) else []
             placed_cells.update(new_this_year)
 
@@ -397,4 +397,4 @@ async def _run_simulation(session_id: str, city_id: str, scenario_id: str) -> No
         sim.status = SimulationStatus.complete
         sim.completed_at = datetime.now(timezone.utc)
         await db.commit()
-        await _publish(channel, {"type": "SIM_COMPLETE", "session_id": session_id, "year": 50})
+        await _publish(channel, {"type": "SIM_COMPLETE", "session_id": session_id, "year": 75})

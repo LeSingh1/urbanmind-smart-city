@@ -3,7 +3,6 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { CheckCircle2, Copy, FileText, Sparkles, TriangleAlert, X, Layers } from 'lucide-react'
 import { createPortal } from 'react-dom'
 import { useSimulationStore } from '@/stores/simulationStore'
-import { useScenarioStore } from '@/stores/scenarioStore'
 import { buildReportData, reportDataFingerprint, type PlanningReportData, type ReportStatus } from '@/state/buildReportData'
 
 const GENERATING_STEPS = [
@@ -26,7 +25,6 @@ export function PlanningReportModal() {
 
 function PlanningReport({ onClose }: { onClose: () => void }) {
   const planning = useSimulationStore((s) => s.planning)
-  const activeScenario = useScenarioStore((s) => s.activeScenario)
   const [generatingStep, setGeneratingStep] = useState(0)
   const [generating, setGenerating] = useState(true)
   const [activeArchiveTab, setActiveArchiveTab] = useState(0)
@@ -35,7 +33,7 @@ function PlanningReport({ onClose }: { onClose: () => void }) {
   useEffect(() => {
     if (planning.isReportOpen && !wasReportOpen.current) {
       wasReportOpen.current = true
-      const fresh = buildReportData(planning, activeScenario)
+      const fresh = buildReportData(planning, planning.priority)
       useSimulationStore.setState((s) => {
         const prev = s.planning.reportArchive ?? []
         const fp = reportDataFingerprint(fresh)
@@ -55,12 +53,12 @@ function PlanningReport({ onClose }: { onClose: () => void }) {
       setActiveArchiveTab(0)
     }
     if (!planning.isReportOpen) wasReportOpen.current = false
-  }, [planning.isReportOpen, planning, activeScenario])
+  }, [planning.isReportOpen, planning])
 
-  /** Always reflect live planning + scenario for tab 0 so timeline / rescan updates while the modal stays open. */
+  /** Always reflect live planning for tab 0 so timeline / rescan updates while the modal stays open. */
   const liveReportData = useMemo(
-    () => buildReportData(planning, activeScenario),
-    [planning, activeScenario],
+    () => buildReportData(planning, planning.priority),
+    [planning, planning.priority],
   )
 
   useEffect(() => {

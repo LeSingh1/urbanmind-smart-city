@@ -283,7 +283,7 @@ export const useSimulationStore = create<SimulationStore>((set, get) => ({
               cityMode: cityId === 'fremon' ? 'generated' : 'real',
               cityId,
               growthPercent: dotAware.growthPercent,
-              horizonYears: 50,
+              horizonYears: 75,
               priority: scenario,
               infrastructure,
               underservedZones: dotAware.underservedZones,

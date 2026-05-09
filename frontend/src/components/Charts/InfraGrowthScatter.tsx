@@ -11,7 +11,7 @@ export function InfraGrowthScatter() {
   const [hover, setHover] = useState<any | null>(null)
   const frames = useSimulationStore((state) => state.frameHistory)
   const points = useMemo(() => buildPoints(frames), [frames])
-  const data = points.length ? points : d3.range(0, 50, 5).map((year) => ({ year, investment: 10 + year * 1.3, growth: 1.1 + Math.sin(year / 10) * 0.5, zone: 'TRANSIT_HUB' }))
+  const data = points.length ? points : d3.range(2026, 2101, 12).map((year) => ({ year, yearEnd: Math.min(2101, year + 11), investment: 10 + (year - 2026) * 1.3, growth: 1.1 + Math.sin((year - 2026) / 10) * 0.5, zone: 'TRANSIT_HUB' }))
   const height = 180
   const margin = { top: 24, right: 18, bottom: 32, left: 42 }
   const innerW = width - margin.left - margin.right
@@ -27,9 +27,9 @@ export function InfraGrowthScatter() {
           {x.ticks(5).map((tick) => <line key={tick} x1={x(tick)} x2={x(tick)} y1={0} y2={innerH} stroke="var(--chart-grid)" />)}
           {y.ticks(4).map((tick) => <g key={tick}><line x1={0} x2={innerW} y1={y(tick)} y2={y(tick)} stroke="var(--chart-grid)" /><text x={-8} y={y(tick) + 3} fill="var(--color-text-muted)" fontSize="10" textAnchor="end">{tick.toFixed(1)}%</text></g>)}
           <line x1={x(0)} y1={y(regression.intercept)} x2={x(d3.max(data, (d) => d.investment) ?? 1)} y2={y(regression.slope * (d3.max(data, (d) => d.investment) ?? 1) + regression.intercept)} stroke="var(--color-text-muted)" strokeDasharray="5 4" opacity="0.65" />
-          {data.map((point) => <circle key={point.year} cx={x(point.investment)} cy={y(point.growth)} r={6} fill={getZoneColor(point.zone)} onMouseEnter={() => setHover(point)} onMouseLeave={() => setHover(null)} />)}
+          {data.map((point) => <circle key={`${point.year}-${point.yearEnd ?? point.year}`} cx={x(point.investment)} cy={y(point.growth)} r={6} fill={getZoneColor(point.zone)} onMouseEnter={() => setHover(point)} onMouseLeave={() => setHover(null)} />)}
           <text x={innerW - 8} y={12} fill="var(--color-text-secondary)" fontSize="11" textAnchor="end">R2 {regression.r2.toFixed(2)}</text>
-          {hover && <g transform={`translate(${x(hover.investment) + 10},${y(hover.growth) - 26})`}><rect width="142" height="50" rx="8" fill="#e0e5ec" stroke="#babecc" style={{ filter: 'drop-shadow(2px 2px 4px #babecc)' }} /><text x="10" y="19" fill="var(--color-text-primary)" fontSize="11">Years {hover.year}-{hover.year + 5}</text><text x="10" y="36" fill="var(--color-text-secondary)" fontSize="10">Growth {hover.growth.toFixed(2)}%, infra {hover.investment}</text></g>}
+          {hover && <g transform={`translate(${x(hover.investment) + 10},${y(hover.growth) - 26})`}><rect width="142" height="50" rx="8" fill="#e0e5ec" stroke="#babecc" style={{ filter: 'drop-shadow(2px 2px 4px #babecc)' }} /><text x="10" y="19" fill="var(--color-text-primary)" fontSize="11">Years {hover.year}–{hover.yearEnd ?? hover.year + 4}</text><text x="10" y="36" fill="var(--color-text-secondary)" fontSize="10">Growth {hover.growth.toFixed(2)}%, infra {hover.investment}</text></g>}
         </g>
       </svg>
     </div>
@@ -38,14 +38,16 @@ export function InfraGrowthScatter() {
 
 function buildPoints(frames: any[]) {
   const points = []
-  for (let start = 0; start < 50; start += 5) {
-    const bucket = frames.filter((frame) => frame.year >= start && frame.year < start + 5)
+  for (let start = 2026; start <= 2101; start += 5) {
+    const end = Math.min(start + 5, 2102)
+    const bucket = frames.filter((frame) => frame.year >= start && frame.year < end)
     if (!bucket.length) continue
     const investment = bucket.flatMap((frame) => frame.agent_actions).reduce((sum, action) => sum + Object.entries(weights).reduce((w, [key, value]) => action.zone_type_id.includes(key) ? value : w, 0), 0)
     const first = bucket[0]?.metrics_snapshot?.pop_total ?? 1
     const last = bucket.at(-1)?.metrics_snapshot?.pop_total ?? first
     const dominant = bucket.flatMap((frame) => frame.agent_actions)[0]?.zone_type_id ?? 'RES_LOW_DETACHED'
-    points.push({ year: start, investment, growth: ((last - first) / first) * 100, zone: dominant })
+    const yearEnd = Math.min(2101, end - 1)
+    points.push({ year: start, yearEnd, investment, growth: ((last - first) / first) * 100, zone: dominant })
   }
   return points
 }

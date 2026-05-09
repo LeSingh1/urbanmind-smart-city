@@ -39,7 +39,8 @@ const ZONE_DISPLAY: Record<string, string> = {
 }
 const ZONE_TYPES = Object.keys(ZONE_DISPLAY)
 const SIM_START_YEAR = 2026
-const SIM_END_YEAR = 2076
+/** Inclusive end year for the 75-year planning horizon (2026 + 75 = 2101). */
+const SIM_END_YEAR = 2101
 const NEED_SEQUENCE = [
   'HEALTH_HOSPITAL',
   'EDU_HIGH',

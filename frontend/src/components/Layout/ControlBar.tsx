@@ -111,7 +111,7 @@ export function ControlBar({ connectionState }: { connectionState: string }) {
           <SettingsModal open={settingsOpen} onClose={() => setSettingsOpen(false)} />
         </div>
       </div>
-      <div style={{ position: 'absolute', bottom: 0, left: 0, height: 2, width: `${Math.min(100, (currentYear / 50) * 100)}%`, background: 'var(--color-brand-accent)', transition: 'width 400ms ease' }} />
+      <div style={{ position: 'absolute', bottom: 0, left: 0, height: 2, width: `${Math.min(100, Math.max(0, (currentYear >= 2026 ? ((currentYear - 2026) / (2101 - 2026)) * 100 : 0)))}%`, background: 'var(--color-brand-accent)', transition: 'width 400ms ease' }} />
     </header>
   )
 }

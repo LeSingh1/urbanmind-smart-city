@@ -275,9 +275,9 @@ interface PlanningStateLike {
   timelinePopulation: number
 }
 
-function copilotFollowUpPending(planning: PlanningStateLike, activeGapCount: number): { needed: boolean; fromAdvisory: boolean } {
+/** Only Copilot advisory counts as a follow-on signal — not raw zone math (IDs / demo data can disagree). */
+function copilotFollowUpPending(planning: PlanningStateLike): { needed: boolean; fromAdvisory: boolean } {
   if (planning.dynamicAdvisory) return { needed: true, fromAdvisory: true }
-  if (planning.hasAppliedAIPlan && activeGapCount > 0) return { needed: true, fromAdvisory: false }
   return { needed: false, fromAdvisory: false }
 }
 
@@ -330,7 +330,7 @@ export function buildReportData(planning: PlanningStateLike, scenarioId: Scenari
 
   const projectedPopulation = projectedPopulationFor(planning.cityId, planning.timelineYear, planning.timelinePopulation)
   const stressLevel = computeTimelineStress(planning.cityId, planning.timelineYear, projectedPopulation)
-  const followUp = copilotFollowUpPending(planning, activeGaps.length)
+  const followUp = copilotFollowUpPending(planning)
   const { status, label, blurb } = determineStatus({
     hasAppliedAIPlan: planning.hasAppliedAIPlan,
     cityHealthDelta,

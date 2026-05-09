@@ -94,8 +94,16 @@ export function useWebSocket(sessionId: string | null) {
   return { isConnected, connectionState, send }
 }
 
+/** Backend sends 0-based step years (0 = 2026); some paths already use calendar years. */
+function simulationYearToCalendar(rawYear: number): number {
+  if (rawYear >= 2026 && rawYear <= 2101) return rawYear
+  if (rawYear >= 0 && rawYear <= 75) return 2026 + rawYear
+  return Math.max(2026, Math.min(2101, Math.round(rawYear)))
+}
+
 function normalizeFrame(raw: any): SimulationFrame {
-  const year = raw.year ?? raw.metrics_snapshot?.year ?? 0
+  const rawYear = raw.year ?? raw.metrics_snapshot?.year ?? 0
+  const year = simulationYearToCalendar(Number(rawYear))
   return {
     type: raw.type,
     year,

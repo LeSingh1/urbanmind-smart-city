@@ -22,7 +22,7 @@ export function PopulationTimeline() {
   const innerH = height - margin.top - margin.bottom
   const projection = useMemo(() => project(data), [data])
   const allPop = projection.flatMap((d) => [d.pop_total * 0.85, d.pop_total * 1.15])
-  const x = d3.scaleLinear().domain([2026, 2076]).range([0, innerW])
+  const x = d3.scaleLinear().domain([2026, 2101]).range([0, innerW])
   const y = d3.scaleLinear().domain([Math.min(...allPop) * 0.95, Math.max(...allPop) * 1.05]).range([innerH, 0]).nice()
   const line = d3.line<any>().x((d) => x(d.year)).y((d) => y(d.pop_total)).curve(d3.curveMonotoneX)
   const area = d3.area<any>().x((d) => x(d.year)).y0((d) => y(d.pop_total * 0.85)).y1((d) => y(d.pop_total * 1.15)).curve(d3.curveMonotoneX)
@@ -106,7 +106,7 @@ function project(data: any[]) {
   const last = sorted.at(-1) ?? { year: 0, pop_total: 1000000 }
   const projected = [...sorted]
   const startYear = last.year < 2026 ? 2026 : last.year + 1
-  for (let year = startYear; year <= 2076; year += 1) {
+  for (let year = startYear; year <= 2101; year += 1) {
     const growth = 1 + Math.max(0.006, (last.pop_growth_rate ?? 1.1) / 100)
     projected.push({ ...last, year, pop_total: last.pop_total * growth ** (year - last.year) })
   }
@@ -117,5 +117,5 @@ function baselineFromCity(city: any, projection: any[]) {
   if (!city?.historical_snapshots?.length) return projection.map((d) => ({ ...d, pop_total: projection[0].pop_total * (1 + Math.max(0, d.year - 2026) * 0.011) }))
   const start = city.historical_snapshots[0].population
   const end = city.population_current
-  return projection.map((d) => ({ ...d, pop_total: start + ((end - start) * Math.max(0, d.year - 2026)) / 50 }))
+  return projection.map((d) => ({ ...d, pop_total: start + ((end - start) * Math.max(0, d.year - 2026)) / 75 }))
 }

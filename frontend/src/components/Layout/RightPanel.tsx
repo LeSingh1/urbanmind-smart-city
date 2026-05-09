@@ -116,7 +116,8 @@ export function RightPanel() {
     : planning.hasAppliedAIPlan ? 'applied' : planning.hasAnalyzed ? 'diagnosed' : 'standby'
   const cityName = selectedCity?.name ?? 'this city'
   const scenarioLens = SCENARIO_LENS[activeScenario]
-  const reportData = useMemo(() => buildReportData(planning, activeScenario), [planning, activeScenario])
+  const reportScenario = planning.priority
+  const reportData = useMemo(() => buildReportData(planning, reportScenario), [planning, reportScenario])
   const stressWarning = reportData.warningMessage
   const stressLevel = reportData.stressLevel
   const narration = useMemo(() => {
@@ -297,6 +298,24 @@ export function RightPanel() {
                   </button>
                 </div>
               </>
+            ) : reportData.status === 'needs_phase_2' ? (
+              <>
+                <h2 className="mt-2 font-display text-lg font-semibold leading-tight" style={{ color: 'var(--color-accent-warning)' }}>
+                  Plan applied — follow-on recommended
+                </h2>
+                <p className="mt-2 text-xs leading-relaxed" style={{ color: 'var(--color-text-secondary)' }}>
+                  Copilot flagged a timeline gap the current plan does not fully cover. Review the advisory above, then apply the follow-on recommendation or open the report.
+                </p>
+                <button
+                  type="button"
+                  onClick={openReport}
+                  className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-lg px-3 py-3 text-sm font-semibold"
+                  style={{ background: 'var(--color-bg-panel)', color: 'var(--color-accent-purple)', border: '1px solid var(--color-border-subtle)' }}
+                >
+                  <FileText size={16} />
+                  Generate Report
+                </button>
+              </>
             ) : (
               <>
                 <h2 className="mt-2 font-display text-lg font-semibold" style={{ color: 'var(--color-accent-green)' }}>
@@ -320,9 +339,21 @@ export function RightPanel() {
         )}
 
         {planning.hasAppliedAIPlan && (
-          <section className={`rounded-lg p-4 ${justApplied ? 'impact-summary-sweep' : ''}`} style={{ background: 'rgba(0,184,148,0.08)', border: '1px solid rgba(0,184,148,0.32)' }}>
+          <section
+            className={`rounded-lg p-4 ${justApplied ? 'impact-summary-sweep' : ''}`}
+            style={
+              reportData.status === 'needs_phase_2'
+                ? { background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.32)' }
+                : { background: 'rgba(0,184,148,0.08)', border: '1px solid rgba(0,184,148,0.32)' }
+            }
+          >
             <div className="flex items-center justify-between">
-              <div className="font-display text-base font-semibold" style={{ color: 'var(--color-accent-green)' }}>Impact Summary</div>
+              <div
+                className="font-display text-base font-semibold"
+                style={{ color: reportData.status === 'needs_phase_2' ? 'var(--color-accent-warning)' : 'var(--color-accent-green)' }}
+              >
+                Impact Summary
+              </div>
               <span
                 className="rounded-full px-2 py-0.5 font-mono text-[9px] uppercase tracking-widest"
                 style={{

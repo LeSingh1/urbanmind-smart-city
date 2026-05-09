@@ -8,7 +8,7 @@ import { useTypewriter } from '@/hooks/useTypewriter'
 
 const START_YEAR = 2026
 const END_YEAR = 2101
-const DECADE_CHIPS = [2026, 2030, 2040, 2050, 2060, 2070, 2080] as const
+const DECADE_CHIPS = [2026, 2030, 2040, 2050, 2060, 2070, 2080, 2090, 2100] as const
 
 export function BottomBar() {
   const selectedCity = useCityStore((state) => state.selectedCity)
