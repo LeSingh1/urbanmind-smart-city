@@ -35,6 +35,7 @@ import {
 import type { AIRecommendation, BudgetLevel, BudgetSummary, CityMode, CityProfile, DistrictProfile, GrowthPressureZone, InfrastructureItem, MetricsSnapshot, PlacementFeedback, PlacementSuggestion, PlanBattlePlan, PlanningScores, SavedPlanningScenario, ScenarioId, TimelineYear, UnderservedZone } from '@/types/city.types'
 import { runFremonEnginePipelineAsync, type FremonEngineBundle } from '@/copilot/pipeline'
 import type { AgentAction, SimulationFrame } from '@/types/simulation.types'
+import type { ReportArchiveEntry } from '@/state/buildReportData'
 
 type Speed = 1 | 5 | 10 | 50
 
@@ -93,6 +94,8 @@ interface PlanningState {
   placementSuggestions: PlacementSuggestion[]
   placementFeedback: PlacementFeedback | null
   dynamicAdvisory: DynamicAdvisory | null
+  /** Snapshots when opening the report modal (latest first) — compare after rescan / new plan. */
+  reportArchive: ReportArchiveEntry[]
   impactSummary: {
     residentsServed: number
     gapsFixed: number
@@ -106,7 +109,7 @@ interface PlanningState {
   } | null
 }
 
-interface DynamicAdvisory {
+export interface DynamicAdvisory {
   id: string
   year: number
   title: string
@@ -302,6 +305,7 @@ export const useSimulationStore = create<SimulationStore>((set, get) => ({
               placementSuggestions: dotAware.placementSuggestions,
               placementFeedback: null,
               dynamicAdvisory: null,
+              reportArchive: [],
               impactSummary: null,
             },
           }))
@@ -387,6 +391,7 @@ export const useSimulationStore = create<SimulationStore>((set, get) => ({
             placementSuggestions: FREMON_PLACEMENT_SUGGESTIONS,
             placementFeedback: null,
             dynamicAdvisory: null,
+            reportArchive: [],
             impactSummary: null,
           },
         }))
@@ -443,6 +448,7 @@ export const useSimulationStore = create<SimulationStore>((set, get) => ({
           undoStack: [],
           placementFeedback: null,
           dynamicAdvisory: null,
+          reportArchive: [],
           impactSummary: null,
         },
       }))
@@ -569,6 +575,7 @@ export const useSimulationStore = create<SimulationStore>((set, get) => ({
           undoStack: [],
           placementFeedback: null,
           dynamicAdvisory: null,
+          reportArchive: [],
           impactSummary: null,
         },
       })
@@ -1080,6 +1087,7 @@ function createInitialPlanningState(): PlanningState {
     placementSuggestions: FREMON_PLACEMENT_SUGGESTIONS,
     placementFeedback: null,
     dynamicAdvisory: null,
+    reportArchive: [],
     impactSummary: null,
     cityMode: 'generated',
   }

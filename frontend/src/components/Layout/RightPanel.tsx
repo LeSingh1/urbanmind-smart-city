@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Bell, FileText, Search, Sparkles, TriangleAlert } from 'lucide-react'
+import { FileText, Search, Sparkles, TriangleAlert } from 'lucide-react'
+import { CopilotAdvisoryAlert } from '@/components/UI/CopilotAdvisoryAlert'
 import { useCityStore } from '@/stores/cityStore'
 import { useScenarioStore } from '@/stores/scenarioStore'
 import { useSimulationStore } from '@/stores/simulationStore'
@@ -153,9 +154,20 @@ export function RightPanel() {
         boxShadow: '-16px 0 46px rgba(0,0,0,0.18)',
       }}
     >
-      <div className="space-y-3 p-3">
+      <div className="space-y-2 p-2.5">
         <CopilotHeader stage={stage} />
-        <p className="text-sm leading-relaxed min-h-[3.5em]" style={{ color: 'var(--color-text-secondary)' }}>
+        {planning.dynamicAdvisory ? (
+          <CopilotAdvisoryAlert
+            advisory={planning.dynamicAdvisory}
+            density="compact"
+            onReview={() => {
+              acknowledgeDynamicAdvisory()
+              focusRecommendation(planning.dynamicAdvisory?.recommendationId ?? null)
+            }}
+            onApply={() => applyDynamicAdvisoryPlan(activeScenario)}
+          />
+        ) : null}
+        <p className="text-[13px] leading-snug min-h-[3em]" style={{ color: 'var(--color-text-secondary)' }}>
           <AnimatePresence mode="wait">
             <motion.span
               key={stage + narration.slice(0, 18)}
@@ -188,67 +200,6 @@ export function RightPanel() {
               </p>
             </div>
           </div>
-        ) : null}
-
-        {planning.dynamicAdvisory ? (
-          <motion.div
-            initial={{ opacity: 0, y: -6 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="rounded-lg p-2.5"
-            style={{
-              background: 'rgba(245,158,11,0.10)',
-              border: '1px solid rgba(245,158,11,0.45)',
-              boxShadow: planning.dynamicAdvisory.unread ? '0 0 0 2px rgba(245,158,11,0.12)' : 'none',
-            }}
-          >
-            <div className="flex items-start gap-2">
-              <Bell size={14} style={{ color: 'var(--color-accent-warning)', flexShrink: 0, marginTop: 1 }} />
-              <div className="min-w-0">
-                <div className="flex items-center gap-2">
-                  <div className="font-mono text-[9px] uppercase tracking-widest" style={{ color: 'var(--color-accent-warning)' }}>
-                    {planning.dynamicAdvisory.title}
-                  </div>
-                  {planning.dynamicAdvisory.unread && (
-                    <span className="rounded-full px-1.5 py-0.5 font-mono text-[8px] uppercase tracking-widest" style={{ color: '#111827', background: 'var(--color-accent-warning)' }}>
-                      New
-                    </span>
-                  )}
-                </div>
-                <p className="text-[11px] leading-relaxed mt-0.5" style={{ color: 'var(--color-text-secondary)' }}>
-                  {planning.dynamicAdvisory.message}
-                </p>
-                <div className="mt-2 rounded-md px-2 py-1.5" style={{ background: 'rgba(255,255,255,0.34)', border: '1px solid rgba(245,158,11,0.25)' }}>
-                  <div className="text-xs font-semibold" style={{ color: 'var(--color-text-primary)' }}>
-                    {planning.dynamicAdvisory.recommendationName}
-                  </div>
-                  <p className="mt-0.5 text-[10px] leading-relaxed" style={{ color: 'var(--color-text-muted)' }}>
-                    {planning.dynamicAdvisory.recommendationReason}
-                  </p>
-                </div>
-              </div>
-            </div>
-            <div className="mt-2 grid grid-cols-2 gap-2">
-              <button
-                type="button"
-                onClick={() => {
-                  acknowledgeDynamicAdvisory()
-                  focusRecommendation(planning.dynamicAdvisory?.recommendationId ?? null)
-                }}
-                className="rounded-md px-2 py-1.5 text-[11px] font-semibold"
-                style={{ color: 'var(--color-accent-cyan)', background: 'var(--color-bg-panel)', border: '1px solid rgba(var(--rgb-accent), 0.32)' }}
-              >
-                Review
-              </button>
-              <button
-                type="button"
-                onClick={() => applyDynamicAdvisoryPlan(activeScenario)}
-                className="rounded-md px-2 py-1.5 text-[11px] font-semibold"
-                style={{ color: 'var(--color-accent-green)', background: 'rgba(0,184,148,0.10)', border: '1px solid rgba(0,184,148,0.38)' }}
-              >
-                Apply
-              </button>
-            </div>
-          </motion.div>
         ) : null}
 
         {!planning.hasAnalyzed ? (

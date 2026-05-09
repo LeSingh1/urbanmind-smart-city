@@ -417,6 +417,29 @@ export function buildReportData(planning: PlanningStateLike, scenarioId: Scenari
   }
 }
 
+export interface ReportArchiveEntry {
+  label: string
+  generatedAt: number
+  data: PlanningReportData
+}
+
+/** Stable key to detect materially different reports (new plan / rescan / year). */
+export function reportDataFingerprint(d: PlanningReportData): string {
+  const recIds = d.recommendations.map((r) => r.id).join(',')
+  return [
+    d.cityId,
+    d.scenarioId,
+    d.selectedYear,
+    d.hasAppliedAIPlan ? '1' : '0',
+    d.hasAnalyzed ? '1' : '0',
+    d.topRecommendationName,
+    String(Math.round(d.totalCost / 1_000_000)),
+    d.recommendations.length,
+    recIds.slice(0, 160),
+    d.status,
+  ].join('|')
+}
+
 function metricRow(key: string, label: string, before: number, after: number, isCommute = false): MetricRow {
   return {
     key,

@@ -2,7 +2,6 @@ import { useState } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import {
   BarChart3,
-  Bell,
   Building2,
   Bot,
   ChevronLeft,
@@ -18,6 +17,7 @@ import {
   Users,
 } from 'lucide-react'
 import { ZonePalette } from '@/components/UI/ZonePalette'
+import { CopilotAdvisoryAlert } from '@/components/UI/CopilotAdvisoryAlert'
 import { useCityStore } from '@/stores/cityStore'
 import { useScenarioStore, scenarioColors, scenarioLabels } from '@/stores/scenarioStore'
 import { useSimulationStore } from '@/stores/simulationStore'
@@ -293,60 +293,15 @@ function CopilotPanel() {
     <div className="p-3 space-y-4">
       {advisory && (
         <PanelSection title="Live Advisory">
-          <motion.div
-            initial={{ opacity: 0, y: -8 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="w-full rounded-xl p-3"
-            style={{
-              background: 'rgba(245,158,11,0.10)',
-              border: '1px solid rgba(245,158,11,0.45)',
-              boxShadow: advisory.unread ? '0 0 0 2px rgba(245,158,11,0.12), var(--shadow-sm)' : 'var(--shadow-sm)',
+          <CopilotAdvisoryAlert
+            advisory={advisory}
+            density="compact"
+            onReview={() => {
+              acknowledgeDynamicAdvisory()
+              focusRecommendation(advisory.recommendationId)
             }}
-          >
-            <div className="flex items-center justify-between gap-2">
-              <span className="inline-flex items-center gap-2 font-mono text-[10px] uppercase tracking-widest" style={{ color: 'var(--color-accent-warning)' }}>
-                <Bell size={13} />
-                {advisory.title}
-              </span>
-              {advisory.unread && (
-                <span className="rounded-full px-2 py-0.5 font-mono text-[9px] uppercase tracking-widest" style={{ color: '#111827', background: 'var(--color-accent-warning)' }}>
-                  New
-                </span>
-              )}
-            </div>
-            <p className="mt-2 text-[11px] leading-relaxed" style={{ color: 'var(--color-text-secondary)' }}>
-              {advisory.message}
-            </p>
-            <div className="mt-2 rounded-md px-2 py-1.5" style={{ background: 'rgba(255,255,255,0.34)', border: '1px solid rgba(245,158,11,0.25)' }}>
-              <div className="text-xs font-semibold" style={{ color: 'var(--color-text-primary)' }}>
-                {advisory.recommendationName}
-              </div>
-              <p className="mt-0.5 text-[10px] leading-relaxed" style={{ color: 'var(--color-text-muted)' }}>
-                {advisory.recommendationReason}
-              </p>
-            </div>
-            <div className="mt-2 grid grid-cols-2 gap-2">
-              <button
-                type="button"
-                onClick={() => {
-                  acknowledgeDynamicAdvisory()
-                  focusRecommendation(advisory.recommendationId)
-                }}
-                className="rounded-md px-2 py-1.5 text-[11px] font-semibold"
-                style={{ color: 'var(--color-accent-cyan)', background: 'var(--color-bg-panel)', border: '1px solid rgba(var(--rgb-accent), 0.32)' }}
-              >
-                Review
-              </button>
-              <button
-                type="button"
-                onClick={() => applyDynamicAdvisoryPlan(activeScenario)}
-                className="rounded-md px-2 py-1.5 text-[11px] font-semibold"
-                style={{ color: 'var(--color-accent-green)', background: 'rgba(0,184,148,0.10)', border: '1px solid rgba(0,184,148,0.38)' }}
-              >
-                Apply
-              </button>
-            </div>
-          </motion.div>
+            onApply={() => applyDynamicAdvisoryPlan(activeScenario)}
+          />
         </PanelSection>
       )}
       <PanelSection title="Copilot">
