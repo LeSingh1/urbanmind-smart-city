@@ -173,8 +173,13 @@ interface SimulationStore {
   closeReport: () => void
   focusRecommendation: (id: string | null) => void
   acknowledgeDynamicAdvisory: () => void
+  /** Clear applied AI / phase-2 placements and re-run the Fremon engine for the current timeline year (late-game). */
+  copilotRescanLateGame: (scenarioId?: string) => Promise<void>
   reset: () => void
 }
+
+/** Simulation year must reach this (after applying a plan) before the top bar offers Copilot rescan. */
+export const COPILOT_RESCAN_MIN_YEAR = 2030
 
 const API_BASE = import.meta.env.VITE_API_URL ?? '/api'
 
@@ -223,11 +228,23 @@ export const useSimulationStore = create<SimulationStore>((set, get) => ({
       frameHistory: [...state.frameHistory.filter((item) => item.year !== frame.year), frame].sort((a, b) => a.year - b.year),
       metricsHistory: [...state.metricsHistory.filter((item) => item.year !== frame.metrics_snapshot.year), frame.metrics_snapshot].sort((a, b) => a.year - b.year),
       lastActions: [...frame.agent_actions, ...state.lastActions].slice(0, 10),
+      planning: {
+        ...state.planning,
+        ...computePlanningTimelineFields(state, frame.year),
+      },
     })),
 
   scrubToYear: (year) => {
-    const frame = get().frameHistory.find((item) => item.year === year)
-    if (frame) set({ currentFrame: frame, currentYear: frame.year })
+    set((state) => {
+      const frame = state.frameHistory.find((item) => item.year === year)
+      if (!frame) return state
+      const planningFields = computePlanningTimelineFields(state, year)
+      return {
+        currentFrame: frame,
+        currentYear: frame.year,
+        planning: { ...state.planning, ...planningFields },
+      }
+    })
   },
 
   addUserZone: (zone) => set((state) => ({ userZones: [...state.userZones, zone] })),
@@ -435,6 +452,72 @@ export const useSimulationStore = create<SimulationStore>((set, get) => ({
       console.error(err)
       notify('Analysis could not load. Try again or pick Fremont / San José / Fremon.', 'error')
     }
+  },
+
+  copilotRescanLateGame: async (scenarioId = 'balanced') => {
+    const state = get()
+    const scenario = normalizeScenario(scenarioId)
+    const year = currentPlanningYear(state.currentYear, state.planning.timelineYear)
+    if (!state.planning.hasAnalyzed) {
+      notify('Run infrastructure analysis first.', 'info')
+      return
+    }
+    if (!state.planning.hasAppliedAIPlan) {
+      notify('Apply the Copilot plan first, then advance the timeline before rescanning.', 'info')
+      return
+    }
+    if (year < COPILOT_RESCAN_MIN_YEAR) {
+      notify(`Advance the simulation to ${COPILOT_RESCAN_MIN_YEAR} or later — then Copilot can rescan for a new plan.`, 'info')
+      return
+    }
+    if (state.planning.cityId !== 'fremon') {
+      notify('Late-game Copilot rescan is wired for the Fremon demo city in this build.', 'info')
+      return
+    }
+    const aiIds = new Set(state.planning.aiRecommendations.map((item) => item.id))
+    const infrastructure = withoutRoadInfrastructure(
+      state.planning.infrastructure.filter(
+        (item) =>
+          !item.id.startsWith('fremon-phase2') &&
+          !(item.status === 'proposed' && aiIds.has(item.id)),
+      ),
+    )
+    let engineBundle: FremonEngineBundle | null = null
+    let underservedZones = FREMON_UNDERSERVED_ZONES.map((zone) => ({ ...zone, improved: false, isImproved: false }))
+    let aiRecommendations = state.planning.aiRecommendations.map((item) => ({ ...item }))
+    let topRecommendation = state.planning.topRecommendation
+    try {
+      engineBundle = await runFremonEnginePipelineAsync(scenario)
+      if (engineBundle.aiRecommendations.length > 0 && engineBundle.underservedZones.length > 0) {
+        underservedZones = engineBundle.underservedZones.map((zone) => ({
+          ...zone,
+          improved: Boolean(zone.improved),
+          isImproved: Boolean(zone.isImproved),
+        }))
+        aiRecommendations = engineBundle.aiRecommendations
+        if (engineBundle.topRecommendation) topRecommendation = engineBundle.topRecommendation
+      }
+    } catch (err) {
+      console.warn('[UrbanMind] copilotRescanLateGame engine run failed', err)
+      engineBundle = null
+    }
+    set((s) => ({
+      planning: {
+        ...s.planning,
+        infrastructure,
+        underservedZones,
+        aiRecommendations,
+        topRecommendation,
+        hasAppliedAIPlan: false,
+        afterScores: null,
+        useEngine: !!engineBundle,
+        engineBundle,
+        dynamicAdvisory: null,
+        impactSummary: null,
+      },
+    }))
+    get().setTimelineYear(year)
+    notify('Copilot rescanned the map. Review the updated recommendation, then apply when ready.')
   },
 
   hydratePlanningForCity: (cityId) => {
@@ -799,60 +882,24 @@ export const useSimulationStore = create<SimulationStore>((set, get) => ({
     }
   }),
 
-  setTimelineYear: (year) => set((state) => {
-    const timeline = timelineForYear(year, state.planning)
-    const pressureScale = timeline.pressure
-    const growthBase = state.planning.cityId === 'fremon'
-      ? FREMON_GROWTH_PRESSURE_ZONES
-      : state.planning.growthPressureZones
-    const growthPressureZones = growthBase.map((zone) => ({
-      ...zone,
-      radiusMeters: Math.round(zone.radiusMeters * pressureScale),
-      projectedGrowthPercent: Math.round(zone.projectedGrowthPercent * pressureScale),
-    }))
-    const improvedIds = new Set(state.planning.underservedZones.filter((zone) => zone.isImproved || zone.improved).map((zone) => zone.id))
-    const underservedBase = state.planning.cityId === 'fremon'
-      ? FREMON_UNDERSERVED_ZONES
-      : state.planning.underservedZones
-    const phase2Applied = state.planning.infrastructure.some((item) => item.id.startsWith('fremon-phase2-south-annex'))
-    const underservedZones = underservedBase.map((zone) => {
-      const phase2Reopened = state.planning.cityId === 'fremon' && year >= 2075 && zone.id === 'fremon-south-emergency-gap' && !phase2Applied
-      const isImproved = improvedIds.has(zone.id) && !phase2Reopened
+  setTimelineYear: (year) =>
+    set((state) => {
+      const planningFields = computePlanningTimelineFields(state, year)
+      const mergedPlanning = { ...state.planning, ...planningFields }
+      const timeline = timelineForYear(year, mergedPlanning)
+      const yearTilt = Math.max(0, Math.min(1, (year - 2026) / 75))
+      const metrics =
+        mergedPlanning.hasAppliedAIPlan && mergedPlanning.afterScores
+          ? blendAppliedMetrics(mergedPlanning.afterScores, timeline.metrics, yearTilt)
+          : timeline.metrics
+      const frame = scoresToFrame(metrics, year, mergedPlanning.infrastructure, mergedPlanning.underservedZones, mergedPlanning.cityId)
       return {
-        ...zone,
-        isImproved,
-        improved: isImproved,
-        radiusMeters: isImproved ? Math.round(zone.radiusMeters * 0.55) : Math.round(zone.radiusMeters * pressureScale),
-        severity: isImproved ? zone.severity : Math.min(0.98, zone.severity * pressureScale),
-        reason: phase2Reopened
-          ? 'Late-horizon south growth has outpaced the Phase 1 clinic radius; emergency coverage needs a Phase 2 annex.'
-          : zone.reason,
+        currentYear: year,
+        currentFrame: frame,
+        metricsHistory: [frame.metrics_snapshot],
+        planning: mergedPlanning,
       }
-    })
-    const yearTilt = Math.max(0, Math.min(1, (year - 2026) / 75))
-    const metrics = state.planning.hasAppliedAIPlan && state.planning.afterScores
-      ? blendAppliedMetrics(state.planning.afterScores, timeline.metrics, yearTilt)
-      : timeline.metrics
-    const frame = scoresToFrame(metrics, year, state.planning.infrastructure, underservedZones, state.planning.cityId)
-    const dynamicAdvisory = buildDynamicAdvisory(year, state.planning, underservedZones)
-    return {
-      currentYear: year,
-      currentFrame: frame,
-      metricsHistory: [frame.metrics_snapshot],
-      planning: {
-        ...state.planning,
-        timelineYear: year,
-        timelinePhase: timeline.phase,
-        timelinePopulation: timeline.population,
-        growthPressureZones,
-        underservedZones,
-        dynamicAdvisory,
-        focusedRecommendationId: dynamicAdvisory?.recommendationId ?? state.planning.focusedRecommendationId,
-        focusedRecommendationZoneId: dynamicAdvisory?.zoneId ?? state.planning.focusedRecommendationZoneId,
-        beforeScores: state.planning.hasAppliedAIPlan ? state.planning.beforeScores : timeline.metrics,
-      },
-    }
-  }),
+    }),
 
   toggleEquityLens: () => set((state) => ({ planning: { ...state.planning, equityLens: !state.planning.equityLens } })),
   togglePresentationMode: () => set((state) => ({ planning: { ...state.planning, presentationMode: !state.planning.presentationMode } })),
@@ -1038,9 +1085,64 @@ function createInitialPlanningState(): PlanningState {
   }
 }
 
-function currentPlanningYear(currentYear: number, timelineYear: number) {
+export function currentPlanningYear(currentYear: number, timelineYear: number) {
   const candidate = currentYear >= 2026 ? currentYear : timelineYear
   return Math.max(2026, Math.min(2101, Math.round(candidate || 2026)))
+}
+
+type PlanningTimelinePatch = Pick<
+  PlanningState,
+  | 'timelineYear'
+  | 'timelinePhase'
+  | 'timelinePopulation'
+  | 'growthPressureZones'
+  | 'underservedZones'
+  | 'dynamicAdvisory'
+  | 'focusedRecommendationId'
+  | 'focusedRecommendationZoneId'
+  | 'beforeScores'
+>
+
+/** Keeps timeline, growth pressure, underserved reopening, and Copilot Phase-2 advisory aligned with a simulation year. */
+function computePlanningTimelineFields(state: { planning: PlanningState }, year: number): PlanningTimelinePatch {
+  const { planning } = state
+  const timeline = timelineForYear(year, planning)
+  const pressureScale = timeline.pressure
+  const growthBase = planning.cityId === 'fremon' ? FREMON_GROWTH_PRESSURE_ZONES : planning.growthPressureZones
+  const growthPressureZones = growthBase.map((zone) => ({
+    ...zone,
+    radiusMeters: Math.round(zone.radiusMeters * pressureScale),
+    projectedGrowthPercent: Math.round(zone.projectedGrowthPercent * pressureScale),
+  }))
+  const improvedIds = new Set(planning.underservedZones.filter((zone) => zone.isImproved || zone.improved).map((zone) => zone.id))
+  const underservedBase = planning.cityId === 'fremon' ? FREMON_UNDERSERVED_ZONES : planning.underservedZones
+  const phase2Applied = planning.infrastructure.some((item) => item.id.startsWith('fremon-phase2-south-annex'))
+  const underservedZones = underservedBase.map((zone) => {
+    const phase2Reopened = planning.cityId === 'fremon' && year >= 2075 && zone.id === 'fremon-south-emergency-gap' && !phase2Applied
+    const isImproved = improvedIds.has(zone.id) && !phase2Reopened
+    return {
+      ...zone,
+      isImproved,
+      improved: isImproved,
+      radiusMeters: isImproved ? Math.round(zone.radiusMeters * 0.55) : Math.round(zone.radiusMeters * pressureScale),
+      severity: isImproved ? zone.severity : Math.min(0.98, zone.severity * pressureScale),
+      reason: phase2Reopened
+        ? 'Late-horizon south growth has outpaced the Phase 1 clinic radius; emergency coverage needs a Phase 2 annex.'
+        : zone.reason,
+    }
+  })
+  const dynamicAdvisory = buildDynamicAdvisory(year, planning, underservedZones)
+  return {
+    timelineYear: year,
+    timelinePhase: timeline.phase,
+    timelinePopulation: timeline.population,
+    growthPressureZones,
+    underservedZones,
+    dynamicAdvisory,
+    focusedRecommendationId: dynamicAdvisory?.recommendationId ?? planning.focusedRecommendationId,
+    focusedRecommendationZoneId: dynamicAdvisory?.zoneId ?? planning.focusedRecommendationZoneId,
+    beforeScores: planning.hasAppliedAIPlan ? planning.beforeScores : timeline.metrics,
+  }
 }
 
 const FREMONT_CENTER = { lat: 37.5485, lng: -121.9886 }

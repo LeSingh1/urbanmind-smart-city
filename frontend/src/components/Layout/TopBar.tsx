@@ -1,7 +1,11 @@
-import { FileText, Search } from 'lucide-react'
+import { FileText, Radar, Search } from 'lucide-react'
 import { useCityStore } from '@/stores/cityStore'
 import { useScenarioStore } from '@/stores/scenarioStore'
-import { useSimulationStore } from '@/stores/simulationStore'
+import {
+  COPILOT_RESCAN_MIN_YEAR,
+  currentPlanningYear,
+  useSimulationStore,
+} from '@/stores/simulationStore'
 import { useNotification } from '@/hooks/useNotification'
 import { Logo } from '@/components/UI/LandingScreen'
 import { ArchitectureBadge } from '@/components/UI/ArchitectureModal'
@@ -9,17 +13,44 @@ import { ArchitectureBadge } from '@/components/UI/ArchitectureModal'
 export function TopBar({ onHome }: { onHome: () => void }) {
   const selectedCity = useCityStore((state) => state.selectedCity)
   const activeScenario = useScenarioStore((state) => state.activeScenario)
-  const { planning, analyzeDemo, openReport } = useSimulationStore()
+  const currentYear = useSimulationStore((state) => state.currentYear)
+  const { planning, analyzeDemo, copilotRescanLateGame, openReport } = useSimulationStore()
   const notify = useNotification((state) => state.notify)
 
-  const handleAnalyze = () => {
+  const simYear = currentPlanningYear(currentYear, planning.timelineYear)
+
+  const handlePrimaryPlanningClick = async () => {
     if (!selectedCity) {
       notify('warning', 'Choose a city before running infrastructure analysis.', 2400)
       return
     }
-    analyzeDemo(selectedCity.id, activeScenario)
-    notify('success', 'Infrastructure gaps detected for the selected city.', 2400)
+    if (planning.hasAppliedAIPlan && simYear >= COPILOT_RESCAN_MIN_YEAR && planning.cityId === 'fremon') {
+      await copilotRescanLateGame(activeScenario)
+      return
+    }
+    await analyzeDemo(selectedCity.id, activeScenario)
   }
+
+  const primaryDisabled = !selectedCity || (planning.hasAppliedAIPlan && simYear < COPILOT_RESCAN_MIN_YEAR)
+
+  let primaryLabel = 'Analyze Infrastructure Gaps'
+  let primaryTitle = 'Run the gap engine and Copilot for the selected city.'
+  if (planning.hasAnalyzed && !planning.hasAppliedAIPlan) {
+    primaryLabel = 'Re-run gap analysis'
+    primaryTitle = 'Start analysis over from the baseline map (use after changing scenario or budget).'
+  } else if (planning.hasAppliedAIPlan && simYear < COPILOT_RESCAN_MIN_YEAR) {
+    primaryLabel = `Rescan (${COPILOT_RESCAN_MIN_YEAR}+)`
+    primaryTitle = `Advance the timeline to ${COPILOT_RESCAN_MIN_YEAR} or later after applying a plan — then Copilot can rescan the map for new recommendations and Phase 2.`
+  } else if (planning.hasAppliedAIPlan && planning.cityId === 'fremon') {
+    primaryLabel = 'Rescan map · new Copilot plan'
+    primaryTitle =
+      'Late-game only: clears the applied AI / Phase 2 placements from the map, reruns the validated engine, and refreshes Copilot for the current year.'
+  } else if (planning.hasAppliedAIPlan) {
+    primaryLabel = 'Rescan unavailable'
+    primaryTitle = 'Late-game Copilot rescan is available on the Fremon demo in this build.'
+  }
+
+  const PrimaryIcon = planning.hasAppliedAIPlan && simYear >= COPILOT_RESCAN_MIN_YEAR && planning.cityId === 'fremon' ? Radar : Search
 
   return (
     <header
@@ -79,8 +110,11 @@ export function TopBar({ onHome }: { onHome: () => void }) {
         <ArchitectureBadge />
 
         <button
-          onClick={handleAnalyze}
-          disabled={!selectedCity}
+          type="button"
+          onClick={() => void handlePrimaryPlanningClick()}
+          disabled={primaryDisabled || (planning.hasAppliedAIPlan && planning.cityId !== 'fremon')}
+          title={primaryTitle}
+          aria-label={primaryLabel}
           className="inline-flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold tracking-tight shadow-sm transition-all disabled:cursor-not-allowed disabled:opacity-45"
           style={{
             color: '#fff',
@@ -89,8 +123,8 @@ export function TopBar({ onHome }: { onHome: () => void }) {
             boxShadow: '0 4px 14px rgba(var(--rgb-accent), 0.35)',
           }}
         >
-          <Search size={16} strokeWidth={2.25} />
-          {planning.hasAnalyzed ? 'Reanalyze' : 'Analyze Infrastructure Gaps'}
+          <PrimaryIcon size={16} strokeWidth={2.25} />
+          {primaryLabel}
         </button>
 
         <button
