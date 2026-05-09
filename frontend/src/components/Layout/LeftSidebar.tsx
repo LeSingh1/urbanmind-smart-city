@@ -374,22 +374,17 @@ function TimelinePanel() {
 function CopilotPanel() {
   const selectedCity = useCityStore((state) => state.selectedCity)
   const activeScenario = useScenarioStore((state) => state.activeScenario)
-  const { planning, analyzeDemo, applyAIPlan, openReport, focusRecommendation, acknowledgeDynamicAdvisory } = useSimulationStore()
+  const { planning, analyzeDemo, applyAIPlan, applyDynamicAdvisoryPlan, openReport, focusRecommendation, acknowledgeDynamicAdvisory } = useSimulationStore()
   const topItem = planning.aiRecommendations.find((item) => planning.topRecommendation.itemIds?.includes(item.id)) ?? planning.aiRecommendations[0]
   const advisory = planning.dynamicAdvisory
   return (
     <div className="p-3 space-y-4">
       {advisory && (
         <PanelSection title="Live Advisory">
-          <motion.button
-            type="button"
+          <motion.div
             initial={{ opacity: 0, y: -8 }}
             animate={{ opacity: 1, y: 0 }}
-            onClick={() => {
-              acknowledgeDynamicAdvisory()
-              focusRecommendation(advisory.recommendationId)
-            }}
-            className="w-full rounded-xl p-3 text-left"
+            className="w-full rounded-xl p-3"
             style={{
               background: 'rgba(245,158,11,0.10)',
               border: '1px solid rgba(245,158,11,0.45)',
@@ -410,10 +405,36 @@ function CopilotPanel() {
             <p className="mt-2 text-[11px] leading-relaxed" style={{ color: 'var(--color-text-secondary)' }}>
               {advisory.message}
             </p>
-            <div className="mt-2 font-mono text-[10px]" style={{ color: 'var(--color-accent-cyan)' }}>
-              {advisory.actionLabel}
+            <div className="mt-2 rounded-md px-2 py-1.5" style={{ background: 'rgba(255,255,255,0.34)', border: '1px solid rgba(245,158,11,0.25)' }}>
+              <div className="text-xs font-semibold" style={{ color: 'var(--color-text-primary)' }}>
+                {advisory.recommendationName}
+              </div>
+              <p className="mt-0.5 text-[10px] leading-relaxed" style={{ color: 'var(--color-text-muted)' }}>
+                {advisory.recommendationReason}
+              </p>
             </div>
-          </motion.button>
+            <div className="mt-2 grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  acknowledgeDynamicAdvisory()
+                  focusRecommendation(advisory.recommendationId)
+                }}
+                className="rounded-md px-2 py-1.5 text-[11px] font-semibold"
+                style={{ color: 'var(--color-accent-cyan)', background: 'var(--color-bg-panel)', border: '1px solid rgba(0,212,255,0.32)' }}
+              >
+                Review
+              </button>
+              <button
+                type="button"
+                onClick={() => applyDynamicAdvisoryPlan(activeScenario)}
+                className="rounded-md px-2 py-1.5 text-[11px] font-semibold"
+                style={{ color: 'var(--color-accent-green)', background: 'rgba(0,184,148,0.10)', border: '1px solid rgba(0,184,148,0.38)' }}
+              >
+                Apply
+              </button>
+            </div>
+          </motion.div>
         </PanelSection>
       )}
       <PanelSection title="Copilot">
