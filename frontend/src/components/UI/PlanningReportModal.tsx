@@ -57,6 +57,12 @@ function PlanningReport({ onClose }: { onClose: () => void }) {
     if (!planning.isReportOpen) wasReportOpen.current = false
   }, [planning.isReportOpen, planning, activeScenario])
 
+  /** Always reflect live planning + scenario for tab 0 so timeline / rescan updates while the modal stays open. */
+  const liveReportData = useMemo(
+    () => buildReportData(planning, activeScenario),
+    [planning, activeScenario],
+  )
+
   useEffect(() => {
     if (!planning.isReportOpen) return
     setGenerating(true)
@@ -73,7 +79,9 @@ function PlanningReport({ onClose }: { onClose: () => void }) {
 
   const archive = planning.reportArchive ?? []
   const data: PlanningReportData =
-    archive[activeArchiveTab]?.data ?? buildReportData(planning, activeScenario)
+    activeArchiveTab === 0
+      ? liveReportData
+      : (archive[activeArchiveTab]?.data ?? liveReportData)
 
   const reportJson = useMemo(() => JSON.stringify({
     executiveSummary: `Infrastructure planning report for ${data.cityName}`,
@@ -240,7 +248,9 @@ function PlanningReport({ onClose }: { onClose: () => void }) {
                       {entry.label}
                     </span>
                     <span className="block font-mono text-[9px] uppercase tracking-wider mt-0.5" style={{ color: 'var(--color-text-muted)' }}>
-                      {new Date(entry.generatedAt).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' })}
+                      {i === 0
+                        ? 'Live — follows timeline, plan, and scenario'
+                        : new Date(entry.generatedAt).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' })}
                     </span>
                   </span>
                 </button>

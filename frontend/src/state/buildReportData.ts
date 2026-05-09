@@ -18,6 +18,17 @@ import { STATIC_CITIES } from '@/data/staticCities'
 export type TimelineStressLevel = 'low' | 'moderate' | 'high' | 'critical'
 export type ReportStatus = 'no_plan' | 'future_proofed' | 'holds_through_2050s' | 'needs_phase_2'
 
+/** Calendar decade label for narrative copy (e.g. 2076 → "2070s"). */
+export function timelineDecadeLabel(year: number): string {
+  const decadeStart = Math.floor(year / 10) * 10
+  return `${decadeStart}s`
+}
+
+/** Planning-horizon re-analysis hint; scales with the active timeline year. */
+export function suggestedRevisitYear(selectedYear: number): number {
+  return Math.min(2101, Math.max(2035, selectedYear + 15))
+}
+
 export interface PlanningRecommendationLite {
   id: string
   name: string
@@ -128,6 +139,7 @@ function determineStatus(opts: {
   cityHealthDelta: number
   improvedCount: number
   totalGaps: number
+  selectedYear: number
 }): { status: ReportStatus; label: string; blurb: string } {
   if (!opts.hasAppliedAIPlan) {
     return {
@@ -144,10 +156,11 @@ function determineStatus(opts: {
     }
   }
   if (opts.stress === 'high') {
+    const revisit = suggestedRevisitYear(opts.selectedYear)
     return {
       status: 'holds_through_2050s',
-      label: 'Holds Through 2050s',
-      blurb: 'The plan still covers most service gaps; expect to revisit before 2080 as growth pressure compounds.',
+      label: `Holds Through ${timelineDecadeLabel(opts.selectedYear)}`,
+      blurb: `The plan still covers most service gaps; expect to revisit before ${revisit} as growth pressure compounds.`,
     }
   }
   if (opts.cityHealthDelta >= 12 && opts.improvedCount >= Math.max(1, opts.totalGaps - 1)) {
@@ -159,7 +172,7 @@ function determineStatus(opts: {
   }
   return {
     status: 'holds_through_2050s',
-    label: 'Holds Through 2050s',
+    label: `Holds Through ${timelineDecadeLabel(opts.selectedYear)}`,
     blurb: 'Plan resolves several gaps; some pressure points remain to monitor on the timeline.',
   }
 }
@@ -178,7 +191,8 @@ function buildWarningMessage(opts: {
     return `Critical: ${opts.selectedYear} projected population has outgrown current infrastructure. Run analysis to generate a future-proofed plan.`
   }
   if (opts.stress === 'high' && opts.hasAppliedAIPlan) {
-    return `Growth pressure is rising in housing and emergency-access zones. The ${opts.scenarioName} plan still holds, but recommend re-analysis around ${Math.min(2080, opts.selectedYear + 10)}.`
+    const around = Math.min(2101, Math.max(opts.selectedYear + 8, suggestedRevisitYear(opts.selectedYear) - 7))
+    return `Growth pressure is rising in housing and emergency-access zones. The ${opts.scenarioName} plan still holds, but recommend re-analysis around ${around}.`
   }
   if (opts.stress === 'moderate') {
     return 'Growth pressure is increasing in housing and emergency-access zones.'
@@ -208,7 +222,9 @@ function buildNarrative(opts: {
     return `The applied ${opts.scenarioName} plan improves current service gaps, but long-term growth creates renewed pressure by ${opts.selectedYear}. A Phase 2 infrastructure investment (~${costLabel} budget basis) is recommended for residents projected through that horizon.`
   }
   if (opts.status === 'holds_through_2050s') {
-    return `The applied ${opts.scenarioName} plan keeps service coverage steady through the 2050s for ${residentsLabel} residents. Re-analysis recommended before 2080.`
+    const decade = timelineDecadeLabel(opts.selectedYear)
+    const revisit = suggestedRevisitYear(opts.selectedYear)
+    return `The applied ${opts.scenarioName} plan keeps service coverage steady through the ${decade} for ${residentsLabel} residents. Re-analysis recommended before ${revisit}.`
   }
   return `The applied ${opts.scenarioName} plan resolves all identified service gaps in ${opts.cityName}'s near-term planning horizon, lifting City Health from ${Math.round(opts.cityHealthBefore)} to ${Math.round(opts.cityHealthAfter)} for ${residentsLabel} projected residents.`
 }
@@ -318,6 +334,7 @@ export function buildReportData(planning: PlanningStateLike, scenarioId: Scenari
     cityHealthDelta,
     improvedCount: serviceGapsImproved,
     totalGaps: planning.underservedZones.length,
+    selectedYear: planning.timelineYear,
   })
   const warningMessage = buildWarningMessage({
     stress: stressLevel,
