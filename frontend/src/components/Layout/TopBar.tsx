@@ -4,6 +4,7 @@ import { useScenarioStore } from '@/stores/scenarioStore'
 import {
   COPILOT_RESCAN_MIN_YEAR,
   currentPlanningYear,
+  supportsLateCopilotRescanCity,
   useSimulationStore,
 } from '@/stores/simulationStore'
 import { useNotification } from '@/hooks/useNotification'
@@ -24,33 +25,44 @@ export function TopBar({ onHome }: { onHome: () => void }) {
       notify('warning', 'Choose a city before running infrastructure analysis.', 2400)
       return
     }
-    if (planning.hasAppliedAIPlan && simYear >= COPILOT_RESCAN_MIN_YEAR && planning.cityId === 'fremon') {
+    if (
+      planning.hasAppliedAIPlan &&
+      simYear >= COPILOT_RESCAN_MIN_YEAR &&
+      supportsLateCopilotRescanCity(planning.cityId)
+    ) {
       await copilotRescanLateGame(activeScenario)
       return
     }
     await analyzeDemo(selectedCity.id, activeScenario)
   }
 
-  const primaryDisabled = !selectedCity || (planning.hasAppliedAIPlan && simYear < COPILOT_RESCAN_MIN_YEAR)
+  const supportsRescan =
+    supportsLateCopilotRescanCity(planning.cityId) && planning.hasAppliedAIPlan
+  const primaryDisabled =
+    !selectedCity || (supportsRescan && simYear < COPILOT_RESCAN_MIN_YEAR)
 
   let primaryLabel = 'Analyze Infrastructure Gaps'
   let primaryTitle = 'Run the gap engine and Copilot for the selected city.'
   if (planning.hasAnalyzed && !planning.hasAppliedAIPlan) {
     primaryLabel = 'Re-run gap analysis'
     primaryTitle = 'Start analysis over from the baseline map (use after changing scenario or budget).'
-  } else if (planning.hasAppliedAIPlan && simYear < COPILOT_RESCAN_MIN_YEAR) {
+  } else if (planning.hasAppliedAIPlan && !supportsLateCopilotRescanCity(planning.cityId)) {
+    primaryLabel = 'Re-run gap analysis'
+    primaryTitle =
+      'Runs a fresh infrastructure pass. Late-game Copilot rescan is available on seeded Fremon, Fremont, and San José demos.'
+  } else if (supportsRescan && simYear < COPILOT_RESCAN_MIN_YEAR) {
     primaryLabel = `Rescan (${COPILOT_RESCAN_MIN_YEAR}+)`
     primaryTitle = `Advance the timeline to ${COPILOT_RESCAN_MIN_YEAR} or later after applying a plan — then Copilot can rescan the map for new recommendations and Phase 2.`
-  } else if (planning.hasAppliedAIPlan && planning.cityId === 'fremon') {
+  } else if (supportsRescan && simYear >= COPILOT_RESCAN_MIN_YEAR) {
     primaryLabel = 'Rescan map · new Copilot plan'
     primaryTitle =
-      'Late-game only: clears the applied AI / Phase 2 placements from the map, reruns the validated engine, and refreshes Copilot for the current year.'
-  } else if (planning.hasAppliedAIPlan) {
-    primaryLabel = 'Rescan unavailable'
-    primaryTitle = 'Late-game Copilot rescan is available on the Fremon demo in this build.'
+      planning.cityId === 'fremon'
+        ? 'Late-game only: clears the applied AI / Phase 2 placements from the map, reruns the validated engine, and refreshes Copilot for the current year.'
+        : 'Clears proposed Copilot placements, rebaselines from the seeded gap map for this demo city, and refreshes recommendations for the current timeline year.'
   }
 
-  const PrimaryIcon = planning.hasAppliedAIPlan && simYear >= COPILOT_RESCAN_MIN_YEAR && planning.cityId === 'fremon' ? Radar : Search
+  const PrimaryIcon =
+    supportsRescan && simYear >= COPILOT_RESCAN_MIN_YEAR ? Radar : Search
 
   return (
     <header
@@ -112,7 +124,7 @@ export function TopBar({ onHome }: { onHome: () => void }) {
         <button
           type="button"
           onClick={() => void handlePrimaryPlanningClick()}
-          disabled={primaryDisabled || (planning.hasAppliedAIPlan && planning.cityId !== 'fremon')}
+          disabled={primaryDisabled}
           title={primaryTitle}
           aria-label={primaryLabel}
           className="inline-flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold tracking-tight shadow-sm transition-all disabled:cursor-not-allowed disabled:opacity-45"

@@ -192,6 +192,11 @@ interface SimulationStore {
 /** Simulation year must reach this (after applying a plan) before the top bar offers Copilot rescan. */
 export const COPILOT_RESCAN_MIN_YEAR = 2030
 
+/** Late-game “rescan map” is supported for seeded demo cities that share the planning bundle pipeline. */
+export function supportsLateCopilotRescanCity(cityId: string): boolean {
+  return cityId === 'fremon' || cityId === 'fremont' || cityId === 'san_jose'
+}
+
 const API_BASE = import.meta.env.VITE_API_URL ?? '/api'
 
 const initialState = {
@@ -484,11 +489,52 @@ export const useSimulationStore = create<SimulationStore>((set, get) => ({
       notify(`Advance the simulation to ${COPILOT_RESCAN_MIN_YEAR} or later — then Copilot can rescan for a new plan.`, 'info')
       return
     }
-    if (state.planning.cityId !== 'fremon') {
-      notify('Late-game Copilot rescan is wired for the Fremon demo city in this build.', 'info')
+    if (!supportsLateCopilotRescanCity(state.planning.cityId)) {
+      notify('Late-game Copilot rescan is available for Fremon / Fremont / San José seeded demos.', 'info')
       return
     }
+
+    const cityId = state.planning.cityId
     const aiIds = new Set(state.planning.aiRecommendations.map((item) => item.id))
+
+    if (cityId !== 'fremon') {
+      const bundle = getSeedPlanningBundle(cityId, state.planning.budgetLevel)
+      const userPieces = state.planning.infrastructure.filter((item) => item.source === 'user_added')
+      const baseInfra = mergeUserPieces(withoutRoadInfrastructure(bundle.existing.map((item) => ({ ...item }))), userPieces).filter(
+        (item) => !(item.status === 'proposed' && aiIds.has(item.id)),
+      )
+      const underservedZones = bundle.underserved.map((zone) => ({ ...zone, improved: false, isImproved: false }))
+      const beforeScores = calculatePlanningScores(baseInfra, underservedZones, bundle.growthPercent, scenario)
+      set((s) => ({
+        planning: {
+          ...s.planning,
+          priority: scenario,
+          cityMode: bundle.cityMode,
+          growthPercent: bundle.growthPercent,
+          horizonYears: bundle.horizonYears,
+          infrastructure: baseInfra,
+          underservedZones,
+          growthPressureZones: bundle.growth.map((z) => ({ ...z })),
+          aiRecommendations: bundle.ai.map((item) => ({ ...item })),
+          topRecommendation: bundle.top,
+          beforeScores,
+          afterScores: null,
+          hasAppliedAIPlan: false,
+          useEngine: false,
+          engineBundle: null,
+          dynamicAdvisory: null,
+          impactSummary: null,
+          placementFeedback: null,
+          hasComparedPlans: false,
+          planBattlePlans: [],
+          selectedInfrastructureId: null,
+        },
+      }))
+      get().setTimelineYear(year)
+      notify('Copilot rescanned the map from the demo seed. Review updated recommendations, then apply when ready.')
+      return
+    }
+
     const infrastructure = withoutRoadInfrastructure(
       state.planning.infrastructure.filter(
         (item) =>
@@ -515,6 +561,7 @@ export const useSimulationStore = create<SimulationStore>((set, get) => ({
       console.warn('[UrbanMind] copilotRescanLateGame engine run failed', err)
       engineBundle = null
     }
+    const beforeScores = { ...FREMON_BASE_METRICS }
     set((s) => ({
       planning: {
         ...s.planning,
@@ -522,6 +569,7 @@ export const useSimulationStore = create<SimulationStore>((set, get) => ({
         underservedZones,
         aiRecommendations,
         topRecommendation,
+        beforeScores,
         hasAppliedAIPlan: false,
         afterScores: null,
         useEngine: !!engineBundle,
@@ -1119,8 +1167,11 @@ function createInitialPlanningState(): PlanningState {
 }
 
 export function currentPlanningYear(currentYear: number, timelineYear: number) {
-  const candidate = currentYear >= 2026 ? currentYear : timelineYear
-  return Math.max(2026, Math.min(2101, Math.round(candidate || 2026)))
+  const t = Math.round(Number(timelineYear) || 2026)
+  const c = Math.round(Number(currentYear) || 2026)
+  const fromSim = c >= 2026 ? Math.min(2101, c) : 2026
+  const candidate = Math.max(2026, t, fromSim)
+  return Math.max(2026, Math.min(2101, candidate))
 }
 
 type PlanningTimelinePatch = Pick<

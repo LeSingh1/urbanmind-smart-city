@@ -3,7 +3,7 @@ import { motion } from 'framer-motion'
 import { Sparkles, Play, Pause, RotateCcw } from 'lucide-react'
 import { useCityStore } from '@/stores/cityStore'
 import { useScenarioStore } from '@/stores/scenarioStore'
-import { useSimulationStore } from '@/stores/simulationStore'
+import { useSimulationStore, COPILOT_RESCAN_MIN_YEAR, currentPlanningYear, supportsLateCopilotRescanCity } from '@/stores/simulationStore'
 import { useTypewriter } from '@/hooks/useTypewriter'
 
 const START_YEAR = 2026
@@ -49,13 +49,23 @@ export function BottomBar() {
     if (selectedCity) analyzeDemo(selectedCity.id, activeScenario)
   }
 
+  const simYear = currentPlanningYear(currentYear, planning.timelineYear)
+  const rescanCity = supportsLateCopilotRescanCity(planning.cityId)
+
   const moveToYear = (year: number) => {
-    const frame = frameHistory.find((item) => item.year === year)
-    if (frame) {
-      scrubToYear(year)
+    const yr = Math.max(START_YEAR, Math.min(END_YEAR, year))
+    // After Analyze, the scrubber drives planning timelines; replaying stale
+    // frameHistory (often a single 2026 snapshot) incorrectly pinned the Copilot year.
+    if (planning.hasAnalyzed) {
+      setTimelineYear(yr)
       return
     }
-    setTimelineYear(year)
+    const frame = frameHistory.find((item) => item.year === yr)
+    if (frame) {
+      scrubToYear(yr)
+      return
+    }
+    setTimelineYear(yr)
   }
 
   const copilotLine = useMemo(
@@ -69,6 +79,9 @@ export function BottomBar() {
         cityHealth: planning.afterScores?.cityHealth ?? planning.beforeScores?.cityHealth,
         cityName: selectedCity?.name,
         dynamicAdvisory: planning.dynamicAdvisory?.message,
+        rescanCity,
+        copilotTimelineYear: simYear,
+        minRescanYear: COPILOT_RESCAN_MIN_YEAR,
       }),
     [
       displayYear,
@@ -80,6 +93,8 @@ export function BottomBar() {
       planning.beforeScores?.cityHealth,
       planning.dynamicAdvisory?.message,
       selectedCity?.name,
+      rescanCity,
+      simYear,
     ],
   )
   const { output: copilotText, done: copilotDone } = useTypewriter(copilotLine, { speedMs: 14 })
@@ -260,6 +275,9 @@ interface CopilotLineInput {
   cityHealth?: number
   cityName?: string
   dynamicAdvisory?: string
+  rescanCity: boolean
+  copilotTimelineYear: number
+  minRescanYear: number
 }
 
 function buildCopilotLine({
@@ -271,12 +289,25 @@ function buildCopilotLine({
   cityHealth,
   cityName,
   dynamicAdvisory,
+  rescanCity,
+  copilotTimelineYear,
+  minRescanYear,
 }: CopilotLineInput): string {
   if (!hasAnalyzed) {
     return `Pick a scenario and let me scan ${cityName ?? 'this city'} for service-coverage gaps.`
   }
   if (dynamicAdvisory) return dynamicAdvisory
   const popLabel = Intl.NumberFormat('en', { notation: 'compact', maximumFractionDigits: 1 }).format(population)
+
+  if (hasApplied && rescanCity && copilotTimelineYear < minRescanYear) {
+    const health = typeof cityHealth === 'number' ? ` City Health ~${Math.round(cityHealth)}.` : ''
+    return `Planning year ${copilotTimelineYear}; population ~${popLabel}.${health} Scrub to ${minRescanYear}+ then tap **Rescan map** (header or Copilot) for refreshed recommendations.`
+  }
+  if (hasApplied && rescanCity && copilotTimelineYear >= minRescanYear) {
+    const health = typeof cityHealth === 'number' ? ` City Health ~${Math.round(cityHealth)}.` : ''
+    return `Late-game (${copilotTimelineYear}): use **Rescan map** from the header or Copilot to clear overlays and rerun gap discovery.${health}`
+  }
+
   const phaseLabel = phase?.trim()
   if (hasApplied && cityHealth != null) {
     if (phaseLabel) {

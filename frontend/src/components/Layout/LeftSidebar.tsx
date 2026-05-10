@@ -14,13 +14,14 @@ import {
   Scale,
   Sparkles,
   Train,
+  Radar,
   Users,
 } from 'lucide-react'
 import { ZonePalette } from '@/components/UI/ZonePalette'
 import { CopilotAdvisoryAlert } from '@/components/UI/CopilotAdvisoryAlert'
 import { useCityStore } from '@/stores/cityStore'
 import { useScenarioStore, scenarioColors, scenarioLabels } from '@/stores/scenarioStore'
-import { useSimulationStore } from '@/stores/simulationStore'
+import { useSimulationStore, COPILOT_RESCAN_MIN_YEAR, currentPlanningYear, supportsLateCopilotRescanCity } from '@/stores/simulationStore'
 import type { ScenarioId } from '@/types/city.types'
 
 const TABS = [
@@ -286,9 +287,11 @@ function MetricsPanel() {
 function CopilotPanel() {
   const selectedCity = useCityStore((state) => state.selectedCity)
   const activeScenario = useScenarioStore((state) => state.activeScenario)
-  const { planning, analyzeDemo, applyAIPlan, applyDynamicAdvisoryPlan, openReport, focusRecommendation, acknowledgeDynamicAdvisory } = useSimulationStore()
+  const currentYear = useSimulationStore((s) => s.currentYear)
+  const { planning, analyzeDemo, applyAIPlan, applyDynamicAdvisoryPlan, copilotRescanLateGame, openReport, focusRecommendation, acknowledgeDynamicAdvisory } = useSimulationStore()
   const topItem = planning.aiRecommendations.find((item) => planning.topRecommendation.itemIds?.includes(item.id)) ?? planning.aiRecommendations[0]
   const advisory = planning.dynamicAdvisory
+  const simYearForRescan = currentPlanningYear(currentYear, planning.timelineYear)
   return (
     <div className="p-3 space-y-4">
       {advisory && (
@@ -330,6 +333,30 @@ function CopilotPanel() {
                 <button onClick={() => applyAIPlan(activeScenario)} disabled={planning.hasAppliedAIPlan} className="rounded-lg px-3 py-2 text-xs font-semibold disabled:opacity-50" style={{ background: 'rgba(0,184,148,0.09)', color: 'var(--color-accent-green)', border: '1px solid rgba(0,184,148,0.38)' }}>
                   {planning.hasAppliedAIPlan ? 'Plan Applied' : 'Apply AI Plan'}
                 </button>
+                {planning.hasAppliedAIPlan && supportsLateCopilotRescanCity(planning.cityId) ? (
+                  <button
+                    type="button"
+                    disabled={simYearForRescan < COPILOT_RESCAN_MIN_YEAR}
+                    title={
+                      simYearForRescan < COPILOT_RESCAN_MIN_YEAR
+                        ? `Scrub the timeline to ${COPILOT_RESCAN_MIN_YEAR}+`
+                        : 'Clear overlays and rerun gap discovery for this timeline year.'
+                    }
+                    onClick={() => void copilotRescanLateGame(activeScenario)}
+                    className="inline-flex items-center justify-center gap-1 rounded-lg px-3 py-2 text-xs font-semibold disabled:cursor-not-allowed disabled:opacity-45"
+                    style={{
+                      color: '#fff',
+                      border: '1px solid rgba(var(--rgb-accent-dim), 0.35)',
+                      background: 'linear-gradient(165deg, var(--color-accent-primary) 0%, var(--color-accent-primary-dim) 100%)',
+                      boxShadow: '0 2px 10px rgba(var(--rgb-accent), 0.28)',
+                    }}
+                  >
+                    <Radar size={12} />
+                    {simYearForRescan < COPILOT_RESCAN_MIN_YEAR
+                      ? `Rescan (${COPILOT_RESCAN_MIN_YEAR}+)`
+                      : 'Rescan map'}
+                  </button>
+                ) : null}
                 <button onClick={openReport} className="inline-flex items-center justify-center gap-1 rounded-lg px-3 py-2 text-xs font-semibold" style={{ background: 'var(--color-bg-panel)', color: 'var(--color-accent-purple)', border: '1px solid var(--color-border-subtle)' }}>
                   <FileText size={12} />
                   Generate Report

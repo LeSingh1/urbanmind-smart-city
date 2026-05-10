@@ -1,10 +1,15 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { FileText, Search, Sparkles, TriangleAlert } from 'lucide-react'
+import { FileText, Search, Sparkles, TriangleAlert, Radar } from 'lucide-react'
 import { CopilotAdvisoryAlert } from '@/components/UI/CopilotAdvisoryAlert'
 import { useCityStore } from '@/stores/cityStore'
 import { useScenarioStore } from '@/stores/scenarioStore'
-import { useSimulationStore } from '@/stores/simulationStore'
+import {
+  COPILOT_RESCAN_MIN_YEAR,
+  currentPlanningYear,
+  supportsLateCopilotRescanCity,
+  useSimulationStore,
+} from '@/stores/simulationStore'
 import { useTypewriter } from '@/hooks/useTypewriter'
 import { buildReportData } from '@/state/buildReportData'
 
@@ -63,9 +68,11 @@ const SCENARIO_LENS: Record<ScenarioId, { label: string; focus: string; priority
 export function RightPanel() {
   const selectedCity = useCityStore((state) => state.selectedCity)
   const activeScenario = useScenarioStore((state) => state.activeScenario)
-  const { planning, analyzeDemo, applyAIPlan, applyDynamicAdvisoryPlan, openReport, focusRecommendation, acknowledgeDynamicAdvisory } = useSimulationStore()
+  const currentYear = useSimulationStore((s) => s.currentYear)
+  const { planning, analyzeDemo, applyAIPlan, applyDynamicAdvisoryPlan, copilotRescanLateGame, openReport, focusRecommendation, acknowledgeDynamicAdvisory } = useSimulationStore()
   const topRecommendation = planning.topRecommendation
   const topItem = planning.aiRecommendations.find((item) => topRecommendation.itemIds?.includes(item.id)) ?? planning.aiRecommendations[0]
+  const simYearForRescan = currentPlanningYear(currentYear, planning.timelineYear)
   const before = planning.beforeScores
   const afterPreview = previewAfterMetrics(planning)
   const populationServed = topRecommendation.expectedImpact.populationServed ?? Math.round((selectedCity?.population_current ?? planning.timelinePopulation) * 0.018)
@@ -328,15 +335,40 @@ export function RightPanel() {
                 <p className="mt-2 text-xs leading-relaxed" style={{ color: 'var(--color-text-secondary)' }}>
                   Copilot flagged a timeline gap the current plan does not fully cover. Review the advisory above, then apply the follow-on recommendation or open the report.
                 </p>
-                <button
-                  type="button"
-                  onClick={openReport}
-                  className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-lg px-3 py-3 text-sm font-semibold"
-                  style={{ background: 'var(--color-bg-panel)', color: 'var(--color-accent-purple)', border: '1px solid var(--color-border-subtle)' }}
-                >
-                  <FileText size={16} />
-                  Generate Report
-                </button>
+                <div className="mt-4 grid gap-2">
+                  <button
+                    type="button"
+                    onClick={openReport}
+                    className="inline-flex w-full items-center justify-center gap-2 rounded-lg px-3 py-3 text-sm font-semibold"
+                    style={{ background: 'var(--color-bg-panel)', color: 'var(--color-accent-purple)', border: '1px solid var(--color-border-subtle)' }}
+                  >
+                    <FileText size={16} />
+                    Generate Report
+                  </button>
+                  {supportsLateCopilotRescanCity(planning.cityId) ? (
+                    <button
+                      type="button"
+                      disabled={simYearForRescan < COPILOT_RESCAN_MIN_YEAR}
+                      title={
+                        simYearForRescan < COPILOT_RESCAN_MIN_YEAR
+                          ? `Scrub the timeline to ${COPILOT_RESCAN_MIN_YEAR}+ to rescan gaps.`
+                          : 'Clear applied Copilot overlays and rebuild recommendations for this timeline year.'
+                      }
+                      onClick={() => void copilotRescanLateGame(activeScenario)}
+                      className="inline-flex w-full items-center justify-center gap-2 rounded-lg px-3 py-3 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-45"
+                      style={{
+                        background: 'linear-gradient(165deg, var(--color-accent-primary) 0%, var(--color-accent-primary-dim) 100%)',
+                        color: '#fff',
+                        border: '1px solid rgba(var(--rgb-accent-dim), 0.35)',
+                      }}
+                    >
+                      <Radar size={16} />
+                      {simYearForRescan < COPILOT_RESCAN_MIN_YEAR
+                        ? `Rescan (${COPILOT_RESCAN_MIN_YEAR}+)`
+                        : 'Rescan map · Copilot refresh'}
+                    </button>
+                  ) : null}
+                </div>
               </>
             ) : (
               <>
@@ -346,15 +378,40 @@ export function RightPanel() {
                 <p className="mt-2 text-xs leading-relaxed" style={{ color: 'var(--color-text-secondary)' }}>
                   {selectedCity?.name ?? 'This city'} is now closer to 15-minute city compliance.
                 </p>
-                <button
-                  type="button"
-                  onClick={openReport}
-                  className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-lg px-3 py-3 text-sm font-semibold"
-                  style={{ background: 'var(--color-bg-panel)', color: 'var(--color-accent-purple)', border: '1px solid var(--color-border-subtle)' }}
-                >
-                  <FileText size={16} />
-                  Generate Report
-                </button>
+                <div className="mt-4 grid gap-2">
+                  <button
+                    type="button"
+                    onClick={openReport}
+                    className="inline-flex w-full items-center justify-center gap-2 rounded-lg px-3 py-3 text-sm font-semibold"
+                    style={{ background: 'var(--color-bg-panel)', color: 'var(--color-accent-purple)', border: '1px solid var(--color-border-subtle)' }}
+                  >
+                    <FileText size={16} />
+                    Generate Report
+                  </button>
+                  {supportsLateCopilotRescanCity(planning.cityId) ? (
+                    <button
+                      type="button"
+                      disabled={simYearForRescan < COPILOT_RESCAN_MIN_YEAR}
+                      title={
+                        simYearForRescan < COPILOT_RESCAN_MIN_YEAR
+                          ? `Scrub the timeline to ${COPILOT_RESCAN_MIN_YEAR}+ to rescan gaps.`
+                          : 'Clear applied Copilot overlays and rebuild recommendations for this timeline year.'
+                      }
+                      onClick={() => void copilotRescanLateGame(activeScenario)}
+                      className="inline-flex w-full items-center justify-center gap-2 rounded-lg px-3 py-3 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-45"
+                      style={{
+                        background: 'linear-gradient(165deg, var(--color-accent-primary) 0%, var(--color-accent-primary-dim) 100%)',
+                        color: '#fff',
+                        border: '1px solid rgba(var(--rgb-accent-dim), 0.35)',
+                      }}
+                    >
+                      <Radar size={16} />
+                      {simYearForRescan < COPILOT_RESCAN_MIN_YEAR
+                        ? `Rescan (${COPILOT_RESCAN_MIN_YEAR}+)`
+                        : 'Rescan map · Copilot refresh'}
+                    </button>
+                  ) : null}
+                </div>
               </>
             )}
           </section>
