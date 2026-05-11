@@ -231,25 +231,31 @@ export function BottomBar() {
             />
           </div>
           <div className="mt-2 flex flex-wrap items-center gap-1.5">
-            {DECADE_CHIPS.map((year) => {
-              const active = displayYear === year || (Math.abs(displayYear - year) <= 4 && year !== 2026)
-              return (
-                <button
-                  key={year}
-                  type="button"
-                  onClick={() => moveToYear(year)}
-                  className="rounded-full px-2.5 py-0.5 font-mono text-[10px] tabular-nums transition-colors"
-                  style={{
-                    background: active ? 'var(--color-bg-hover)' : 'var(--color-bg-sidebar)',
-                    color: active ? 'var(--color-accent-cyan)' : 'var(--color-text-muted)',
-                    border: `1px solid ${active ? 'rgba(var(--rgb-accent), 0.42)' : 'var(--color-border-subtle)'}`,
-                    boxShadow: active ? 'var(--shadow-inset)' : 'none',
-                  }}
-                >
-                  {year}
-                </button>
-              )
-            })}
+            {(() => {
+              // Pick exactly one active chip: the largest chip year <= displayYear.
+              const activeChipYear = [...DECADE_CHIPS]
+                .filter((y) => y <= displayYear)
+                .pop() ?? DECADE_CHIPS[0]
+              return DECADE_CHIPS.map((year) => {
+                const active = year === activeChipYear
+                return (
+                  <button
+                    key={year}
+                    type="button"
+                    onClick={() => moveToYear(year)}
+                    className="rounded-full px-2.5 py-0.5 font-mono text-[10px] tabular-nums transition-colors"
+                    style={{
+                      background: active ? 'var(--color-bg-hover)' : 'var(--color-bg-sidebar)',
+                      color: active ? 'var(--color-accent-cyan)' : 'var(--color-text-muted)',
+                      border: `1px solid ${active ? 'rgba(var(--rgb-accent), 0.42)' : 'var(--color-border-subtle)'}`,
+                      boxShadow: active ? 'var(--shadow-inset)' : 'none',
+                    }}
+                  >
+                    {year}
+                  </button>
+                )
+              })
+            })()}
           </div>
         </div>
 
