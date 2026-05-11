@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useCallback, useRef, useState } from 'react'
+import { Fragment, useEffect, useMemo, useCallback, useRef, useState } from 'react'
 import { MapContainer as LeafletMap, TileLayer, CircleMarker, Circle, Marker, Popup, useMap, useMapEvents } from 'react-leaflet'
 import L from 'leaflet'
 import { motion, AnimatePresence } from 'framer-motion'
@@ -524,6 +524,37 @@ function ExistingDotPopup({ dot }: { dot: ExistingInfrastructure }) {
       <div style={{ fontSize: 11, color: '#374151', lineHeight: 1.4 }}>{dot.relevance}</div>
     </div>
   )
+}
+
+/**
+ * Map every UnderservedZoneType to a category icon, color, and label so the
+ * red coverage circles drawn for each gap always show a clear "what kind of
+ * gap is this?" marker in the center — instead of an empty circle that only
+ * makes sense once the user clicks it.
+ */
+const GAP_TYPE_META: Record<string, { icon: string; color: string; label: string }> = {
+  hospital_access:  { icon: ICON_HOSPITAL, color: '#dc2626', label: 'Hospital/clinic gap' },
+  emergency_access: { icon: ICON_FIRE,     color: '#dc2626', label: 'Emergency response gap' },
+  school_access:    { icon: ICON_SCHOOL,   color: '#2563eb', label: 'School access gap' },
+  park_access:      { icon: ICON_PARK,     color: '#16a34a', label: 'Park access gap' },
+  green_space:      { icon: ICON_PARK,     color: '#16a34a', label: 'Green space gap' },
+  transit_access:   { icon: ICON_TRANSIT,  color: '#7c3aed', label: 'Transit access gap' },
+  congestion:       { icon: ICON_TRANSIT,  color: '#ea580c', label: 'Congestion gap' },
+  housing_access:   { icon: ICON_HOME,     color: '#ea580c', label: 'Housing access gap' },
+  equity:           { icon: ICON_COMMUNITY, color: '#6366f1', label: 'Equity gap' },
+}
+
+function gapZoneIcon(gapType: string, isImproved: boolean, isActive: boolean) {
+  const meta = GAP_TYPE_META[gapType] ?? { icon: ICON_HOSPITAL, color: '#FF5A3D', label: 'Service gap' }
+  const color = isImproved ? '#10b981' : meta.color
+  const ring = isActive ? '0 0 0 3px rgba(255,255,255,0.85), 0 0 18px rgba(255,255,255,0.45)' : '0 4px 10px rgba(15,23,42,0.18)'
+  const bg = isImproved ? '#ecfdf5' : '#ffffff'
+  return L.divIcon({
+    className: 'urbanmind-gap-icon',
+    html: `<div style="width:28px;height:28px;border-radius:9px;background:${bg};border:1.5px solid ${color};box-shadow:${ring};display:grid;place-items:center;color:${color};">${meta.icon}</div>`,
+    iconSize: [28, 28],
+    iconAnchor: [14, 14],
+  })
 }
 
 function infraIcon(item: InfrastructureItem, dropDelayMs = 0, focused = false, dimmed = false) {
@@ -1263,26 +1294,34 @@ export function MapContainer() {
               const dimFill = zoneMuted ? 0.45 : 1
               const dimStroke = zoneMuted ? 0.35 : 1
               return (
-              <AnimatedZoneCircle
-                key={zone.id}
-                center={zone.center}
-                targetRadius={zone.radiusMeters * radiusMult}
-                targetFillOpacity={Math.min(0.55, fillBase + fillBoost) * dimFill}
-                targetOpacity={Math.min(1, (strokeBase + strokeBoost + (isActiveZone ? 0.35 : 0)) * dimStroke)}
-                targetWeight={isActiveZone ? 5 : (zone.isImproved ? 1 : 2 + yearStress)}
-                pathColor={isActiveZone ? '#FFFFFF' : zone.isImproved ? 'var(--color-accent-green)' : '#FF5A3D'}
-                fillColor={zone.isImproved ? 'var(--color-accent-green)' : '#FF5A3D'}
-                dashArray={zone.isImproved ? '5 5' : undefined}
-              >
-                <Popup>
-                  <strong>{zone.name}</strong><br />
-                  Gap type: {zone.gapType.replace(/_/g, ' ')}<br />
-                  Severity: {Math.round(zone.severity * 100)}%<br />
-                  Before score: {zone.beforeScore}<br />
-                  {zone.isImproved || zone.improved ? `After score: ${zone.afterScore ?? zone.beforeScore}` : zone.reason}<br />
-                  {zone.isImproved || zone.improved ? 'Improved by proposed infrastructure in the AI plan.' : null}
-                </Popup>
-              </AnimatedZoneCircle>
+              <Fragment key={zone.id}>
+                <AnimatedZoneCircle
+                  center={zone.center}
+                  targetRadius={zone.radiusMeters * radiusMult}
+                  targetFillOpacity={Math.min(0.55, fillBase + fillBoost) * dimFill}
+                  targetOpacity={Math.min(1, (strokeBase + strokeBoost + (isActiveZone ? 0.35 : 0)) * dimStroke)}
+                  targetWeight={isActiveZone ? 5 : (zone.isImproved ? 1 : 2 + yearStress)}
+                  pathColor={isActiveZone ? '#FFFFFF' : zone.isImproved ? 'var(--color-accent-green)' : '#FF5A3D'}
+                  fillColor={zone.isImproved ? 'var(--color-accent-green)' : '#FF5A3D'}
+                  dashArray={zone.isImproved ? '5 5' : undefined}
+                >
+                  <Popup>
+                    <strong>{zone.name}</strong><br />
+                    Gap type: {zone.gapType.replace(/_/g, ' ')}<br />
+                    Severity: {Math.round(zone.severity * 100)}%<br />
+                    Before score: {zone.beforeScore}<br />
+                    {zone.isImproved || zone.improved ? `After score: ${zone.afterScore ?? zone.beforeScore}` : zone.reason}<br />
+                    {zone.isImproved || zone.improved ? 'Improved by proposed infrastructure in the AI plan.' : null}
+                  </Popup>
+                </AnimatedZoneCircle>
+                {/* Category icon at the zone center — tells the user at a glance what kind of gap this is. */}
+                <Marker
+                  position={zone.center}
+                  icon={gapZoneIcon(zone.gapType, zone.isImproved || zone.improved || false, isActiveZone)}
+                  opacity={zoneMuted ? 0.55 : 1}
+                  interactive={false}
+                />
+              </Fragment>
               )
             })}
             {showPlanning && planning.equityLens && planning.districtProfiles.map((district) => (
