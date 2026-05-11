@@ -275,8 +275,18 @@ interface PlanningStateLike {
   infrastructure: { id: string; name: string; status: string; category: string; costEstimate: number; reason: string; impactScore: number; confidence: number; expectedImpact?: { populationServed?: number } }[]
   aiRecommendations: { id: string; name: string; category: string; costEstimate: number; reason: string; impactScore: number; confidence: number; expectedImpact?: { populationServed?: number } }[]
   topRecommendation: AIRecommendation
-  /** Copilot Phase-2 / late-gap alert — when set, a follow-on plan is needed. */
-  dynamicAdvisory: { id?: string; title?: string; message?: string } | null
+  /**
+   * Copilot Phase-2 / late-gap alert.
+   * - actionablePlacement = true → a follow-on plan is needed (gates report as needs_phase_2)
+   * - actionablePlacement = false → informational only (e.g., Phase 2 already applied),
+   *   does NOT gate the report status.
+   */
+  dynamicAdvisory: {
+    id?: string
+    title?: string
+    message?: string
+    actionablePlacement?: boolean
+  } | null
   impactSummary: {
     residentsServed: number
     gapsFixed: number
@@ -292,10 +302,18 @@ interface PlanningStateLike {
   timelinePopulation: number
 }
 
-/** Only Copilot advisory counts as a follow-on signal — not raw zone math (IDs / demo data can disagree). */
+/**
+ * Only Copilot advisory counts as a follow-on signal — not raw zone math
+ * (IDs / demo data can disagree). After the user applies the Phase 2 plan,
+ * Copilot may still emit a non-null catalog advisory with
+ * actionablePlacement: false (informational only) — that should NOT keep the
+ * report status pinned at needs_phase_2.
+ */
 function copilotFollowUpPending(planning: PlanningStateLike): { needed: boolean; fromAdvisory: boolean } {
-  if (planning.dynamicAdvisory) return { needed: true, fromAdvisory: true }
-  return { needed: false, fromAdvisory: false }
+  const advisory = planning.dynamicAdvisory
+  if (!advisory) return { needed: false, fromAdvisory: false }
+  if (advisory.actionablePlacement === false) return { needed: false, fromAdvisory: false }
+  return { needed: true, fromAdvisory: true }
 }
 
 export function buildReportData(planning: PlanningStateLike, scenarioId: ScenarioId): PlanningReportData {
