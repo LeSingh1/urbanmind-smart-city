@@ -48,9 +48,38 @@ If the API is not running, the app still runs in **offline** mode (demo analysis
 
 ## Tech Stack
 
-**Shipped in production simulation:** React, TypeScript, Vite, Mapbox GL, D3, Zustand, Python, FastAPI, PostgreSQL/PostGIS, Redis, RQ, Docker Compose, Anthropic Claude (optional narrative + planning rationale API).
+**Shipped in production simulation:** React, TypeScript, Vite, MapLibre GL, D3, Zustand, Python, FastAPI, PostgreSQL/PostGIS, Redis, RQ, Docker Compose, Anthropic Claude (optional narrative + planning rationale API).
 
 **Tooling / data pipeline / experimental RL:** OSMnx, GeoPandas, PyTorch, Stable Baselines3 in [`ai_engine/`](ai_engine/) — see **Simulation backend** below.
+
+## AI & Tools Used (Attribution)
+
+In the spirit of Nexa Hack's originality and disclosure rules, here is exactly how AI is involved in this project — what it does, what it does not do, and which tools were used during development.
+
+### Runtime AI (used by the deployed product)
+
+- **Anthropic Claude** — used at runtime *only* to generate short natural-language **planning rationales** for engine decisions. The Claude call lives behind `POST /ai/planning-rationale` on the FastAPI backend, is timeout-bounded, and falls back to a deterministic template if the API is unreachable or no `ANTHROPIC_API_KEY` is configured. **Claude does not place infrastructure, choose locations, compute scores, or invent costs** — those all come from the deterministic gap engine and a hardcoded cost table. See the *Architecture* section above for the full three-layer story (gap engine → AI copilot → 12-rule validator).
+
+### Development AI (used while building)
+
+- **Cursor** — used as the primary IDE/AI pair-programmer during implementation. All code was reviewed, edited, and committed by the team; Cursor was used the way modern IDEs are used (autocomplete, refactor, scaffold).
+- **Claude Code (Anthropic CLI)** — used for portions of the integration pass, debate-driven design review, and refactoring. Same disclosure as above: every change was reviewed by a human before commit.
+
+We disclose these explicitly because (a) Nexa Hack's "open-source tools are permitted with proper attribution" clause makes it the right thing to do, and (b) several judging-relevant concepts in this project — the three-layer architecture, the 12-rule validator, the 15-Minute City framing, the EJScreen-aligned weighting — were sharpened through AI-assisted review. The *product concept, the gap engine, the validator rules, the scenarios, and the UI* are original team work.
+
+### Open-source libraries and data
+
+- **MapLibre GL** + **OpenFreeMap** vector tiles + **CartoDB** raster basemaps (mapping, all free / open).
+- **React, Vite, TypeScript, Zustand, framer-motion, lucide-react, D3, react-leaflet, Leaflet** (frontend).
+- **FastAPI, SQLAlchemy, Alembic, Redis, RQ, ReportLab, OSMnx, GeoPandas, PyTorch, Stable Baselines3** (backend + experimental RL).
+- **Plus Jakarta Sans** + **JetBrains Mono** via Google Fonts.
+
+### Domain frameworks referenced
+
+- **15-Minute City** framework (Carlos Moreno, Paris 2020) — adopted as the headline planning lens (essential services reachable in 15 minutes by foot or bike).
+- **EPA EJScreen** — methodology reference for the gap-scoring weights (emergency 0.30, clinic 0.25, school 0.20, transit 0.15, parks 0.10) to reflect cumulative-impact / mortality-stakes ordering rather than flat-equal weighting.
+
+No code, design assets, or simulation data were copied from another submission. Previously-awarded versions of this project: **none** — this is a fresh build for Nexa Hack.
 
 ## Architecture
 
