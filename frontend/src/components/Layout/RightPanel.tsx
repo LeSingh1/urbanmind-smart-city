@@ -315,7 +315,7 @@ export function RightPanel() {
                     className="rounded-lg px-3 py-3 text-sm font-semibold"
                     style={{ background: 'rgba(0,184,148,0.09)', color: 'var(--color-accent-green)', border: '1px solid rgba(0,184,148,0.38)' }}
                   >
-                    Apply Recommendation
+                    Apply Top Recommendation
                   </button>
                   <button
                     type="button"
@@ -323,7 +323,7 @@ export function RightPanel() {
                     className="rounded-lg px-3 py-3 text-sm font-semibold"
                     style={{ background: 'var(--color-bg-panel)', color: 'var(--color-accent-cyan)', border: '1px solid rgba(var(--rgb-accent), 0.35)' }}
                   >
-                    Apply Full AI Plan
+                    Apply Full Planning Recommendations
                   </button>
                 </div>
               </>
@@ -527,21 +527,53 @@ function CopilotHeader({ stage }: { stage: CopilotStage }) {
         ? 'var(--color-accent-cyan)'
         : 'var(--color-accent-green)'
   return (
-    <div className="flex items-center gap-2.5 px-1 pt-1">
-      <div className="relative grid h-9 w-9 place-items-center rounded-full" style={{ background: 'rgba(0,184,148,0.10)', border: '1px solid rgba(0,184,148,0.45)' }}>
-        <Sparkles size={16} style={{ color: 'var(--color-accent-green)' }} />
-        <span
-          className="absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full"
-          style={{ background: statusColor, border: '2px solid var(--color-bg-sidebar)', boxShadow: `0 0 8px ${statusColor}` }}
-        />
+    <div className="space-y-2 px-1 pt-1">
+      <div className="flex items-center gap-2.5">
+        <div className="relative grid h-9 w-9 place-items-center rounded-full" style={{ background: 'rgba(0,184,148,0.10)', border: '1px solid rgba(0,184,148,0.45)' }}>
+          <Sparkles size={16} style={{ color: 'var(--color-accent-green)' }} />
+          <span
+            className="absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full"
+            style={{ background: statusColor, border: '2px solid var(--color-bg-sidebar)', boxShadow: `0 0 8px ${statusColor}` }}
+          />
+        </div>
+        <div>
+          <div className="font-display text-sm font-semibold" style={{ color: 'var(--color-text-primary)' }}>
+            UrbanMind Copilot
+          </div>
+          <div className="font-mono text-[9px] uppercase tracking-widest" style={{ color: statusColor }}>
+            {statusLabel}
+          </div>
+        </div>
       </div>
-      <div>
-        <div className="font-display text-sm font-semibold" style={{ color: 'var(--color-text-primary)' }}>
-          UrbanMind Copilot
-        </div>
-        <div className="font-mono text-[9px] uppercase tracking-widest" style={{ color: statusColor }}>
-          {statusLabel}
-        </div>
+      {/* Architecture trust strip */}
+      <div
+        className="flex items-center gap-1 rounded-lg px-2 py-1.5"
+        style={{ background: 'rgba(14,165,233,0.06)', border: '1px solid rgba(14,165,233,0.16)' }}
+      >
+        <span className="font-mono text-[8px] uppercase tracking-wider" style={{ color: 'var(--color-text-muted)' }}>
+          Gap Engine
+        </span>
+        <span style={{ color: 'var(--color-text-muted)', fontSize: 8 }}>·</span>
+        <span className="font-mono text-[8px] uppercase tracking-wider" style={{ color: 'var(--color-accent-cyan)' }}>
+          Claude AI
+        </span>
+        <span style={{ color: 'var(--color-text-muted)', fontSize: 8 }}>·</span>
+        <span className="font-mono text-[8px] uppercase tracking-wider" style={{ color: 'var(--color-text-muted)' }}>
+          12-Rule Validator
+        </span>
+      </div>
+      {/* 15-min city framework callout */}
+      <div
+        className="flex items-center gap-1.5 rounded-lg px-2 py-1"
+        style={{ background: 'rgba(5,150,105,0.06)', border: '1px solid rgba(5,150,105,0.16)' }}
+      >
+        <span className="font-mono text-[8px] uppercase tracking-wider" style={{ color: 'var(--color-accent-green)' }}>
+          15-Min City Framework
+        </span>
+        <span style={{ color: 'var(--color-text-muted)', fontSize: 8 }}>·</span>
+        <span className="font-mono text-[8px] uppercase tracking-wider" style={{ color: 'var(--color-text-muted)' }}>
+          EJScreen-aligned
+        </span>
       </div>
     </div>
   )

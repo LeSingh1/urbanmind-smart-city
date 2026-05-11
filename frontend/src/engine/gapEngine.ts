@@ -39,12 +39,14 @@ const RADII: Record<InfrastructureType, number> = {
 /** Walking-radius types use raw distance; drive-radius types apply detour factor. */
 const DRIVE_TYPES: ReadonlySet<InfrastructureType> = new Set(['emergency', 'clinic'])
 
+// Weights reflect mortality stakes: emergency/clinic gaps carry life-safety consequences
+// that park gaps do not. Consistent with EJScreen cumulative-impact methodology.
 const SCORING_WEIGHTS = {
-  clinicAccess: 0.2,
-  schoolAccess: 0.2,
-  parkAccess: 0.2,
-  transitAccess: 0.2,
-  emergencyAccess: 0.2,
+  emergencyAccess: 0.30,
+  clinicAccess:    0.25,
+  schoolAccess:    0.20,
+  transitAccess:   0.15,
+  parkAccess:      0.10,
 }
 
 // ──────────────────────────────────────────────────────────────────────────

@@ -92,20 +92,25 @@ export function ControlBar({ connectionState }: { connectionState: string }) {
             aria-label="Export PDF"
             title={
               !isExportableSessionId(sessionId)
-                ? 'PDF requires a backend simulation session'
+                ? 'PDF export requires a live backend session — run Play with Docker or the API server'
                 : 'Download PDF report'
             }
             onClick={() => {
             if (!isExportableSessionId(sessionId)) {
               notify(
                 'warning',
-                'PDF export needs a live simulation from the backend. Start the API with Docker (or npm run dev + backend) and run Play on the timeline, or use Print / Save from the report modal while offline.',
-                6000,
+                'PDF export needs a live simulation from the backend. Start the API with Docker (or npm run dev + backend) and run Play on the timeline.',
+                5000,
               )
               return
             }
             window.open(exportSimulationPdfUrl(sessionId), '_blank')
           }}
+            style={
+              !isExportableSessionId(sessionId)
+                ? { opacity: 0.35, cursor: 'not-allowed' }
+                : undefined
+            }
           ><Download size={17} /></button>
           <button className="icon-btn" aria-label="Settings" onClick={() => setSettingsOpen(true)}><Settings size={17} /></button>
           <SettingsModal open={settingsOpen} onClose={() => setSettingsOpen(false)} />
