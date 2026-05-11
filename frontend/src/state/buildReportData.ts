@@ -129,12 +129,26 @@ export function computeTimelineStress(cityId: string, selectedYear: number, proj
   return 'low'
 }
 
+const SIMULATION_START_YEAR = 2026
+
+/**
+ * Latest year the applied plan is currently projected to remain valid.
+ * Default: end of simulation horizon (2026 + horizonYears − 1).
+ * If Copilot has not yet flagged a follow-on advisory at the current
+ * scrub year, the plan is assumed valid through the end of the horizon.
+ */
+function projectedHoldYear(horizonYears: number): number {
+  const horizon = Number.isFinite(horizonYears) && horizonYears > 0 ? horizonYears : 75
+  return SIMULATION_START_YEAR + horizon - 1
+}
+
 function determineStatus(opts: {
   hasAppliedAIPlan: boolean
   cityHealthDelta: number
   improvedCount: number
   totalGaps: number
   selectedYear: number
+  horizonYears: number
   copilotFollowUp: boolean
   copilotFollowUpFromAdvisory: boolean
 }): { status: ReportStatus; label: string; blurb: string } {
@@ -154,17 +168,18 @@ function determineStatus(opts: {
         : 'Open service gaps remain after the applied plan; expand coverage or re-run analysis.',
     }
   }
+  const holdYear = projectedHoldYear(opts.horizonYears)
   if (opts.cityHealthDelta >= 12 && opts.improvedCount >= Math.max(1, opts.totalGaps - 1)) {
     return {
       status: 'future_proofed',
-      label: 'Future Proofed',
-      blurb: 'Major service gaps improved; this plan stays active until Copilot identifies a new coverage need on the timeline.',
+      label: `Future Proofed Through ${holdYear}`,
+      blurb: `Major service gaps improved; this plan stays active through ${holdYear} (the ${timelineDecadeLabel(holdYear)}) until Copilot identifies a new coverage need on the timeline.`,
     }
   }
   return {
     status: 'holds_through_2050s',
-    label: `Holds Through ${timelineDecadeLabel(opts.selectedYear)}`,
-    blurb: 'Applied plan remains valid for the rest of this simulation unless Copilot surfaces a new gap or you rescope the scenario.',
+    label: `Holds Through ${holdYear}`,
+    blurb: `Applied plan remains valid through ${holdYear} (the ${timelineDecadeLabel(holdYear)}) — the rest of this simulation — unless Copilot surfaces a new gap or you rescope the scenario.`,
   }
 }
 
@@ -199,6 +214,7 @@ function buildNarrative(opts: {
   cityName: string
   scenarioName: string
   selectedYear: number
+  horizonYears: number
   status: ReportStatus
   residentsServed: number
   cityHealthBefore: number
@@ -208,6 +224,7 @@ function buildNarrative(opts: {
 }): string {
   const residentsLabel = opts.residentsServed.toLocaleString()
   const costLabel = `$${Math.round(opts.totalCost / 1_000_000)}M`
+  const holdYear = projectedHoldYear(opts.horizonYears)
   if (opts.status === 'no_plan') {
     return `${opts.cityName} has visible service gaps. The ${opts.scenarioName} lens is staged — apply the plan to see ${opts.selectedYear} outcomes.`
   }
@@ -218,9 +235,9 @@ function buildNarrative(opts: {
     return `The applied ${opts.scenarioName} plan improved baseline coverage, but open gaps still need work at ${opts.selectedYear}. Close the remaining gaps or re-run analysis before treating the scenario as fully covered (~${costLabel} basis for the current recommendation set).`
   }
   if (opts.status === 'holds_through_2050s') {
-    return `The applied ${opts.scenarioName} plan remains the active Copilot recommendation at ${opts.selectedYear} for ${residentsLabel} residents served. It is assumed to hold through the rest of this simulation until Copilot flags a new gap (for example a late-horizon advisory) or you change the scenario.`
+    return `The applied ${opts.scenarioName} plan remains the active Copilot recommendation at ${opts.selectedYear} for ${residentsLabel} residents served. It is projected to hold through ${holdYear} (the ${timelineDecadeLabel(holdYear)}) — the end of this simulation horizon — until Copilot flags a new gap or you change the scenario.`
   }
-  return `The applied ${opts.scenarioName} plan resolves the analyzed gaps in ${opts.cityName} for the ${opts.selectedYear} view, lifting City Health from ${Math.round(opts.cityHealthBefore)} to ${Math.round(opts.cityHealthAfter)} for ${residentsLabel} projected residents. It remains in force until Copilot identifies a new coverage need on the timeline.`
+  return `The applied ${opts.scenarioName} plan resolves the analyzed gaps in ${opts.cityName} for the ${opts.selectedYear} view, lifting City Health from ${Math.round(opts.cityHealthBefore)} to ${Math.round(opts.cityHealthAfter)} for ${residentsLabel} projected residents. It is projected to hold through ${holdYear} (the ${timelineDecadeLabel(holdYear)}) until Copilot identifies a new coverage need on the timeline.`
 }
 
 function buildPitchSummary(d: {
@@ -337,6 +354,7 @@ export function buildReportData(planning: PlanningStateLike, scenarioId: Scenari
     improvedCount: serviceGapsImproved,
     totalGaps: planning.underservedZones.length,
     selectedYear: planning.timelineYear,
+    horizonYears: planning.horizonYears,
     copilotFollowUp: followUp.needed,
     copilotFollowUpFromAdvisory: followUp.fromAdvisory,
   })
@@ -356,6 +374,7 @@ export function buildReportData(planning: PlanningStateLike, scenarioId: Scenari
     cityName,
     scenarioName,
     selectedYear: planning.timelineYear,
+    horizonYears: planning.horizonYears,
     status,
     residentsServed,
     cityHealthBefore,
