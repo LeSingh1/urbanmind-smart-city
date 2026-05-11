@@ -162,6 +162,8 @@ interface SimulationStore {
   applyDynamicAdvisoryPlan: (scenarioId?: string) => void
   comparePlans: () => void
   applyRecommendedPlan: () => void
+  /** Pick which Plan Battle plan (A/B/C) is the current selection. Triggers planBattlePlans hydration if empty. */
+  setSelectedPlanId: (id: PlanBattlePlan['id']) => void
   setCityMode: (mode: CityMode) => void
   setBudgetLevel: (level: BudgetLevel) => void
   setTimelineYear: (year: TimelineYear) => void
@@ -876,6 +878,16 @@ export const useSimulationStore = create<SimulationStore>((set, get) => ({
       planBattlePlans: FREMON_PLAN_BATTLE,
       recommendedPlanId: 'equity_first',
       selectedPlanId: 'equity_first',
+    },
+  })),
+
+  setSelectedPlanId: (id) => set((state) => ({
+    planning: {
+      ...state.planning,
+      // Lazily hydrate Plan Battle list if Review Plan is opened before comparePlans was called.
+      planBattlePlans: state.planning.planBattlePlans.length ? state.planning.planBattlePlans : FREMON_PLAN_BATTLE,
+      hasComparedPlans: true,
+      selectedPlanId: id,
     },
   })),
 

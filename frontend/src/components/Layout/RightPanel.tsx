@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { FileText, Search, Sparkles, TriangleAlert, Radar } from 'lucide-react'
+import { FileText, Layers, Search, Sparkles, TriangleAlert, Radar } from 'lucide-react'
 import { CopilotAdvisoryAlert } from '@/components/UI/CopilotAdvisoryAlert'
+import { ReviewPlanModal } from '@/components/UI/ReviewPlanModal'
 import { useCityStore } from '@/stores/cityStore'
 import { useScenarioStore } from '@/stores/scenarioStore'
 import {
@@ -69,7 +70,18 @@ export function RightPanel() {
   const selectedCity = useCityStore((state) => state.selectedCity)
   const activeScenario = useScenarioStore((state) => state.activeScenario)
   const currentYear = useSimulationStore((s) => s.currentYear)
-  const { planning, analyzeDemo, applyAIPlan, applyDynamicAdvisoryPlan, copilotRescanLateGame, openReport, focusRecommendation, acknowledgeDynamicAdvisory } = useSimulationStore()
+  const { planning, analyzeDemo, applyRecommendedPlan, applyDynamicAdvisoryPlan, copilotRescanLateGame, openReport, focusRecommendation, acknowledgeDynamicAdvisory, comparePlans } = useSimulationStore()
+  const [reviewPlanOpen, setReviewPlanOpen] = useState(false)
+  const handleOpenReviewPlan = useCallback(() => {
+    if (!planning.planBattlePlans.length) comparePlans()
+    setReviewPlanOpen(true)
+  }, [comparePlans, planning.planBattlePlans.length])
+  const handleApplyFullPlan = useCallback(() => {
+    // Single source of truth: applyRecommendedPlan reads selectedPlanId.
+    // If Plan Battle hasn't been seeded yet, hydrate it first (defaults to recommended).
+    if (!planning.planBattlePlans.length) comparePlans()
+    applyRecommendedPlan()
+  }, [applyRecommendedPlan, comparePlans, planning.planBattlePlans.length])
   const topRecommendation = planning.topRecommendation
   const topItem = planning.aiRecommendations.find((item) => topRecommendation.itemIds?.includes(item.id)) ?? planning.aiRecommendations[0]
   const simYearForRescan = currentPlanningYear(currentYear, planning.timelineYear)
@@ -154,6 +166,8 @@ export function RightPanel() {
   const { output: copilotText, done: copilotDone } = useTypewriter(narration, { speedMs: 16, startDelayMs: 60 })
 
   return (
+    <>
+    <ReviewPlanModal open={reviewPlanOpen} onClose={() => setReviewPlanOpen(false)} />
     <aside
       className="w-[300px] shrink-0 overflow-y-auto"
       style={{
@@ -311,19 +325,20 @@ export function RightPanel() {
                 <div className="mt-4 grid gap-2">
                   <button
                     type="button"
-                    onClick={() => applyAIPlan(activeScenario)}
-                    className="rounded-lg px-3 py-3 text-sm font-semibold"
-                    style={{ background: 'rgba(0,184,148,0.09)', color: 'var(--color-accent-green)', border: '1px solid rgba(0,184,148,0.38)' }}
+                    onClick={handleOpenReviewPlan}
+                    className="inline-flex items-center justify-center gap-1.5 rounded-lg px-3 py-2.5 text-sm font-semibold"
+                    style={{ background: 'var(--color-bg-panel)', color: 'var(--color-accent-cyan)', border: '1px solid rgba(var(--rgb-accent), 0.35)' }}
                   >
-                    Apply Top Recommendation
+                    <Layers size={14} />
+                    Review Plan (A / B / C)
                   </button>
                   <button
                     type="button"
-                    onClick={() => applyAIPlan(activeScenario)}
+                    onClick={handleApplyFullPlan}
                     className="rounded-lg px-3 py-3 text-sm font-semibold"
-                    style={{ background: 'var(--color-bg-panel)', color: 'var(--color-accent-cyan)', border: '1px solid rgba(var(--rgb-accent), 0.35)' }}
+                    style={{ background: 'rgba(0,184,148,0.09)', color: 'var(--color-accent-green)', border: '1px solid rgba(0,184,148,0.38)' }}
                   >
-                    Apply Full Planning Recommendations
+                    Apply Full Plan
                   </button>
                 </div>
               </>
@@ -501,6 +516,7 @@ export function RightPanel() {
         </details>
       </div>
     </aside>
+    </>
   )
 }
 

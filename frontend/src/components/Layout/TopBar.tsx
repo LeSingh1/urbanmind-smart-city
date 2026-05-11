@@ -1,68 +1,12 @@
-import { FileText, Radar, Search } from 'lucide-react'
+import { FileText } from 'lucide-react'
 import { useCityStore } from '@/stores/cityStore'
-import { useScenarioStore } from '@/stores/scenarioStore'
-import {
-  COPILOT_RESCAN_MIN_YEAR,
-  currentPlanningYear,
-  supportsLateCopilotRescanCity,
-  useSimulationStore,
-} from '@/stores/simulationStore'
-import { useNotification } from '@/hooks/useNotification'
+import { useSimulationStore } from '@/stores/simulationStore'
 import { Logo } from '@/components/UI/LandingScreen'
 import { ArchitectureBadge } from '@/components/UI/ArchitectureModal'
 
 export function TopBar({ onHome }: { onHome: () => void }) {
   const selectedCity = useCityStore((state) => state.selectedCity)
-  const activeScenario = useScenarioStore((state) => state.activeScenario)
-  const currentYear = useSimulationStore((state) => state.currentYear)
-  const { planning, analyzeDemo, copilotRescanLateGame, openReport } = useSimulationStore()
-  const notify = useNotification((state) => state.notify)
-
-  const simYear = currentPlanningYear(currentYear, planning.timelineYear)
-
-  const handlePrimaryPlanningClick = async () => {
-    if (!selectedCity) {
-      notify('warning', 'Choose a city before running infrastructure analysis.', 2400)
-      return
-    }
-    if (
-      planning.hasAppliedAIPlan &&
-      simYear >= COPILOT_RESCAN_MIN_YEAR &&
-      supportsLateCopilotRescanCity(planning.cityId)
-    ) {
-      await copilotRescanLateGame(activeScenario)
-      return
-    }
-    await analyzeDemo(selectedCity.id, activeScenario)
-  }
-
-  const supportsRescan =
-    supportsLateCopilotRescanCity(planning.cityId) && planning.hasAppliedAIPlan
-  const primaryDisabled =
-    !selectedCity || (supportsRescan && simYear < COPILOT_RESCAN_MIN_YEAR)
-
-  let primaryLabel = 'Analyze Infrastructure Gaps'
-  let primaryTitle = 'Run the gap engine and Copilot for the selected city.'
-  if (planning.hasAnalyzed && !planning.hasAppliedAIPlan) {
-    primaryLabel = 'Re-run gap analysis'
-    primaryTitle = 'Start analysis over from the baseline map (use after changing scenario or budget).'
-  } else if (planning.hasAppliedAIPlan && !supportsLateCopilotRescanCity(planning.cityId)) {
-    primaryLabel = 'Re-run gap analysis'
-    primaryTitle =
-      'Runs a fresh infrastructure pass. Late-game Copilot rescan is available on seeded Fremon, Fremont, and San José demos.'
-  } else if (supportsRescan && simYear < COPILOT_RESCAN_MIN_YEAR) {
-    primaryLabel = `Rescan (${COPILOT_RESCAN_MIN_YEAR}+)`
-    primaryTitle = `Advance the timeline to ${COPILOT_RESCAN_MIN_YEAR} or later after applying a plan — then Copilot can rescan the map for new recommendations and Phase 2.`
-  } else if (supportsRescan && simYear >= COPILOT_RESCAN_MIN_YEAR) {
-    primaryLabel = 'Rescan map · new Copilot plan'
-    primaryTitle =
-      planning.cityId === 'fremon'
-        ? 'Late-game only: clears the applied AI / Phase 2 placements from the map, reruns the validated engine, and refreshes Copilot for the current year.'
-        : 'Clears proposed Copilot placements, rebaselines from the seeded gap map for this demo city, and refreshes recommendations for the current timeline year.'
-  }
-
-  const PrimaryIcon =
-    supportsRescan && simYear >= COPILOT_RESCAN_MIN_YEAR ? Radar : Search
+  const { planning, openReport } = useSimulationStore()
 
   return (
     <header
@@ -120,24 +64,6 @@ export function TopBar({ onHome }: { onHome: () => void }) {
 
       <div className="relative flex items-center gap-2">
         <ArchitectureBadge />
-
-        <button
-          type="button"
-          onClick={() => void handlePrimaryPlanningClick()}
-          disabled={primaryDisabled}
-          title={primaryTitle}
-          aria-label={primaryLabel}
-          className="inline-flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold tracking-tight shadow-sm transition-all disabled:cursor-not-allowed disabled:opacity-45"
-          style={{
-            color: '#fff',
-            border: '1px solid rgba(var(--rgb-accent-dim), 0.35)',
-            background: 'linear-gradient(165deg, var(--color-accent-primary) 0%, var(--color-accent-primary-dim) 100%)',
-            boxShadow: '0 4px 14px rgba(var(--rgb-accent), 0.35)',
-          }}
-        >
-          <PrimaryIcon size={16} strokeWidth={2.25} />
-          {primaryLabel}
-        </button>
 
         <button
           onClick={openReport}

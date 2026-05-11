@@ -1,9 +1,8 @@
 import { useEffect, useRef, useMemo, useState } from 'react'
-import { motion, AnimatePresence, useReducedMotion } from 'framer-motion'
-import { X, Plus } from 'lucide-react'
+import { motion, useReducedMotion } from 'framer-motion'
 import { useCityStore } from '@/stores/cityStore'
+import { useSimulationStore } from '@/stores/simulationStore'
 import type { CityProfile } from '@/types/city.types'
-import { SandboxBuilder } from './SandboxBuilder'
 import maplibregl from 'maplibre-gl'
 import 'maplibre-gl/dist/maplibre-gl.css'
 
@@ -83,7 +82,6 @@ function useLandingMap(containerRef: React.RefObject<HTMLDivElement>) {
       zoom: 14.5,
       pitch: 50,
       bearing: 0,
-      antialias: true,
       interactive: false,
       attributionControl: false,
     })
@@ -113,13 +111,16 @@ function useLandingMap(containerRef: React.RefObject<HTMLDivElement>) {
 }
 
 export function LandingScreen({ onEnter }: Props) {
-  const [sandboxOpen, setSandboxOpen] = useState(false)
   const [showMoreCities, setShowMoreCities] = useState(false)
   const mapContainerRef = useRef<HTMLDivElement>(null)
   const { mapReady } = useLandingMap(mapContainerRef)
   const reduceMotion = useReducedMotion()
   const cities = useCityStore((state) => state.cities)
   const selectCity = useCityStore((state) => state.selectCity)
+  // Optimized badge: show on a city card if that city's plan is already applied.
+  const appliedPlanCityId = useSimulationStore((s) =>
+    s.planning.hasAppliedAIPlan ? s.planning.cityId : null,
+  )
   const mainCities = useMemo(
     () => ['fremon', 'fremont', 'san_jose'].map((id) => cities.find((city) => city.id === id)).filter(Boolean) as CityProfile[],
     [cities],
@@ -164,7 +165,7 @@ export function LandingScreen({ onEnter }: Props) {
             }}
             className="flex items-start gap-12 mb-14"
           >
-            <HeroPanel onSandboxOpen={() => setSandboxOpen(true)} cityCount={cities.length} />
+            <HeroPanel cityCount={cities.length} />
 
             <motion.div
               variants={{
@@ -175,10 +176,23 @@ export function LandingScreen({ onEnter }: Props) {
               style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(210px, 1fr))' }}
             >
               {mainCities.map((city) => (
-                <CityCard key={city.id} city={city} onSelect={chooseCity} reduceMotion={!!reduceMotion} />
+                <CityCard
+                  key={city.id}
+                  city={city}
+                  onSelect={chooseCity}
+                  reduceMotion={!!reduceMotion}
+                  isOptimized={appliedPlanCityId === city.id}
+                />
               ))}
               {showMoreCities && moreCities.map((city) => (
-                <CityCard key={city.id} city={city} onSelect={chooseCity} compact reduceMotion={!!reduceMotion} />
+                <CityCard
+                  key={city.id}
+                  city={city}
+                  onSelect={chooseCity}
+                  compact
+                  reduceMotion={!!reduceMotion}
+                  isOptimized={appliedPlanCityId === city.id}
+                />
               ))}
               {moreCities.length > 0 && (
                 <motion.button
@@ -220,11 +234,6 @@ export function LandingScreen({ onEnter }: Props) {
         </div>
       </div>
 
-      <AnimatePresence>
-        {sandboxOpen && (
-          <SandboxOverlay onClose={() => setSandboxOpen(false)} onGenerated={onEnter} />
-        )}
-      </AnimatePresence>
     </div>
   )
 }
@@ -234,10 +243,8 @@ export function LandingScreen({ onEnter }: Props) {
 // ──────────────────────────────────────────────────────────────────────────
 
 function HeroPanel({
-  onSandboxOpen,
   cityCount,
 }: {
-  onSandboxOpen: () => void
   cityCount: number
 }) {
   return (
@@ -297,12 +304,7 @@ function HeroPanel({
           </li>
         </ul>
 
-        <SecondaryButton onClick={onSandboxOpen}>
-          <Plus size={13} />
-          Build a New City
-        </SecondaryButton>
-
-        <div className="mt-5 font-mono text-[9px]" style={{ color: C.textMuted, letterSpacing: '0.12em' }}>
+        <div className="mt-1 font-mono text-[9px]" style={{ color: C.textMuted, letterSpacing: '0.12em' }}>
           {cityCount} CITIES · 75-YEAR HORIZON
         </div>
       </div>
@@ -327,35 +329,6 @@ function Bullet() {
 }
 
 // ──────────────────────────────────────────────────────────────────────────
-// Secondary button — flat, no gradient, no magnetism.
-// ──────────────────────────────────────────────────────────────────────────
-
-function SecondaryButton({
-  children,
-  onClick,
-}: {
-  children: React.ReactNode
-  onClick: () => void
-}) {
-  return (
-    <motion.button
-      onClick={onClick}
-      whileHover={{ borderColor: C.borderHover, backgroundColor: 'rgba(255,255,255,0.04)' }}
-      whileTap={{ scale: 0.98 }}
-      transition={SPRING}
-      className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium"
-      style={{
-        background: 'rgba(255,255,255,0.02)',
-        color: C.textPrimary,
-        border: `1px solid ${C.border}`,
-      }}
-    >
-      {children}
-    </motion.button>
-  )
-}
-
-// ──────────────────────────────────────────────────────────────────────────
 // City card — flat, single hover lift, no parallax, no idle motion.
 // ──────────────────────────────────────────────────────────────────────────
 
@@ -364,11 +337,13 @@ function CityCard({
   onSelect,
   compact = false,
   reduceMotion: _reduceMotion,
+  isOptimized = false,
 }: {
   city: CityProfile
   onSelect: (c: CityProfile) => void
   compact?: boolean
   reduceMotion: boolean
+  isOptimized?: boolean
 }) {
   const typeLabel = city.id === 'fremon' ? 'Generated city' : 'Real city'
   const populationLabel = city.population_current.toLocaleString()
@@ -395,6 +370,20 @@ function CityCard({
         className={`relative flex items-end p-5 ${compact ? 'h-20' : 'h-28'}`}
         style={{ background: cityColorFlat(city.id) }}
       >
+        {isOptimized && (
+          <span
+            className="absolute top-3 right-3 inline-flex items-center gap-1 rounded-full px-2 py-0.5 font-mono text-[9px] font-bold uppercase tracking-widest"
+            style={{
+              color: C.bg,
+              background: '#34d399',
+              letterSpacing: '0.14em',
+            }}
+            aria-label="Plan applied — city is optimized"
+          >
+            <span style={{ width: 4, height: 4, borderRadius: '50%', background: C.bg, display: 'inline-block' }} />
+            Optimized
+          </span>
+        )}
         <h3
           className="font-display text-base font-semibold"
           style={{ color: C.textPrimary, letterSpacing: '-0.01em' }}
@@ -412,45 +401,12 @@ function CityCard({
         </p>
         <div
           className="mt-3 inline-flex items-center gap-1 font-mono text-[10px] uppercase"
-          style={{ color: C.accent, letterSpacing: '0.16em' }}
+          style={{ color: isOptimized ? '#34d399' : C.accent, letterSpacing: '0.16em' }}
         >
-          Simulate →
+          {isOptimized ? 'View report →' : 'Simulate →'}
         </div>
       </div>
     </motion.button>
-  )
-}
-
-// ──────────────────────────────────────────────────────────────────────────
-// Sandbox overlay
-// ──────────────────────────────────────────────────────────────────────────
-
-function SandboxOverlay({ onClose, onGenerated }: { onClose: () => void; onGenerated: () => void }) {
-  return (
-    <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
-      transition={{ duration: 0.2 }}
-      className="fixed inset-0 z-50 overflow-auto p-8"
-      style={{ background: C.bg }}
-    >
-      <motion.button
-        whileHover={{ borderColor: C.borderHover }}
-        whileTap={{ scale: 0.96 }}
-        onClick={onClose}
-        className="fixed top-5 right-5 flex items-center justify-center w-9 h-9 rounded-lg"
-        style={{
-          border: `1px solid ${C.border}`,
-          color: C.textBody,
-          background: C.card,
-        }}
-        aria-label="Close sandbox builder"
-      >
-        <X size={16} />
-      </motion.button>
-      <SandboxBuilder onGenerated={() => { onClose(); onGenerated() }} />
-    </motion.div>
   )
 }
 

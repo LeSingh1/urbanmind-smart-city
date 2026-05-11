@@ -3,31 +3,27 @@ import { AnimatePresence, motion } from 'framer-motion'
 import {
   BarChart3,
   Building2,
-  Bot,
   ChevronLeft,
   ChevronRight,
-  FileText,
   Flame,
   Home,
   Leaf,
   Map,
   Scale,
-  Sparkles,
   Train,
-  Radar,
   Users,
 } from 'lucide-react'
 import { ZonePalette } from '@/components/UI/ZonePalette'
-import { CopilotAdvisoryAlert } from '@/components/UI/CopilotAdvisoryAlert'
 import { useCityStore } from '@/stores/cityStore'
 import { useScenarioStore, scenarioColors, scenarioLabels } from '@/stores/scenarioStore'
-import { useSimulationStore, COPILOT_RESCAN_MIN_YEAR, currentPlanningYear, supportsLateCopilotRescanCity } from '@/stores/simulationStore'
+import { useSimulationStore } from '@/stores/simulationStore'
 import type { ScenarioId } from '@/types/city.types'
 
+// Copilot lives in the RightPanel as the single source of narration —
+// it used to also live here as a tab, but that created a duplicate.
 const TABS = [
   { id: 'scenario', icon: Map, label: 'Scenario' },
   { id: 'metrics', icon: BarChart3, label: 'Metrics' },
-  { id: 'copilot', icon: Bot, label: 'Copilot' },
 ] as const
 
 type TabId = typeof TABS[number]['id']
@@ -44,8 +40,6 @@ const SCENARIO_DETAILS: Record<ScenarioId, { icon: React.ElementType; descriptio
 export function LeftSidebar() {
   const [activePanel, setActivePanel] = useState<TabId | null>('scenario')
   const [collapsed, setCollapsed] = useState(false)
-  const dynamicAdvisory = useSimulationStore((state) => state.planning.dynamicAdvisory)
-  const acknowledgeDynamicAdvisory = useSimulationStore((state) => state.acknowledgeDynamicAdvisory)
 
   return (
     <div
@@ -70,7 +64,6 @@ export function LeftSidebar() {
               onClick={() => {
                 if (collapsed) setCollapsed(false)
                 setActivePanel(activePanel === id && !collapsed ? null : id)
-                if (id === 'copilot') acknowledgeDynamicAdvisory()
               }}
               whileHover={{ scale: 1.06, y: -1 }}
               whileTap={{ scale: 0.94 }}
@@ -85,21 +78,6 @@ export function LeftSidebar() {
               aria-label={label}
             >
               <Icon size={16} />
-              {id === 'copilot' && dynamicAdvisory?.unread && (
-                <motion.span
-                  initial={{ scale: 0.4, opacity: 0 }}
-                  animate={{ scale: 1, opacity: 1 }}
-                  className="absolute -right-0.5 -top-0.5 grid h-4 min-w-4 place-items-center rounded-full px-1 font-mono text-[9px] font-bold"
-                  style={{
-                    background: 'var(--color-accent-warning)',
-                    color: '#111827',
-                    border: '1px solid var(--color-bg-sidebar)',
-                    boxShadow: '0 0 12px rgba(245,158,11,0.75)',
-                  }}
-                >
-                  1
-                </motion.span>
-              )}
               {active && (
                 <motion.div
                   initial={{ opacity: 0, scaleY: 0.65 }}
@@ -166,7 +144,6 @@ export function LeftSidebar() {
             <div className="flex-1 overflow-y-auto">
               {activePanel === 'scenario' && <ScenarioPanel />}
               {activePanel === 'metrics' && <MetricsPanel />}
-              {activePanel === 'copilot' && <CopilotPanel />}
             </div>
           </motion.div>
         )}
@@ -278,92 +255,6 @@ function MetricsPanel() {
           <ScoreLine label="Education Access" before={planning.beforeScores?.educationAccess} after={planning.afterScores?.educationAccess} />
           <ScoreLine label="Green Space" before={planning.beforeScores?.greenSpace} after={planning.afterScores?.greenSpace} />
           <ScoreLine label="Housing Access" before={planning.beforeScores?.housingAccess} after={planning.afterScores?.housingAccess} />
-        </div>
-      </PanelSection>
-    </div>
-  )
-}
-
-function CopilotPanel() {
-  const selectedCity = useCityStore((state) => state.selectedCity)
-  const activeScenario = useScenarioStore((state) => state.activeScenario)
-  const currentYear = useSimulationStore((s) => s.currentYear)
-  const { planning, analyzeDemo, applyAIPlan, applyDynamicAdvisoryPlan, copilotRescanLateGame, openReport, focusRecommendation, acknowledgeDynamicAdvisory } = useSimulationStore()
-  const topItem = planning.aiRecommendations.find((item) => planning.topRecommendation.itemIds?.includes(item.id)) ?? planning.aiRecommendations[0]
-  const advisory = planning.dynamicAdvisory
-  const simYearForRescan = currentPlanningYear(currentYear, planning.timelineYear)
-  return (
-    <div className="p-3 space-y-4">
-      {advisory && (
-        <PanelSection title="Live Advisory">
-          <CopilotAdvisoryAlert
-            advisory={advisory}
-            density="compact"
-            onReview={() => {
-              acknowledgeDynamicAdvisory()
-              focusRecommendation(advisory.recommendationId)
-            }}
-            onApply={() => applyDynamicAdvisoryPlan(activeScenario)}
-            onRecommendationHoverEnter={() => focusRecommendation(advisory.recommendationId)}
-            onRecommendationHoverLeave={() => focusRecommendation(null)}
-          />
-        </PanelSection>
-      )}
-      <PanelSection title="Copilot">
-        <div className="rounded-xl p-3" style={{ background: 'var(--color-bg-hover)', border: '1px solid rgba(var(--rgb-accent), 0.22)' }}>
-          <div className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-widest" style={{ color: 'var(--color-accent-cyan)' }}>
-            <Sparkles size={13} />
-            {planning.hasAnalyzed ? 'Top Recommendation' : 'Ready'}
-          </div>
-          <h3 className="mt-2 font-display text-sm font-semibold" style={{ color: 'var(--color-text-primary)' }}>
-            {planning.hasAnalyzed ? planning.topRecommendation.zoneName : 'Ready to analyze infrastructure gaps'}
-          </h3>
-          <p className="mt-2 text-[11px] leading-relaxed" style={{ color: 'var(--color-text-secondary)' }}>
-            {planning.hasAnalyzed
-              ? `Add ${topItem?.name ?? planning.topRecommendation.title.replace(/^Add\s+/i, '')}. ${planning.topRecommendation.reason}`
-              : 'Run analysis to identify underserved zones and recommended fixes.'}
-          </p>
-          <div className="mt-3 grid gap-2">
-            {!planning.hasAnalyzed ? (
-              <button onClick={() => selectedCity && analyzeDemo(selectedCity.id, activeScenario)} className="rounded-lg px-3 py-2 text-xs font-semibold" style={{ background: 'var(--color-bg-panel)', color: 'var(--color-accent-cyan)', border: '1px solid rgba(var(--rgb-accent), 0.35)' }}>
-                Analyze Infrastructure Gaps
-              </button>
-            ) : (
-              <>
-                <button onClick={() => applyAIPlan(activeScenario)} disabled={planning.hasAppliedAIPlan} className="rounded-lg px-3 py-2 text-xs font-semibold disabled:opacity-50" style={{ background: 'rgba(0,184,148,0.09)', color: 'var(--color-accent-green)', border: '1px solid rgba(0,184,148,0.38)' }}>
-                  {planning.hasAppliedAIPlan ? 'Plan Applied' : 'Apply AI Plan'}
-                </button>
-                {planning.hasAppliedAIPlan && supportsLateCopilotRescanCity(planning.cityId) ? (
-                  <button
-                    type="button"
-                    disabled={simYearForRescan < COPILOT_RESCAN_MIN_YEAR}
-                    title={
-                      simYearForRescan < COPILOT_RESCAN_MIN_YEAR
-                        ? `Scrub the timeline to ${COPILOT_RESCAN_MIN_YEAR}+`
-                        : 'Clear overlays and rerun gap discovery for this timeline year.'
-                    }
-                    onClick={() => void copilotRescanLateGame(activeScenario)}
-                    className="inline-flex items-center justify-center gap-1 rounded-lg px-3 py-2 text-xs font-semibold disabled:cursor-not-allowed disabled:opacity-45"
-                    style={{
-                      color: '#fff',
-                      border: '1px solid rgba(var(--rgb-accent-dim), 0.35)',
-                      background: 'linear-gradient(165deg, var(--color-accent-primary) 0%, var(--color-accent-primary-dim) 100%)',
-                      boxShadow: '0 2px 10px rgba(var(--rgb-accent), 0.28)',
-                    }}
-                  >
-                    <Radar size={12} />
-                    {simYearForRescan < COPILOT_RESCAN_MIN_YEAR
-                      ? `Rescan (${COPILOT_RESCAN_MIN_YEAR}+)`
-                      : 'Rescan map'}
-                  </button>
-                ) : null}
-                <button onClick={openReport} className="inline-flex items-center justify-center gap-1 rounded-lg px-3 py-2 text-xs font-semibold" style={{ background: 'var(--color-bg-panel)', color: 'var(--color-accent-purple)', border: '1px solid var(--color-border-subtle)' }}>
-                  <FileText size={12} />
-                  Generate Report
-                </button>
-              </>
-            )}
-          </div>
         </div>
       </PanelSection>
     </div>
