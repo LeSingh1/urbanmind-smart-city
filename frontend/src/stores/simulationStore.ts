@@ -662,7 +662,7 @@ export const useSimulationStore = create<SimulationStore>((set, get) => ({
       state.planning.cityId === 'fremon'
         ? { ...FREMON_BASE_METRICS }
         : calculatePlanningScores(baseInfra, underservedZones, bundle.growthPercent, scenario)
-    const frame = scoresToFrame(beforeScores, state.planning.horizonYears, baseInfra, underservedZones, state.planning.cityId)
+    const frame = scoresToFrame(beforeScores, state.planning.timelineYear || 2026, baseInfra, underservedZones, state.planning.cityId)
     set({
       currentFrame: frame,
       frameHistory: [frame],
@@ -693,16 +693,27 @@ export const useSimulationStore = create<SimulationStore>((set, get) => ({
       state.planning.cityId === 'fremon'
         ? markFremonImprovedZones(applied.map((item) => item.id))
         : markImprovedZones(state.planning.underservedZones, applied.map((item) => item.id))
+    // Apply at the current scrubbed timeline year, not the horizon literal.
+    // Bug fix: previously this passed planning.horizonYears (=75) as a year,
+    // which made scoresToMetrics fall back to baseline population (420K).
+    const applyYear = state.planning.timelineYear || state.currentYear || 2026
+    // Scale Fremon's hardcoded equity-first metrics to the current population.
+    // 74K residents served is the year-2026 baseline; at later years the same
+    // plan covers proportionally more residents as the city grows.
+    const fremonPopRatio =
+      state.planning.cityId === 'fremon'
+        ? estimateTimelinePopulation(applyYear) / FREMON_POPULATION
+        : 1
     const afterScores =
       state.planning.cityId === 'fremon'
         ? {
             ...FREMON_EQUITY_FIRST_METRICS,
             totalEstimatedCost: 137_000_000,
-            populationServed: FREMON_EQUITY_FIRST_METRICS.populationServed ?? 74_000,
+            populationServed: Math.round((FREMON_EQUITY_FIRST_METRICS.populationServed ?? 74_000) * fremonPopRatio),
             serviceGapCount: underservedZones.filter((zone) => !zone.isImproved).length,
           }
         : calculatePlanningScores(infrastructure, underservedZones, state.planning.growthPercent, normalizeScenario(scenarioId))
-    const frame = scoresToFrame(afterScores, state.planning.horizonYears, infrastructure, underservedZones, state.planning.cityId)
+    const frame = scoresToFrame(afterScores, applyYear, infrastructure, underservedZones, state.planning.cityId)
     const baselineFrame = state.frameHistory[0] ?? frame
     const baselineMetrics = state.metricsHistory[0] ?? baselineFrame.metrics_snapshot
     const appliedFocus = applied[0]
@@ -739,7 +750,9 @@ export const useSimulationStore = create<SimulationStore>((set, get) => ({
         undoStack: [...state.planning.undoStack, state.planning.infrastructure],
         impactSummary: {
           residentsServed:
-            state.planning.cityId === 'fremon' ? 74_000 : afterScores.populationServed ?? state.planning.impactSummary?.residentsServed ?? 0,
+            state.planning.cityId === 'fremon'
+              ? Math.round(74_000 * fremonPopRatio)
+              : afterScores.populationServed ?? state.planning.impactSummary?.residentsServed ?? 0,
           gapsFixed: underservedZones.filter((zone) => zone.isImproved).length,
           commuteReduction: Math.max(
             0,
@@ -993,12 +1006,13 @@ export const useSimulationStore = create<SimulationStore>((set, get) => ({
     )
     const before = state.planning.beforeScores ?? calculatePlanningScores(state.planning.infrastructure, state.planning.underservedZones, state.planning.growthPercent, 'balanced')
     const afterScores = calculatePlanningScores(infrastructure, underservedZones, state.planning.growthPercent, 'balanced')
-    const frame = scoresToFrame(afterScores, state.planning.horizonYears, infrastructure, underservedZones, state.planning.cityId)
+    const addYear = state.planning.timelineYear || state.currentYear || 2026
+    const frame = scoresToFrame(afterScores, addYear, infrastructure, underservedZones, state.planning.cityId)
     const placementFeedback = detectPlacementFeedback(item, state.planning)
     const city = STATIC_CITIES.find((city) => city.id === state.planning.cityId)
     return {
       currentFrame: frame,
-      metricsHistory: [before, afterScores].map((score, index) => scoresToMetrics(score, index === 0 ? 2026 : state.planning.horizonYears, city)),
+      metricsHistory: [before, afterScores].map((score, index) => scoresToMetrics(score, index === 0 ? 2026 : addYear, city)),
       planning: {
         ...state.planning,
         infrastructure,
